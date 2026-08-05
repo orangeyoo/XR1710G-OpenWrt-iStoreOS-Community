@@ -1,0 +1,48 @@
+From: Mieczyslaw Nalewaj <namiltd@yahoo.com>
+Date: Tue, 14 Apr 2026 08:47:00 +0200
+Subject: [PATCH] crypto: eip93 - select AES fallback threshold by key length
+
+The local EIP93 small-request fallback patch has separate software
+fallback thresholds for AES-128 and generic requests, but the current
+condition checks the constant AES_KEYSIZE_128 directly. Since that
+constant is non-zero, the AES-128 threshold is always selected.
+
+Remember the selected skcipher key length and use it to choose the
+fallback threshold.
+
+Signed-off-by: Mieczyslaw Nalewaj <namiltd@yahoo.com>
+---
+ drivers/crypto/inside-secure/eip93/eip93-cipher.c | 4 +++-
+ drivers/crypto/inside-secure/eip93/eip93-cipher.h | 1 +
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+--- a/drivers/crypto/inside-secure/eip93/eip93-cipher.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-cipher.c
+@@ -133,6 +133,8 @@ static int eip93_skcipher_setkey(struct
+ 			return ret;
+ 	}
+ 
++	ctx->keylen = keylen;
++
+ 	if (flags & EIP93_ALG_AES) {
+ 		struct crypto_aes_ctx aes;
+ 		bool fallback = eip93_skcipher_is_fallback(tfm, flags);
+@@ -182,7 +184,7 @@ static int eip93_skcipher_crypt(struct
+ 			return -EINVAL;
+ 
+ 	if (fallback &&
+-	    req->cryptlen <= (AES_KEYSIZE_128 ?
++	    req->cryptlen <= ((ctx->keylen == AES_KEYSIZE_128) ?
+ 			      CONFIG_CRYPTO_DEV_EIP93_AES_128_SW_MAX_LEN :
+ 			      CONFIG_CRYPTO_DEV_EIP93_GENERIC_SW_MAX_LEN)) {
+ 		skcipher_request_set_tfm(&rctx->fallback_req, ctx->fallback);
+--- a/drivers/crypto/inside-secure/eip93/eip93-cipher.h
++++ b/drivers/crypto/inside-secure/eip93/eip93-cipher.h
+@@ -23,6 +23,7 @@ struct eip93_crypto_ctx {
+ 	bool				set_assoc;
+ 	enum eip93_alg_type		type;
+ 	struct crypto_skcipher		*fallback;
++	u32				keylen;
+ };
+ 
+ struct eip93_cipher_reqctx {

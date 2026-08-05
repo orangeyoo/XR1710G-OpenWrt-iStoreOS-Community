@@ -1,0 +1,77 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Subject: [PATCH] wifi: mt76: mt7996: validate PS sync event TLVs
+
+The mt7996 PS sync event parser walks a firmware-provided TLV stream by
+pulling each TLV length from the skb. Reject malformed TLVs whose length is
+smaller than the TLV header or larger than the remaining skb data, otherwise a
+zero-length TLV can keep the parser in the same loop iteration indefinitely.
+
+Also validate the fixed-size TLV payloads before reading them and clamp the
+multi-client flexible array count to the payload length. This keeps malformed
+or truncated MCU events from stalling the threaded NAPI context.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+ mt7996/mcu.c | 25 ++++++++++++++++++++++---
+ 1 file changed, 22 insertions(+), 3 deletions(-)
+
+diff --git a/mt7996/mcu.c b/mt7996/mcu.c
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -868,11 +868,13 @@
+ static void
+ mt7996_mcu_rx_ps_sync(struct mt7996_dev *dev, struct sk_buff *skb)
+ {
+-	struct mt7996_mcu_ps_sync_event *event = (void *)skb->data;
+ 	struct tlv *tlv;
+ 	int len;
+ 
+-	skb_pull(skb, sizeof(*event));
++	if (unlikely(skb->len < sizeof(struct mt7996_mcu_ps_sync_event)))
++		return;
++
++	skb_pull(skb, sizeof(struct mt7996_mcu_ps_sync_event));
+ 
+ 	len = skb->len;
+ 	while (len > sizeof(*tlv)) {
+@@ -881,13 +883,16 @@
+ 		tlv = (struct tlv *)skb->data;
+ 		tag = le16_to_cpu(tlv->tag);
+ 		tag_len = le16_to_cpu(tlv->len);
+-		if (tag_len > len)
++		if (tag_len < sizeof(*tlv) || tag_len > len)
+ 			break;
+ 
+ 		switch (tag) {
+ 		case UNI_PS_CLIENT_INFO: {
+ 			struct mt7996_mcu_ps_client_info *info = (void *)tlv;
+ 
++			if (tag_len < sizeof(*info))
++				break;
++
+ 			mt7996_mcu_ps_transition(dev,
+ 						 le16_to_cpu(info->wlan_idx),
+ 						 info->ps_bit);
+@@ -895,9 +900,18 @@
+ 		}
+ 		case UNI_PS_MULTI_CLIENT_INFO: {
+ 			struct mt7996_mcu_ps_multi_client_info *info = (void *)tlv;
+-			u16 cnt = le16_to_cpu(info->sta_cnt);
++			u16 cnt, max_cnt;
+ 			int i;
+ 
++			if (tag_len < sizeof(*info))
++				break;
++
++			max_cnt = (tag_len - sizeof(*info)) /
++				  sizeof(info->sta_ps_info[0]);
++			cnt = le16_to_cpu(info->sta_cnt);
++			if (cnt > max_cnt)
++				cnt = max_cnt;
++
+ 			for (i = 0; i < cnt; i++) {
+ 				u16 entry = le16_to_cpu(info->sta_ps_info[i]);
+ 
+-- 
+2.43.0

@@ -1,0 +1,157 @@
+From: Yanghan Ye <yyh94306@gmail.com>
+Date: Mon, 13 Jul 2026 05:10:00 +0800
+Subject: [PATCH] PCI: mediatek-gen3: configure EN7581 link before PERST
+
+The EN7581 power-up callback deasserts the endpoint PERST signal before
+mtk_pcie_startup_port() configures the requested link speed. As a
+result, the link trains with the reset default Gen2 capability. The
+later Gen3 writes update the controller registers, but the already
+latched Root Port capability and active link stay at Gen2.
+
+Read max-link-speed before calling the SoC power-up callback and factor
+the speed programming into a helper. Use the helper after the EN7581
+MAC clocks and SerDes are ready, but before deasserting the selected
+PERST signal. In x2 mode program both MACs so both bonded lanes expose
+the same Gen3 capability.
+
+Bit 13 in PCIE_SETTING_REG belongs to PCIE_SETTING_GEN_SUPPORT and is
+the Gen3 support bit. Do not clear it as an x1-mode selector. Link
+width is described by PCIE_SETTING_LINK_WIDTH and the NP SCU SerDes mux.
+
+This keeps the per-port PERST handling introduced by the previous fix;
+no other PCIe port is reset while a controller is initialized.
+
+Assisted-by: Codex:gpt-5.6-sol
+Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
+--- a/drivers/pci/controller/pcie-mediatek-gen3.c
++++ b/drivers/pci/controller/pcie-mediatek-gen3.c
+@@ -429,6 +426,28 @@
+ 	writel_relaxed(val, pcie->base + PCIE_INT_ENABLE_REG);
+ }
+ 
++static void mtk_pcie_configure_link_speed(struct mtk_gen3_pcie *pcie,
++					  void __iomem *base)
++{
++	u32 val;
++
++	if (!pcie->max_link_speed)
++		return;
++
++	val = readl_relaxed(base + PCIE_SETTING_REG);
++	val &= ~PCIE_SETTING_GEN_SUPPORT;
++	if (pcie->max_link_speed >= 2)
++		val |= FIELD_PREP(PCIE_SETTING_GEN_SUPPORT,
++				  GENMASK(pcie->max_link_speed - 2, 0));
++	writel_relaxed(val, base + PCIE_SETTING_REG);
++
++	val = readl_relaxed(base + PCIE_CONF_LINK2_CTL_STS);
++	val &= ~PCIE_CONF_LINK2_LCR2_LINK_SPEED;
++	val |= FIELD_PREP(PCIE_CONF_LINK2_LCR2_LINK_SPEED,
++			  pcie->max_link_speed);
++	writel_relaxed(val, base + PCIE_CONF_LINK2_CTL_STS);
++}
++
+ static int mtk_pcie_startup_port(struct mtk_gen3_pcie *pcie)
+ {
+ 	struct resource_entry *entry;
+@@ -437,17 +456,9 @@
+ 	int err;
+ 	u32 val;
+ 
+-	/* Set as RC mode and set controller PCIe Gen speed restriction, if any */
++	/* Set as RC mode and configure the active link width. */
+ 	val = readl_relaxed(pcie->base + PCIE_SETTING_REG);
+ 	val |= PCIE_RC_MODE;
+-	if (pcie->max_link_speed) {
+-		val &= ~PCIE_SETTING_GEN_SUPPORT;
+-
+-		/* Can enable link speed support only from Gen2 onwards */
+-		if (pcie->max_link_speed >= 2)
+-			val |= FIELD_PREP(PCIE_SETTING_GEN_SUPPORT,
+-					  GENMASK(pcie->max_link_speed - 2, 0));
+-	}
+ 	if (pcie->num_lanes) {
+ 		val &= ~PCIE_SETTING_LINK_WIDTH;
+ 
+@@ -458,13 +469,7 @@
+ 	}
+ 	writel_relaxed(val, pcie->base + PCIE_SETTING_REG);
+ 
+-	/* Set Link Control 2 (LNKCTL2) speed restriction, if any */
+-	if (pcie->max_link_speed) {
+-		val = readl_relaxed(pcie->base + PCIE_CONF_LINK2_CTL_STS);
+-		val &= ~PCIE_CONF_LINK2_LCR2_LINK_SPEED;
+-		val |= FIELD_PREP(PCIE_CONF_LINK2_LCR2_LINK_SPEED, pcie->max_link_speed);
+-		writel_relaxed(val, pcie->base + PCIE_CONF_LINK2_CTL_STS);
+-	}
++	mtk_pcie_configure_link_speed(pcie, pcie->base);
+ 
+ 	/* If parameter is present, adjust SYS_CLK_RDY_TIME to avoid glitching */
+ 	if (pcie->soc->sys_clk_rdy_time_us) {
+@@ -1079,6 +1100,14 @@ static int mtk_pcie_en7581_power_up(struct mtk_gen3_pcie *pcie)
+ 	 */
+ 	msleep(PCIE_T_PVPERL_MS);
+ 
++	/* Program link width while the endpoint remains in PERST. */
++	val = readl_relaxed(pcie->base + PCIE_SETTING_REG);
++	val &= ~PCIE_SETTING_LINK_WIDTH;
++	if (pcie->num_lanes > 1)
++		val |= FIELD_PREP(PCIE_SETTING_LINK_WIDTH,
++				  GENMASK(fls(pcie->num_lanes >> 2), 0));
++	writel_relaxed(val, pcie->base + PCIE_SETTING_REG);
++
+ 	/* Configure all the lines to the same EQ config */
+ 	for (i = 0; i < num_lanes; i++) {
+ 		void __iomem *base = pcie->base;
+@@ -1087,6 +1117,8 @@ static int mtk_pcie_en7581_power_up(struct mtk_gen3_pcie *pcie)
+ 		if (i == 1)
+ 			base = pcie->sec_base;
+ 
++		mtk_pcie_configure_link_speed(pcie, base);
++
+ 		val = FIELD_PREP(PCIE_VAL_LN0_DOWNSTREAM, 0x47) |
+ 			FIELD_PREP(PCIE_VAL_LN1_DOWNSTREAM, 0x47) |
+ 			FIELD_PREP(PCIE_VAL_LN0_UPSTREAM, 0x41) |
+@@ -1099,6 +1131,9 @@ static int mtk_pcie_en7581_power_up(struct mtk_gen3_pcie *pcie)
+ 		writel_relaxed(val, base + PCIE_PIPE4_PIE8_REG);
+ 	}
+ 
++	dev_info(dev, "pre-training link configuration: Gen%u x%u\n",
++		 pcie->max_link_speed, pcie->num_lanes ?: 1);
++
+ 	/* Deassert PERSTOUT for all relevant lines */
+ 	err = reset_control_bulk_deassert(MAX_NUM_PERSTOUT_RESETS,
+ 					  pcie->perstout_resets);
+@@ -1275,6 +1287,10 @@
+ {
+ 	int err, max_speed;
+ 
++	max_speed = of_pci_get_max_link_speed(pcie->dev->of_node);
++	if (max_speed > 0)
++		pcie->max_link_speed = max_speed;
++
+ 	err = mtk_pcie_parse_port(pcie);
+ 	if (err)
+ 		return err;
+@@ -1291,18 +1307,14 @@
+ 	if (err)
+ 		return err;
+ 
+-	err = of_pci_get_max_link_speed(pcie->dev->of_node);
+-	if (err) {
++	if (pcie->max_link_speed > 0) {
+ 		/* Get the maximum speed supported by the controller */
+ 		max_speed = mtk_pcie_get_controller_max_link_speed(pcie);
+ 
+-		/* Set max_link_speed only if the controller supports it */
+-		if (max_speed >= 0 && max_speed <= err) {
+-			pcie->max_link_speed = err;
++		if (max_speed >= 0 && max_speed < pcie->max_link_speed)
+ 			dev_info(pcie->dev,
+-				 "maximum controller link speed Gen%d, overriding to Gen%u",
++				 "maximum controller link speed Gen%d, overriding to Gen%u\n",
+ 				 max_speed, pcie->max_link_speed);
+-		}
+ 	}
+ 
+ 	/* Try link up */

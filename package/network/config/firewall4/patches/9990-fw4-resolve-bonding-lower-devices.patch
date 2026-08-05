@@ -1,0 +1,33 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Sun, 17 May 2026 20:15:00 +0900
+Subject: [PATCH] fw4: resolve bonding lower devices for flowtable offload
+
+fw4 resolves bridge and VLAN lower devices before creating the flowtable
+device set. Treat bonding devices the same way, otherwise a bridge member
+that is a bond master leaves bond0 in the hardware offload flowtable. That
+prevents per-port offload drivers from seeing the real physical devices.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+--- a/root/usr/share/ucode/fw4.uc
++++ b/root/usr/share/ucode/fw4.uc
+@@ -439,7 +439,18 @@ function resolve_lower_devices(devstatus
+ 
+ 			break;
+ 
++		case 'bonding':
+ 		default:
++			if (fs.access(`/sys/class/net/${devname}/bonding`)) {
++				let e;
++
++				while ((e = dir.read()) != null)
++					if (index(e, "lower_") === 0)
++						push(devs, ...resolve_lower_devices(devstatus, substr(e, 6)));
++
++				break;
++			}
++
+ 			push(devs, devname);
+ 
+ 			break;

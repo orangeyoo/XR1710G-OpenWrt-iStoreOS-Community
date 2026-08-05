@@ -1,0 +1,52 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Subject: [PATCH] wifi: mt76: mt7996: fill 160 MHz BF fallback for EHT 320
+
+mt7996_mcu_sta_bfer_eht() packs EHT >80 MHz beamforming row/column
+information into separate 160 MHz and 320 MHz nibbles. For 320 MHz
+stations, populate the 160 MHz nibble from the peer 160 MHz EHT
+capabilities before OR-ing in the existing 320 MHz values.
+
+This gives firmware a valid beamforming matrix fallback when feedback or
+sounding bandwidth contracts from 320 MHz to 160 MHz during traffic. On
+W1700K2 EHT320 diagnostics, both nibbles stay populated instead of leaving
+the lower fallback nibble zero for QCNCM865 clients.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+ mt7996/mcu.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/mt7996/mcu.c b/mt7996/mcu.c
+index f3426115bba1..cdddfd83708e 100644
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -1979,15 +1979,24 @@ mt7996_mcu_sta_bfer_eht(struct ieee80211_link_sta *link_sta,
+ 		bf->ncol_gt_bw80 = nss_mcs;
+ 		break;
+ 	case IEEE80211_STA_RX_BW_320:
++		bf->nrow_gt_bw80 =
++			min_t(u8, EHT_PHY(CAP2_SOUNDING_DIM_160MHZ_MASK,
++					  ve->phy_cap_info[2]),
++			      EHT_PHY(CAP1_BEAMFORMEE_SS_160MHZ_MASK,
++				      pe->phy_cap_info[1]));
++		bf->ncol_gt_bw80 =
++			u8_get_bits(eht_nss->bw._160.rx_tx_mcs9_max_nss,
++				    IEEE80211_EHT_MCS_NSS_RX) - 1;
++
+ 		snd_dim = EHT_PHY(CAP2_SOUNDING_DIM_320MHZ_MASK, ve->phy_cap_info[2]) +
+ 			  (EHT_PHY(CAP3_SOUNDING_DIM_320MHZ_MASK,
+ 				   ve->phy_cap_info[3]) << 1);
+ 		sts = EHT_PHY(CAP1_BEAMFORMEE_SS_320MHZ_MASK, pe->phy_cap_info[1]);
+ 		nss_mcs = u8_get_bits(eht_nss->bw._320.rx_tx_mcs9_max_nss,
+ 				      IEEE80211_EHT_MCS_NSS_RX) - 1;
+ 
+-		bf->nrow_gt_bw80 = min_t(u8, snd_dim, sts) << 4;
+-		bf->ncol_gt_bw80 = nss_mcs << 4;
++		bf->nrow_gt_bw80 |= min_t(u8, snd_dim, sts) << 4;
++		bf->ncol_gt_bw80 |= nss_mcs << 4;
+ 		break;
+ 	default:
+ 		break;
+-- 
+2.43.0

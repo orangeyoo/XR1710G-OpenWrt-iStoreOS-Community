@@ -1,0 +1,100 @@
+From: Ryan Chen <rchen14b@gmail.com>
+Date: Thu, 06 Mar 2026 21:00:00 -0600
+Subject: [PATCH] wifi: mt76: mt7996: add token and NPU debugfs counters
+
+Add a read-only "token_info" debugfs file that exposes token pool usage
+and NPU queue state for runtime diagnostics. This is computed only on
+read and adds no overhead during normal operation.
+
+The file shows:
+- SW token count vs pool size (in-flight DMA buffers)
+- HW/SW token range split when NPU offload is active
+- NPU RX queue depths (packets received from NPU firmware)
+- Per-band TX queue depths with NPU vs DMA path indication
+
+Useful for diagnosing token pool starvation between NPU-offloaded
+bands (2.4GHz/6GHz) and DMA-path bands (5GHz).
+
+Signed-off-by: Ryan Chen <rchen14b@gmail.com>
+Index: mt76-2026.03.05~9f95baf9/mt7996/debugfs.c
+===================================================================
+--- mt76-2026.03.05~9f95baf9.orig/mt7996/debugfs.c
++++ mt76-2026.03.05~9f95baf9/mt7996/debugfs.c
+@@ -851,6 +851,68 @@ mt7996_rf_regval_set(void *data, u64 val
+ DEFINE_DEBUGFS_ATTRIBUTE(fops_rf_regval, mt7996_rf_regval_get,
+ 			 mt7996_rf_regval_set, "0x%08llx\n");
+ 
++static int mt7996_token_info_read(struct seq_file *s, void *data)
++{
++	struct mt7996_dev *dev = dev_get_drvdata(s->private);
++	struct mt76_dev *mdev = &dev->mt76;
++	bool npu_active = mt76_npu_device_active(mdev);
++	int i;
++
++	seq_puts(s, "=== Token Pool ===\n");
++
++	spin_lock_bh(&mdev->token_lock);
++	seq_printf(s, "  token_count:     %u / %u (SW in-flight / pool size)\n",
++		   mdev->token_count, mdev->token_size);
++	seq_printf(s, "  token_start:     %u\n", mdev->token_start);
++	seq_printf(s, "  wed_token_count: %u\n", mdev->wed_token_count);
++	spin_unlock_bh(&mdev->token_lock);
++
++	spin_lock_bh(&mdev->rx_token_lock);
++	seq_printf(s, "  rx_token_size:   %u\n", mdev->rx_token_size);
++	spin_unlock_bh(&mdev->rx_token_lock);
++
++	if (npu_active) {
++		seq_printf(s, "\n=== NPU Offload ===\n");
++		seq_printf(s, "  status:          active\n");
++		seq_printf(s, "  hw_token_range:  0 - %u (NPU firmware)\n",
++			   mdev->token_start - 1);
++		seq_printf(s, "  sw_token_range:  %u - %u (host driver)\n",
++			   mdev->token_start,
++			   mdev->token_start + mdev->token_size - 1);
++	}
++
++	seq_printf(s, "\n=== NPU Queues ===\n");
++	seq_puts(s, "     queue |  ndesc | queued |   head |   tail |\n");
++	for (i = MT_RXQ_NPU0; i <= MT_RXQ_NPU1; i++) {
++		struct mt76_queue *q = &mdev->q_rx[i];
++
++		if (!q->ndesc)
++			continue;
++
++		seq_printf(s, "  npu_rx%d  | %6d | %6d | %6d | %6d |\n",
++			   i - MT_RXQ_NPU0, q->ndesc, q->queued,
++			   q->head, q->tail);
++	}
++
++	seq_printf(s, "\n=== TX Queues (per-band) ===\n");
++	seq_puts(s, "     band |   type |  ndesc | queued |   head |   tail |\n");
++	for (i = 0; i < __MT_MAX_BAND; i++) {
++		struct mt76_phy *phy = mdev->phys[i];
++		struct mt76_queue *q;
++		const char *type;
++
++		if (!phy || !phy->q_tx[0])
++			continue;
++
++		q = phy->q_tx[0];
++		type = mt76_queue_is_npu_tx(q) ? "npu" : "dma";
++		seq_printf(s, "  band %d  | %6s | %6d | %6d | %6d | %6d |\n",
++			   i, type, q->ndesc, q->queued, q->head, q->tail);
++	}
++
++	return 0;
++}
++
+ int mt7996_init_debugfs(struct mt7996_dev *dev)
+ {
+ 	struct dentry *dir;
+@@ -883,6 +945,8 @@ int mt7996_init_debugfs(struct mt7996_de
+ 			    &fops_radar_trigger);
+ 	debugfs_create_devm_seqfile(dev->mt76.dev, "rdd_monitor", dir,
+ 				    mt7996_rdd_monitor);
++	debugfs_create_devm_seqfile(dev->mt76.dev, "token_info", dir,
++				    mt7996_token_info_read);
+ 
+ 	dev->debugfs_dir = dir;
+ 

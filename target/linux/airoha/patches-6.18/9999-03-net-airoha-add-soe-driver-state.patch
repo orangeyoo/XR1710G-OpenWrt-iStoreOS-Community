@@ -1,0 +1,118 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Mon, 1 Jun 2026 13:30:00 +0900
+Subject: [PATCH] net: airoha: add SOE driver state
+
+Extend the Ethernet driver state with the data needed to wire SOE into
+the existing QDMA and PPE paths. This keeps ownership in airoha_eth
+while allowing the SOE provider to submit packets, track completion
+context and manage the dedicated SOE RX ring.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+diff --git a/drivers/net/ethernet/airoha/airoha_eth.h b/drivers/net/ethernet/airoha/airoha_eth.h
+index eef8234..08d0936 100644
+--- a/drivers/net/ethernet/airoha/airoha_eth.h
++++ b/drivers/net/ethernet/airoha/airoha_eth.h
+@@ -16,6 +16,8 @@
+ #include <linux/soc/airoha/airoha_offload.h>
+ #include <net/dsa.h>
+ 
++struct airoha_soe;
++
+ #define AIROHA_MAX_NUM_GDM_PORTS	4
+ #define AIROHA_MAX_NUM_GDM_DEVS		2
+ #define AIROHA_MAX_NUM_QDMA		2
+@@ -211,19 +213,32 @@ struct airoha_queue {
+ 	spinlock_t lock;
+ 	struct airoha_queue_entry *entry;
+ 	struct airoha_qdma_desc *desc;
++	/* Preserved for RX ring reprogramming; dmam_alloc_coherent() owns it. */
++	dma_addr_t desc_dma;
+ 	u16 head;
+ 	u16 tail;
+ 
+ 	int queued;
+ 	int ndesc;
++	/* SOE RX rings may use coherent slots instead of page_pool fragments. */
++	int rx_alloc_ndesc;
+ 	int free_thr;
+ 	int buf_size;
+ 	bool txq_stopped;
+ 	bool flushing;
++	bool rx_coherent;
++	bool rx_drop_chain;
++	void *rx_coherent_buf;
++	dma_addr_t rx_coherent_dma;
++	size_t rx_coherent_buf_size;
+ 
+ 	struct napi_struct napi;
+ 	struct page_pool *page_pool;
+ 	struct sk_buff *skb;
++	/* First SOE descriptor metadata is kept while a scattered frame is built. */
++	int rx_frame_descs;
++	u32 soe_rx_msg0;
++	u32 soe_rx_msg2;
+ 
+ 	struct list_head tx_list;
+ };
+@@ -462,6 +482,16 @@ struct airoha_foe_stats64 {
+ 	u64 packets;
+ };
+ 
++struct airoha_ppe_soe_meta {
++	unsigned long expires;
++	u32 key_hash;
++	u16 foe_hash;
++	u8 valid;
++	u8 sa_index;
++	u8 hop;
++	u8 seen;
++};
++
+ struct airoha_flow_data {
+ 	struct ethhdr eth;
+ 
+@@ -569,6 +584,11 @@ struct airoha_gdm_dev {
+ 
+ 	u32 flags;
+ 	int nbq;
++	/* Prevent toggling NETIF_F_HW_ESP while programmed SAs still exist. */
++	atomic_t soe_xfrm_state_count;
++	/* Private SOE submit path into this GDM's active QDMA instance. */
++	int (*soe_xmit_skb)(struct airoha_gdm_dev *dev, struct sk_buff *skb,
++			    u32 msg0, u32 msg1, u32 msg2);
+ 
+ struct airoha_hw_stats stats;
+ };
+@@ -620,6 +650,7 @@ struct airoha_ppe {
+ 
+ 	struct hlist_head *foe_flow;
+ 	u16 *foe_check_time;
++	struct airoha_ppe_soe_meta *soe_meta;
+ 
+ 	struct airoha_foe_stats *foe_stats;
+ 	dma_addr_t foe_stats_dma;
+@@ -638,6 +658,7 @@ struct airoha_eth {
+ 
+ 	struct airoha_qdma qdma[AIROHA_MAX_NUM_QDMA];
+ 	struct airoha_gdm_port *ports[AIROHA_MAX_NUM_GDM_PORTS];
++	struct airoha_soe *soe;
+ };
+ 
+ u32 airoha_rr(void __iomem *base, u32 offset);
+@@ -705,6 +726,14 @@ static inline bool airoha_qdma_is_lro_queue(struct airoha_queue *q)
+ int airoha_get_fe_port(struct airoha_gdm_dev *dev);
+ bool airoha_is_valid_gdm_dev(struct airoha_eth *eth,
+ 			     struct airoha_gdm_dev *dev);
++int airoha_qdma_xmit_skb(struct airoha_gdm_dev *dev, struct sk_buff *skb,
++			 u32 msg0, u32 msg1, u32 msg2);
++void airoha_ppe_soe_mark_skb(struct airoha_ppe_dev *dev, struct sk_buff *skb,
++			     u16 hash, u8 sa_index, u8 hop);
++bool airoha_ppe_soe_skb_marked(struct sk_buff *skb);
++void airoha_ppe_soe_xmit_skb(struct airoha_ppe_dev *dev, struct sk_buff *skb,
++			     struct net_device *netdev);
++void airoha_ppe_soe_flush_sa(struct airoha_ppe *ppe, u8 sa_index);
+ 
+ void airoha_set_port_mtu(struct airoha_eth *eth, struct airoha_gdm_port *port);
+ void airoha_ppe_set_cpu_port(struct airoha_gdm_dev *dev, u8 ppe_id, u8 fport);

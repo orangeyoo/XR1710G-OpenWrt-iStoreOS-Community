@@ -1,0 +1,26 @@
+From: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
+Date: Tue, 10 Mar 2026 00:00:00 +0000
+Subject: [PATCH] wifi: mac80211: fix missing ieee80211_eml_params member initialization
+
+The missing initialization causes the driver to misinterpret the EML
+control bitmap, resulting in incorrect link bitmap handling.
+
+Fixes: 0d95280a2d54e ("wifi: mac80211: Add eMLSR/eMLMR action frame parsing support")
+Signed-off-by: MeiChia Chiu <MeiChia.Chiu@mediatek.com>
+Acked-by: Lorenzo Bianconi <lorenzo@kernel.org>
+---
+ net/mac80211/eht.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/mac80211/eht.c b/net/mac80211/eht.c
+index 75096b2195d2..078e1e23d8d1 100644
+--- a/net/mac80211/eht.c
++++ b/net/mac80211/eht.c
+@@ -154,6 +154,7 @@ void ieee80211_rx_eml_op_mode_notif(struct ieee80211_sub_if_data *sdata,
+ 	u8 *ptr = mgmt->u.action.u.eml_omn.variable;
+ 	struct ieee80211_eml_params eml_params = {
+ 		.link_id = status->link_id,
++		.control = control,
+ 	};
+ 	struct sta_info *sta;
+ 	int opt_len = 0;

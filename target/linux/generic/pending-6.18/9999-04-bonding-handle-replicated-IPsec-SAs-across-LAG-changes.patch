@@ -1,0 +1,228 @@
+From f523d3eaf4787cdf84affd46eec53ca77d3f273a Mon Sep 17 00:00:00 2001
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Wed, 20 May 2026 16:52:30 +0900
+Subject: [PATCH] bonding: handle replicated IPsec SAs across LAG changes
+
+Keep replicated bonding IPsec state consistent as the LAG changes. Add
+newly usable slaves to existing replicated states, remove only the
+departing lower instance on down/remove, and update the usable slave
+array before hiding lower handles.
+
+Flush bond-owned XFRM offload state when mode or hash policy leaves the
+LAG XFRM eligible configuration. Block new LAG offload adds while
+pending replicated states are cleaned up and the XFRM table is flushed.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+ drivers/net/bonding/bond_main.c    | 51 +++++++++++++++++++++++---
+ drivers/net/bonding/bond_options.c | 57 ++++++++++++++++++++++++++++++
+ 2 files changed, 104 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c
+index 09ee7dfdc2cd..d1b149cc9011 100644
+--- a/drivers/net/bonding/bond_main.c
++++ b/drivers/net/bonding/bond_main.c
+@@ -787,6 +787,12 @@ static void bond_ipsec_lag_remove_slave(struct bonding *bond,
+ 			if (inst->real_dev != real_dev)
+ 				continue;
+ 
++			/* Hide the handle from new datapath lookups before
++			 * waiting for existing RCU readers. The lower driver's
++			 * delete/free callbacks still resolve the handle through
++			 * the temporary xso.real_dev/offload_handle set by
++			 * bond_ipsec_lag_call_inst().
++			 */
+ 			WRITE_ONCE(inst->added, false);
+ 			removed = true;
+ 		}
+@@ -3114,6 +3120,18 @@ int bond_enslave(struct net_device *bond_dev, struct net_device *slave_dev,
+ 			bpf_prog_inc(bond->xdp_prog);
+ 	}
+ 
++#ifdef CONFIG_XFRM_OFFLOAD
++	if ((bond_dev->wanted_features & BOND_XFRM_FEATURES) &&
++	    bond_mode_can_use_lag_xfrm(bond)) {
++		bond_sync_slave_xfrm_features(bond, new_slave);
++		bond->notifier_ctx = true;
++		netdev_compute_master_upper_features(bond->dev, true);
++		bond->notifier_ctx = false;
++	}
++#endif /* CONFIG_XFRM_OFFLOAD */
++
++	bond_ipsec_lag_add_slave(bond, new_slave, extack);
++
+ 	/* broadcast mode uses the all_slaves to loop through slaves. */
+ 	if (bond_mode_can_use_xmit_hash(bond) ||
+ 	    BOND_MODE(bond) == BOND_MODE_BROADCAST)
+@@ -3232,6 +3250,9 @@ static int __bond_release_one(struct net_device *bond_dev,
+ 	}
+ 
+ 	bond_set_slave_inactive_flags(slave, BOND_SLAVE_NOTIFY_NOW);
++	if (bond_mode_can_use_xmit_hash(bond) ||
++	    BOND_MODE(bond) == BOND_MODE_BROADCAST)
++		bond_update_slave_arr(bond, slave);
+ 
+ 	bond_sysfs_slave_del(slave);
+ 
+@@ -3249,8 +3270,10 @@ static int __bond_release_one(struct net_device *bond_dev,
+ 			slave_warn(bond_dev, slave_dev, "failed to unload XDP program\n");
+ 	}
+ 
+-	/* unregister rx_handler early so bond_handle_frame wouldn't be called
+-	 * for this slave anymore.
++	bond_ipsec_lag_remove_slave(bond, slave_dev);
++
++	/* unregister rx_handler after lower IPsec state is gone so RX cannot
++	 * bypass the bond while a bond-owned SA is still installed.
+ 	 */
+ 	netdev_rx_handler_unregister(slave_dev);
+ 
+@@ -4768,8 +4791,13 @@ static int bond_slave_netdev_event(unsigned long event,
+ 
+ 		if (BOND_MODE(bond) == BOND_MODE_8023AD)
+ 			bond_3ad_adapter_speed_duplex_changed(slave);
+-		fallthrough;
+-	case NETDEV_DOWN:
++		bond_sync_slave_xfrm_features(bond, slave);
++		if (bond_mode_can_use_lag_xfrm(bond)) {
++			bond->notifier_ctx = true;
++			netdev_compute_master_upper_features(bond->dev, true);
++			bond->notifier_ctx = false;
++		}
++		bond_ipsec_lag_add_slave(bond, slave, NULL);
+ 		/* Refresh slave-array if applicable!
+ 		 * If the setup does not use miimon or arpmon (mode-specific!),
+ 		 * then these events will not cause the slave-array to be
+@@ -4781,6 +4809,19 @@ static int bond_slave_netdev_event(unsigned long event,
+ 		if (bond_mode_can_use_xmit_hash(bond))
+ 			bond_update_slave_arr(bond, NULL);
+ 		break;
++	case NETDEV_DOWN:
++		/* Refresh slave-array before deleting IPsec state so no new
++		 * TX path picks this slave after its offload handle is hidden.
++		 */
++		if (bond_mode_can_use_xmit_hash(bond))
++			bond_update_slave_arr(bond, slave);
++		bond_ipsec_lag_remove_slave(bond, slave_dev);
++		if (bond_mode_can_use_lag_xfrm(bond)) {
++			bond->notifier_ctx = true;
++			netdev_compute_master_upper_features(bond->dev, true);
++			bond->notifier_ctx = false;
++		}
++		break;
+ 	case NETDEV_CHANGEMTU:
+ 		/* TODO: Should slaves be allowed to
+ 		 * independently alter their MTU?  For
+@@ -4819,10 +4860,12 @@ static int bond_slave_netdev_event(unsigned long event,
+ 		break;
+ 	case NETDEV_FEAT_CHANGE:
+ 		if (!bond->notifier_ctx) {
++			bond_sync_slave_xfrm_features(bond, slave);
+ 			bond->notifier_ctx = true;
+ 			netdev_compute_master_upper_features(bond->dev, true);
+ 			bond->notifier_ctx = false;
+ 		}
++		bond_ipsec_lag_add_slave(bond, slave, NULL);
+ 		break;
+ 	case NETDEV_RESEND_IGMP:
+ 		/* Propagate to master device */
+diff --git a/drivers/net/bonding/bond_options.c b/drivers/net/bonding/bond_options.c
+index 946621b20359..9d977e220ca2 100644
+--- a/drivers/net/bonding/bond_options.c
++++ b/drivers/net/bonding/bond_options.c
+@@ -17,6 +17,7 @@
+ 
+ #include <net/bonding.h>
+ #include <net/ndisc.h>
++#include <net/xfrm.h>
+ 
+ static int bond_option_active_slave_set(struct bonding *bond,
+ 					const struct bond_opt_value *newval);
+@@ -900,6 +901,13 @@ static bool bond_set_xfrm_features(struct bonding *bond)
+ static int bond_option_mode_set(struct bonding *bond,
+ 				const struct bond_opt_value *newval)
+ {
++#if IS_ENABLED(CONFIG_XFRM_OFFLOAD)
++	bool old_ab_xfrm = BOND_MODE(bond) == BOND_MODE_ACTIVEBACKUP;
++	bool old_lag_xfrm = bond_mode_can_use_lag_xfrm(bond);
++	bool new_lag_xfrm;
++	bool flush_lag_xfrm = false;
++#endif
++
+ 	if (bond->xdp_prog && !bond_xdp_check(bond, newval->value))
+ 		return -EOPNOTSUPP;
+ 
+@@ -924,8 +932,26 @@ static int bond_option_mode_set(struct bonding *bond,
+ 
+ 	/* don't cache arp_validate between modes */
+ 	bond->params.arp_validate = BOND_ARP_VALIDATE_NONE;
++
+ 	bond->params.mode = newval->value;
+ 
++#if IS_ENABLED(CONFIG_XFRM_OFFLOAD)
++	new_lag_xfrm = bond_mode_can_use_lag_xfrm(bond);
++	if (old_ab_xfrm && new_lag_xfrm)
++		bond->dev->wanted_features &= ~BOND_XFRM_FEATURES;
++	if (old_lag_xfrm && !new_lag_xfrm) {
++		bond_ipsec_lag_begin_flush(bond);
++		flush_lag_xfrm = true;
++	}
++
++	if (flush_lag_xfrm) {
++		if (bond->dev->reg_state == NETREG_REGISTERED)
++			xfrm_dev_state_flush(dev_net(bond->dev), bond->dev,
++					     true);
++		bond_ipsec_lag_end_flush(bond);
++	}
++#endif
++
+ 	/* When changing mode, the bond device is down, we may reduce
+ 	 * the bond_bcast_neigh_enabled in bond_close() if broadcast_neighbor
+ 	 * enabled in 8023ad mode. Therefore, only clear broadcast_neighbor
+@@ -1581,12 +1607,43 @@ static int bond_option_fail_over_mac_set(struct bonding *bond,
+ static int bond_option_xmit_hash_policy_set(struct bonding *bond,
+ 					    const struct bond_opt_value *newval)
+ {
++#if IS_ENABLED(CONFIG_XFRM_OFFLOAD)
++	bool old_lag_xfrm = bond_mode_can_use_lag_xfrm(bond);
++	bool new_lag_xfrm;
++	bool flush_lag_xfrm = false;
++#endif
++
+ 	if (bond->xdp_prog && !__bond_xdp_check(BOND_MODE(bond), newval->value))
+ 		return -EOPNOTSUPP;
+ 	netdev_dbg(bond->dev, "Setting xmit hash policy to %s (%llu)\n",
+ 		   newval->string, newval->value);
++
+ 	bond->params.xmit_policy = newval->value;
+ 
++#if IS_ENABLED(CONFIG_XFRM_OFFLOAD)
++	new_lag_xfrm = bond_mode_can_use_lag_xfrm(bond);
++	if (old_lag_xfrm && !new_lag_xfrm) {
++		bond_ipsec_lag_begin_flush(bond);
++		flush_lag_xfrm = true;
++	}
++
++	if (flush_lag_xfrm) {
++		if (bond->dev->reg_state == NETREG_REGISTERED)
++			xfrm_dev_state_flush(dev_net(bond->dev), bond->dev,
++					     true);
++		bond_ipsec_lag_end_flush(bond);
++	}
++#endif
++
++	if (bond->dev->reg_state == NETREG_REGISTERED) {
++		bool update = false;
++
++		update |= bond_set_xfrm_features(bond);
++
++		if (update)
++			netdev_update_features(bond->dev);
++	}
++
+ 	return 0;
+ }
+ 
+-- 
+2.53.0

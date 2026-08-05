@@ -1,0 +1,346 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-airoha-npu\n"
+"PO-Revision-Date: 2026-08-05 18:30+0800\n"
+"Last-Translator: Yanghan Ye <yyh94306@gmail.com>\n"
+"Language-Team: Chinese (Simplified Han script)\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:507
+msgid "%d cores"
+msgstr "%d 个核心"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:509
+msgid "%d regions"
+msgstr "%d 个区域"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:187
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:198
+msgid "%d stations"
+msgstr "%d 个客户端"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:332
+msgid "%d used / %d free (%s%%)"
+msgstr "已用 %d / 空闲 %d（%s%%）"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:283
+msgid "%dx RISC-V via reserved RAM"
+msgstr "%d 个 RISC-V 核心通过预留内存运行"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:100
+msgid "10G WAN"
+msgstr "10G WAN"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:277
+msgid "ACTIVE"
+msgstr "活动"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:135
+msgid "Active"
+msgstr "活动"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:486
+msgid "Airoha SoC Status"
+msgstr "Airoha SoC 状态"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:418
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:421
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:422
+msgid "Apply"
+msgstr "应用"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:417
+msgid "Applying..."
+msgstr "正在应用..."
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:171
+msgid "Band %d"
+msgstr "频段 %d"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:298
+msgid "Bound"
+msgstr "已绑定"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:496
+msgid "CPU Cores"
+msgstr "CPU 核心"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:98
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:346
+msgid "CPU DMA 1"
+msgstr "CPU DMA 1"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:103
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:347
+msgid "CPU DMA 2"
+msgstr "CPU DMA 2"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:490
+msgid "CPU Frequency"
+msgstr "CPU 频率"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:420
+msgid "CPU set to"
+msgstr "CPU 已设置为"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:155
+msgid "Connected"
+msgstr "已连接"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:130
+msgid "Critical"
+msgstr "严重"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:492
+msgid "Current Frequency"
+msgstr "当前频率"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:425
+msgid "Direct PLL. Stock max 1200 MHz. Stable up to 1500 MHz."
+msgstr "直接设置 PLL。原厂最高 1200 MHz，已稳定测试至 1500 MHz。"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:451
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:467
+msgid "Disabled"
+msgstr "已禁用"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:137
+msgid "Driver Ready"
+msgstr "驱动已就绪"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:259
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:322
+msgid "Drops: %s"
+msgstr "丢包：%s"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:452
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:468
+msgid "Enabled"
+msgstr "已启用"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:398
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:407
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:448
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:464
+msgid "Error:"
+msgstr "错误："
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:527
+msgid "Ethernet"
+msgstr "以太网"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:419
+msgid "Failed:"
+msgstr "失败："
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:158
+msgid "Fair"
+msgstr "一般"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:506
+msgid "Firmware / Clock / Cores"
+msgstr "固件 / 时钟 / 核心"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:517
+msgid "Frame Engine"
+msgstr "帧引擎"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:416
+msgid "Frequencies above 1400 MHz may be unstable. Continue?"
+msgstr "频率高于 1400 MHz 可能不稳定。是否继续？"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:158
+msgid "Good"
+msgstr "良好"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:493
+msgid "Governor"
+msgstr "调频策略"
+
+#: ../../package/luci-app-airoha-npu/root/usr/share/rpcd/acl.d/luci-app-airoha-npu.json:3
+msgid "Grant access to Airoha SoC status (NPU + CPU + Overclock)"
+msgstr "授予访问 Airoha SoC 状态（NPU + CPU + 超频）的权限"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:130
+msgid "Healthy"
+msgstr "正常"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:156
+msgid "Idle"
+msgstr "空闲"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:526
+msgid "Index"
+msgstr "索引"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:99
+msgid "Internal Switch"
+msgstr "内部交换机"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:340
+msgid "Internal Switch (1G LAN2/3)"
+msgstr "内部交换机（1G LAN2/3）"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:342
+msgid "LAN1 (USXGMII 2.5G)"
+msgstr "LAN1（USXGMII 2.5G）"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:107
+msgid "LAN1 2.5G"
+msgstr "LAN1 2.5G"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:285
+msgid "Manages:"
+msgstr "管理："
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:494
+msgid "Max Frequency"
+msgstr "最高频率"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:415
+msgid "Must be 500-1600 MHz"
+msgstr "频率必须为 500-1600 MHz"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:110
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:128
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:368
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:395
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:404
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:507
+msgid "N/A"
+msgstr "不可用"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:502
+msgid "NPU & Offload Engine"
+msgstr "NPU 与卸载引擎"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:504
+msgid "NPU Status"
+msgstr "NPU 状态"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:258
+msgid "NPU handoff: %s"
+msgstr "NPU 转交：%s"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:527
+msgid "New Flow"
+msgstr "新流"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:154
+msgid "No clients"
+msgstr "无客户端"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:138
+msgid "Not Active"
+msgstr "未活动"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:205
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:441
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:457
+msgid "Not available"
+msgstr "不可用"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:277
+msgid "OFF"
+msgstr "关闭"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:527
+msgid "Original Flow"
+msgstr "原始流"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:495
+msgid "Overclock"
+msgstr "超频"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:263
+msgid "P7 WiFi DMA"
+msgstr "P7 WiFi DMA"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:102
+msgid "PPE Engine 1"
+msgstr "PPE 引擎 1"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:106
+msgid "PPE Engine 2"
+msgstr "PPE 引擎 2"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:293
+msgid "PPE Engines"
+msgstr "PPE 引擎"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:523
+msgid "PPE Flow Offload Entries"
+msgstr "PPE 流卸载条目"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:286
+msgid "PPE initialization, WDMA rings, flow statistics"
+msgstr "PPE 初始化、WDMA 环和流统计"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:512
+msgid "PPPoE Fast Path"
+msgstr "PPPoE 快速路径"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:356
+msgid "PSE Port Queue Status"
+msgstr "PSE 端口队列状态"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:331
+msgid "PSE Shared Buffer"
+msgstr "PSE 共享缓冲区"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:158
+msgid "Poor"
+msgstr "较差"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:277
+msgid "READY"
+msgstr "就绪"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:226
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:246
+msgid "RX Drops"
+msgstr "RX 丢包"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:508
+msgid "Reserved Memory"
+msgstr "预留内存"
+
+#: ../../package/luci-app-airoha-npu/root/usr/share/luci/menu.d/luci-app-airoha-npu.json:3
+msgid "SoC Status"
+msgstr "SoC 状态"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:526
+msgid "State"
+msgstr "状态"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:224
+msgid "TX Drops"
+msgstr "TX 丢包"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:302
+msgid "Total"
+msgstr "总计"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:526
+msgid "Type"
+msgstr "类型"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:510
+msgid "VLAN Fast Path"
+msgstr "VLAN 快速路径"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:341
+msgid "WAN (USXGMII 10G)"
+msgstr "WAN（USXGMII 10G）"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:130
+msgid "Warning"
+msgstr "警告"
+
+#: ../../package/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:105
+msgid "WiFi WDMA"
+msgstr "WiFi WDMA"

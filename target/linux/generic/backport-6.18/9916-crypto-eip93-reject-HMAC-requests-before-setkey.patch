@@ -1,0 +1,33 @@
+From 706e4ff7848cc1bec97fbe0f77e5997358362228 Mon Sep 17 00:00:00 2001
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Mon, 25 May 2026 04:10:44 +0900
+Subject: [PATCH] crypto: eip93: reject HMAC requests before setkey
+
+HMAC requests need the precomputed ipad/opad state installed by setkey().
+Using an HMAC tfm before setkey() initializes the request with an all-zero
+ipad and produces invalid hardware input.
+
+Reject those requests during hash init so the failure is explicit.
+
+Fixes: 9739f5f93b78 ("crypto: eip93 - Add Inside Secure SafeXcel EIP-93 crypto engine support")
+Originally-by: Mieczyslaw Nalewaj <namiltd@yahoo.com>
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+ drivers/crypto/inside-secure/eip93/eip93-hash.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-hash.c b/drivers/crypto/inside-secure/eip93/eip93-hash.c
+index 63bb6c4670cb..060e90c5eaa7 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-hash.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-hash.c
+@@ -300,6 +300,9 @@ static int eip93_hash_init(struct ahash_request *req)
+ 	struct eip93_hash_ctx *ctx = crypto_ahash_ctx(ahash);
+ 	struct sa_state *sa_state = &rctx->sa_state;
+ 
++	if (IS_HMAC(ctx->flags) && !memchr_inv(ctx->ipad, 0, SHA256_BLOCK_SIZE))
++		return -EINVAL;
++
+ 	memset(sa_state->state_byte_cnt, 0, sizeof(u32) * 2);
+ 	eip93_hash_init_sa_state_digest(ctx->flags & EIP93_HASH_MASK,
+ 					sa_state->state_i_digest);

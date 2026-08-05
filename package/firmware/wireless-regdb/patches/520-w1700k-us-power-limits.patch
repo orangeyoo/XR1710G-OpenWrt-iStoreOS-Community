@@ -1,0 +1,36 @@
+Approximate the W1700K FCC power limits in the local US regdb override.
+
+This tree still uses the legacy db.txt parser, so regulatory power limits
+must be expressed as whole-dBm values per frequency rule. Apply the device's
+published limits conservatively where they materially differ from upstream:
+
+- 2.4 GHz already uses 30 dBm, which is the nearest whole-dBm approximation
+  to the reported 29.5 dBm conducted limit, so leave it unchanged.
+- Raise US UNII-1 from 23 dBm to 29 dBm to better match the W1700K AP grant.
+- Raise US 6 GHz from 12 dBm to 29 dBm EIRP for Low Power Indoor operation.
+
+Do not encode the higher AFC / Standard Power 6 GHz figures here. The current
+stack has no AFC enforcement path, and the old parser cannot describe those
+conditional limits safely.
+---
+--- a/db.txt
++++ b/db.txt
+@@ -2041,15 +2041,15 @@ country US: DFS-FCC
+-	# 5.15 ~ 5.25 GHz: 30 dBm for master mode, 23 dBm for clients
+-	(5150 - 5250 @ 80), (23), AUTO-BW
++	# Local target: approximate the W1700K UNII-1 AP grant to 29 dBm
++	(5150 - 5250 @ 80), (29), AUTO-BW
+ 	(5250 - 5350 @ 80), (24), DFS, AUTO-BW
+ 	# This range ends at 5725 MHz, but channel 144 extends to 5730 MHz.
+ 	# Since 5725 ~ 5730 MHz belongs to the next range which has looser
+ 	# requirements, we can extend the range by 5 MHz to make the kernel
+ 	# happy and be able to use channel 144.
+ 	(5470 - 5730 @ 160), (24), DFS
+ 	(5730 - 5850 @ 80), (30), AUTO-BW
+ 	# https://www.federalregister.gov/documents/2021/05/03/2021-08802/use-of-the-5850-5925-ghz-band
+ 	# max. 33 dBm AP @ 20MHz, 36 dBm AP @ 40Mhz+, 6 dB less for clients
+ 	(5850 - 5895 @ 40), (27), NO-OUTDOOR, AUTO-BW, NO-IR
+ 	# 6g band
+ 	# https://www.federalregister.gov/documents/2020/05/26/2020-11236/unlicensed-use-of-the-6ghz-band
+-	(5925 - 7125 @ 320), (12), NO-OUTDOOR
++	(5925 - 7125 @ 320), (29), NO-OUTDOOR

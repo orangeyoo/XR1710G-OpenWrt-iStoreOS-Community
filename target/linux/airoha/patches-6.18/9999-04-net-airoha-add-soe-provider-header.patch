@@ -1,0 +1,146 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Mon, 1 Jun 2026 13:30:00 +0900
+Subject: [PATCH] net: airoha: add SOE provider header
+
+Introduce the private interface between airoha_eth and the SOE provider.
+The header keeps the XFRM, SA lifetime and packet submission contracts
+local to the driver while providing stubs for builds without
+CONFIG_NET_AIROHA_SOE.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+diff --git a/drivers/net/ethernet/airoha/airoha_soe.h b/drivers/net/ethernet/airoha/airoha_soe.h
+new file mode 100644
+index 0000000..bfaa9ef
+--- /dev/null
++++ b/drivers/net/ethernet/airoha/airoha_soe.h
+@@ -0,0 +1,128 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++/* Ethernet-facing declarations for the Airoha Secure Offload Engine (SOE)
++ * packet offload provider.
++ *
++ * airoha_eth owns SOE lifetime and calls these helpers to expose xfrm
++ * ESP/NAT-T offload on its netdevs. When CONFIG_NET_AIROHA_SOE is disabled,
++ * the stubs keep the Ethernet driver buildable without SOE support.
++ */
++
++#ifndef AIROHA_SOE_H
++#define AIROHA_SOE_H
++
++#include <linux/bitops.h>
++#include <linux/errno.h>
++#include <linux/kconfig.h>
++#include <linux/netdev_features.h>
++#include <linux/types.h>
++
++struct airoha_soe;
++struct airoha_soe_sa;
++struct airoha_eth;
++struct airoha_gdm_dev;
++struct device;
++struct dst_entry;
++struct net_device;
++struct netlink_ext_ack;
++struct sk_buff;
++struct xfrm_state;
++
++#define AIROHA_SOE_FEATURE_ESP		BIT(0)
++
++typedef int (*airoha_soe_xmit_skb_t)(struct airoha_gdm_dev *dev,
++				     struct sk_buff *skb, u32 msg0, u32 msg1,
++				     u32 msg2);
++
++#if IS_ENABLED(CONFIG_NET_AIROHA_SOE)
++int airoha_soe_init(struct airoha_eth *eth);
++void airoha_soe_deinit(struct airoha_eth *eth);
++bool airoha_soe_available(struct airoha_soe *soe);
++u32 airoha_soe_features(struct airoha_soe *soe);
++void airoha_soe_build_netdev(struct net_device *dev,
++			     airoha_soe_xmit_skb_t xmit_skb);
++void airoha_soe_teardown_netdev(struct net_device *dev);
++int airoha_soe_set_features(struct net_device *dev,
++			    netdev_features_t features);
++bool airoha_soe_rx_skb(struct airoha_soe *soe, struct sk_buff *skb,
++		       unsigned int sa_index, u32 hop_flags);
++bool airoha_soe_rx_plain_skb(struct airoha_gdm_dev *dev,
++			     struct sk_buff *skb, struct net_device *rx_dev,
++			     u16 foe_hash, u32 foe_reason, bool foe_valid);
++bool airoha_soe_has_pending_rx(struct airoha_soe *soe);
++int airoha_soe_xfrm_ppe_info(const struct dst_entry *dst,
++			     struct net_device *lower_dev, u8 *sa_index,
++			     u8 *hop);
++int airoha_soe_xmit(struct airoha_soe_sa *sa, struct airoha_gdm_dev *dev,
++		    struct sk_buff *skb, struct xfrm_state *x);
++#else
++static inline int airoha_soe_init(struct airoha_eth *eth)
++{
++	return 0;
++}
++
++static inline void airoha_soe_deinit(struct airoha_eth *eth)
++{
++}
++
++static inline bool airoha_soe_available(struct airoha_soe *soe)
++{
++	return false;
++}
++
++static inline u32 airoha_soe_features(struct airoha_soe *soe)
++{
++	return 0;
++}
++
++static inline void airoha_soe_build_netdev(struct net_device *dev,
++					   airoha_soe_xmit_skb_t xmit_skb)
++{
++}
++
++static inline void airoha_soe_teardown_netdev(struct net_device *dev)
++{
++}
++
++static inline int airoha_soe_set_features(struct net_device *dev,
++					  netdev_features_t features)
++{
++	return 0;
++}
++
++static inline bool airoha_soe_rx_skb(struct airoha_soe *soe,
++				     struct sk_buff *skb,
++				     unsigned int sa_index, u32 hop_flags)
++{
++	return false;
++}
++
++static inline bool airoha_soe_rx_plain_skb(struct airoha_gdm_dev *dev,
++					   struct sk_buff *skb,
++					   struct net_device *rx_dev,
++					   u16 foe_hash, u32 foe_reason,
++					   bool foe_valid)
++{
++	return false;
++}
++
++static inline bool airoha_soe_has_pending_rx(struct airoha_soe *soe)
++{
++	return false;
++}
++
++static inline int airoha_soe_xfrm_ppe_info(const struct dst_entry *dst,
++					   struct net_device *lower_dev,
++					   u8 *sa_index, u8 *hop)
++{
++	return -EOPNOTSUPP;
++}
++
++static inline int airoha_soe_xmit(struct airoha_soe_sa *sa,
++				  struct airoha_gdm_dev *dev,
++				  struct sk_buff *skb, struct xfrm_state *x)
++{
++	return -EOPNOTSUPP;
++}
++#endif
++
++#endif /* AIROHA_SOE_H */

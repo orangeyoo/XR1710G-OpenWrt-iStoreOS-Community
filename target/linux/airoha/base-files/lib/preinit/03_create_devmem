@@ -1,0 +1,7 @@
+create_devmem_node() {
+	[ -c /dev/mem ] && return 0
+	grep -qE '^[[:space:]]*1[[:space:]]+mem$' /proc/devices 2>/dev/null || return 0
+	mknod -m 0600 /dev/mem c 1 1 2>/dev/null || true
+}
+
+boot_hook_add preinit_essential create_devmem_node

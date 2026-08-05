@@ -1,0 +1,74 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Tue, 26 May 2026 04:53:48 +0900
+Subject: [PATCH] net: add flow-aware forward path discovery
+
+Some upper devices select their lower egress device from packet flow
+information, so a destination address alone is not enough to describe
+the same path that the transmit path will use.
+
+Add an optional flow key pointer to net_device_path_ctx and provide
+dev_fill_forward_path_flow() for callers that can describe the packet
+flow without passing a mutable skb into path discovery. Keep
+dev_fill_forward_path() as a wrapper so existing callers keep the same
+behaviour.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -226,6 +226,7 @@ struct net_device_core_stats {
+ 
+ struct neighbour;
+ struct neigh_parms;
++struct flow_keys;
+ struct sk_buff;
+ 
+ struct netdev_hw_addr {
+@@ -922,6 +923,7 @@ struct net_device_path_stack {
+ 
+ struct net_device_path_ctx {
+ 	const struct net_device *dev;
++	const struct flow_keys	*flow;
+ 	u8			daddr[ETH_ALEN];
+ 
+ 	int			num_vlans;
+@@ -3359,6 +3361,9 @@ int dev_get_iflink(const struct net_devi
+ int dev_fill_metadata_dst(struct net_device *dev, struct sk_buff *skb);
+ int __dev_fill_forward_path(struct net_device_path_ctx *ctx, const u8 *daddr,
+ 			    struct net_device_path_stack *stack);
++int dev_fill_forward_path_flow(const struct net_device *dev, const u8 *daddr,
++			       const struct flow_keys *flow,
++			       struct net_device_path_stack *stack);
+ int dev_fill_forward_path(const struct net_device *dev, const u8 *daddr,
+ 			  struct net_device_path_stack *stack);
+ struct net_device *dev_get_by_name(struct net *net, const char *name);
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -782,15 +782,24 @@ int __dev_fill_forward_path(struct net_d
+ }
+ EXPORT_SYMBOL_GPL(__dev_fill_forward_path);
+ 
+-int dev_fill_forward_path(const struct net_device *dev, const u8 *daddr,
+-			  struct net_device_path_stack *stack)
++int dev_fill_forward_path_flow(const struct net_device *dev, const u8 *daddr,
++			       const struct flow_keys *flow,
++			       struct net_device_path_stack *stack)
+ {
+ 	struct net_device_path_ctx ctx = {
+ 		.dev	= dev,
++		.flow	= flow,
+ 	};
+ 
+ 	return __dev_fill_forward_path(&ctx, daddr, stack);
+ }
++EXPORT_SYMBOL_GPL(dev_fill_forward_path_flow);
++
++int dev_fill_forward_path(const struct net_device *dev, const u8 *daddr,
++			  struct net_device_path_stack *stack)
++{
++	return dev_fill_forward_path_flow(dev, daddr, NULL, stack);
++}
+ EXPORT_SYMBOL_GPL(dev_fill_forward_path);
+ 
+ /* must be called under rcu_read_lock(), as we dont take a reference */

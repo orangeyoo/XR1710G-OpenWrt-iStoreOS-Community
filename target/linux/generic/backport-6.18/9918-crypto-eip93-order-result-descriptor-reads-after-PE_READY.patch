@@ -1,0 +1,44 @@
+From 94efa7fb58b96ed72676004784c87ae40bc7767a Mon Sep 17 00:00:00 2001
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Mon, 25 May 2026 04:12:01 +0900
+Subject: [PATCH] crypto: eip93: order result descriptor reads after PE_READY
+
+The result handler polls ownership bits until the packet engine reports the
+descriptor as ready. Ensure later descriptor reads observe the DMA writes
+that completed before PE_READY became visible.
+
+Use the value already read from the descriptor for error parsing.
+
+Fixes: 9739f5f93b78 ("crypto: eip93 - Add Inside Secure SafeXcel EIP-93 crypto engine support")
+Reported-by: Benjamin Larsson <benjamin.larsson@genexis.eu>
+Suggested-by: Benjamin Larsson <benjamin.larsson@genexis.eu>
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+ drivers/crypto/inside-secure/eip93/eip93-main.c | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-main.c b/drivers/crypto/inside-secure/eip93/eip93-main.c
+index 276839e1a515..e3bd28cc0c67 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-main.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-main.c
+@@ -224,11 +224,14 @@ static void eip93_handle_result_descriptor(struct eip93_device *eip93)
+ 			 FIELD_GET(EIP93_PE_LENGTH_HOST_PE_READY, pe_length) !=
+ 			 EIP93_PE_LENGTH_PE_READY);
+ 
+-		err = rdesc->pe_ctrl_stat_word & (EIP93_PE_CTRL_PE_EXT_ERR_CODE |
+-						  EIP93_PE_CTRL_PE_EXT_ERR |
+-						  EIP93_PE_CTRL_PE_SEQNUM_ERR |
+-						  EIP93_PE_CTRL_PE_PAD_ERR |
+-						  EIP93_PE_CTRL_PE_AUTH_ERR);
++		/* Order descriptor reads after device ownership is returned. */
++		dma_rmb();
++
++		err = pe_ctrl_stat & (EIP93_PE_CTRL_PE_EXT_ERR_CODE |
++				      EIP93_PE_CTRL_PE_EXT_ERR |
++				      EIP93_PE_CTRL_PE_SEQNUM_ERR |
++				      EIP93_PE_CTRL_PE_PAD_ERR |
++				      EIP93_PE_CTRL_PE_AUTH_ERR);
+ 
+ 		desc_flags = FIELD_GET(EIP93_PE_USER_ID_DESC_FLAGS, rdesc->user_id);
+ 		crypto_idr = FIELD_GET(EIP93_PE_USER_ID_CRYPTO_IDR, rdesc->user_id);

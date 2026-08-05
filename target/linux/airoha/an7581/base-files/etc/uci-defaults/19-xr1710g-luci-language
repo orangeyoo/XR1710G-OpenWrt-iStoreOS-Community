@@ -1,0 +1,10 @@
+#!/bin/sh
+
+. /lib/functions/system.sh
+
+[ "$(board_name)" = "econet,xr1710g-ubi" ] || exit 0
+
+uci -q set luci.main.lang='zh_cn'
+uci -q commit luci
+
+exit 0

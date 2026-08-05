@@ -1,0 +1,173 @@
+From 6fa7779d216705d533435b8af9afacf17cff51f6 Mon Sep 17 00:00:00 2001
+From: YYH2913 <yyh2913@qq.com>
+Date: Wed, 24 Jun 2026 17:06:39 +0800
+Subject: [PATCH] iwinfo: fix txpower list from split wiphy dumps
+
+Request split wiphy dumps and match the current frequency when building
+txpower lists. Fall back to the old channel-based matching if the current
+frequency cannot be resolved.
+
+Keep the nl80211 conveyor ownership clear: nl80211_send() consumes the
+message, while the local nla_put_failure path frees it before send.
+
+Signed-off-by: YYH2913 <yyh2913@qq.com>
+---
+ iwinfo_nl80211.c | 104 +++++++++++++++++++++++++++++++----------------
+ 1 file changed, 69 insertions(+), 35 deletions(-)
+
+diff --git a/iwinfo_nl80211.c b/iwinfo_nl80211.c
+index adc10b9..a36a517 100644
+--- a/iwinfo_nl80211.c
++++ b/iwinfo_nl80211.c
+@@ -2554,10 +2554,16 @@ static int nl80211_get_assoclist(const char *ifname, char *buf, int *len)
+ 	return -1;
+ }
+ 
++struct nl80211_txpwrlist {
++	int freq;
++	int channel;
++	int dbm_max;
++};
++
+ static int nl80211_get_txpwrlist_cb(struct nl_msg *msg, void *arg)
+ {
+-	int *dbm_max = arg;
+-	int ch_cur, ch_cmp, bands_remain, freqs_remain;
++	struct nl80211_txpwrlist *txpwrlist = arg;
++	int freq_cur, freq_cmp, ch_cur, ch_cmp, bands_remain, freqs_remain;
+ 
+ 	struct nlattr **attr = nl80211_parse(msg);
+ 	struct nlattr *bands[NL80211_BAND_ATTR_MAX + 1];
+@@ -2573,29 +2579,39 @@ static int nl80211_get_txpwrlist_cb(struct nl_msg *msg, void *arg)
+ 		[NL80211_FREQUENCY_ATTR_MAX_TX_POWER] = { .type = NLA_U32  },
+ 	};
+ 
+-	ch_cur = *dbm_max; /* value int* is initialized with channel by caller */
+-	*dbm_max = -1;
++	freq_cur = txpwrlist->freq;
++	ch_cur = txpwrlist->channel;
++
++	if (!attr[NL80211_ATTR_WIPHY_BANDS])
++		return NL_SKIP;
+ 
+ 	nla_for_each_nested(band, attr[NL80211_ATTR_WIPHY_BANDS], bands_remain)
+ 	{
+ 		nla_parse(bands, NL80211_BAND_ATTR_MAX, nla_data(band),
+ 		          nla_len(band), NULL);
+ 
++		if (!bands[NL80211_BAND_ATTR_FREQS])
++			continue;
++
+ 		nla_for_each_nested(freq, bands[NL80211_BAND_ATTR_FREQS], freqs_remain)
+ 		{
+ 			nla_parse(freqs, NL80211_FREQUENCY_ATTR_MAX,
+ 			          nla_data(freq), nla_len(freq), freq_policy);
+ 
+-			ch_cmp = nl80211_freq2channel(nla_get_u32(
+-				freqs[NL80211_FREQUENCY_ATTR_FREQ]));
++			if (!freqs[NL80211_FREQUENCY_ATTR_FREQ] ||
++			    !freqs[NL80211_FREQUENCY_ATTR_MAX_TX_POWER])
++				continue;
++
++			freq_cmp = nla_get_u32(freqs[NL80211_FREQUENCY_ATTR_FREQ]);
++			ch_cmp = nl80211_freq2channel(freq_cmp);
+ 
+-			if ((!ch_cur || (ch_cmp == ch_cur)) &&
+-			    freqs[NL80211_FREQUENCY_ATTR_MAX_TX_POWER])
++			if ((freq_cur && freq_cmp == freq_cur) ||
++			    (!freq_cur && (!ch_cur || ch_cmp == ch_cur)))
+ 			{
+-				*dbm_max = (int)(0.01 * nla_get_u32(
+-					freqs[NL80211_FREQUENCY_ATTR_MAX_TX_POWER]));
++				txpwrlist->dbm_max = nla_get_u32(
++					freqs[NL80211_FREQUENCY_ATTR_MAX_TX_POWER]) / 100;
+ 
+-				break;
++				return NL_SKIP;
+ 			}
+ 		}
+ 	}
+@@ -2605,41 +2621,59 @@ static int nl80211_get_txpwrlist_cb(struct nl_msg *msg, void *arg)
+ 
+ static int nl80211_get_txpwrlist(const char *ifname, char *buf, int *len)
+ {
+-	int err, ch_cur;
+-	int dbm_max = -1, dbm_cur, dbm_cnt;
++	struct nl80211_msg_conveyor *cv;
++	struct nl80211_txpwrlist txpwrlist = {
++		.freq = 0,
++		.channel = 0,
++		.dbm_max = -1,
++	};
++	uint32_t features = nl80211_get_protocol_features(ifname);
++	int dbm_cur, dbm_cnt;
++	int flags;
+ 	struct iwinfo_txpwrlist_entry entry;
+ 
+-	if (nl80211_get_channel(ifname, &ch_cur))
+-		ch_cur = 0;
++	if (nl80211_get_frequency(ifname, &txpwrlist.freq)) {
++		txpwrlist.freq = 0;
++		if (nl80211_get_channel(ifname, &txpwrlist.channel))
++			txpwrlist.channel = 0;
++	}
+ 
+-	/* initialize the value pointer with channel for callback */
+-	dbm_max = ch_cur;
++	flags = features & NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP ? NLM_F_DUMP : 0;
++	cv = nl80211_msg(ifname, NL80211_CMD_GET_WIPHY, flags);
++	if (!cv)
++		goto out;
+ 
+-	err = nl80211_request(ifname, NL80211_CMD_GET_WIPHY, 0,
+-	                      nl80211_get_txpwrlist_cb, &dbm_max);
++	NLA_PUT_FLAG(cv->msg, NL80211_ATTR_SPLIT_WIPHY_DUMP);
++	if (nl80211_send(cv, nl80211_get_txpwrlist_cb, &txpwrlist))
++		goto out;
+ 
+-	if (!err)
++	if (txpwrlist.dbm_max < 0 || txpwrlist.dbm_max > 100)
++		goto out;
++
++	for (dbm_cur = 0, dbm_cnt = 0;
++	     dbm_cur < txpwrlist.dbm_max;
++	     dbm_cur++, dbm_cnt++)
+ 	{
+-		for (dbm_cur = 0, dbm_cnt = 0;
+-		     dbm_cur < dbm_max;
+-		     dbm_cur++, dbm_cnt++)
+-		{
+-			entry.dbm = dbm_cur;
+-			entry.mw  = iwinfo_dbm2mw(dbm_cur);
++		entry.dbm = dbm_cur;
++		entry.mw  = iwinfo_dbm2mw(dbm_cur);
+ 
+-			memcpy(&buf[dbm_cnt * sizeof(entry)], &entry, sizeof(entry));
+-		}
++		memcpy(&buf[dbm_cnt * sizeof(entry)], &entry, sizeof(entry));
++	}
+ 
+-		entry.dbm = dbm_max;
+-		entry.mw  = iwinfo_dbm2mw(dbm_max);
++	entry.dbm = txpwrlist.dbm_max;
++	entry.mw  = iwinfo_dbm2mw(txpwrlist.dbm_max);
+ 
+-		memcpy(&buf[dbm_cnt * sizeof(entry)], &entry, sizeof(entry));
+-		dbm_cnt++;
++	memcpy(&buf[dbm_cnt * sizeof(entry)], &entry, sizeof(entry));
++	dbm_cnt++;
+ 
+-		*len = dbm_cnt * sizeof(entry);
+-		return 0;
+-	}
++	*len = dbm_cnt * sizeof(entry);
++	return 0;
++
++nla_put_failure:
++	nl80211_free(cv);
+ 
++out:
++	*len = 0;
+ 	return -1;
+ }
+ 

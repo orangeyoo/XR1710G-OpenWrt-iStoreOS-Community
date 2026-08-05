@@ -1,0 +1,103 @@
+From: Yanghan Ye <yyh94306@gmail.com>
+Date: Mon, 13 Jul 2026 12:30:00 +0800
+Subject: [PATCH] PCI: mediatek-gen3: synchronize EN7581 PCIe2 PERST
+
+The secondary MT7996 HIF on XR1710G is connected to PCIe2, but it is
+part of the same endpoint as the primary x2 HIF on PCIe0. Concurrent
+host probes can release PCIe2 PERST before PCIe0 PERST.
+
+Allow boards with this topology to hold PCIe2 in PERST until PCIe0 has
+been released. Also keep the PCIe0/1 SerDes EQ and PIPE presets away
+from PCIe2: the vendor EN7581 sequence only writes these registers on
+MAC0 and MAC1, while MAC2 uses the USB3 SerDes defaults.
+
+Assisted-by: Codex:gpt-5.6-sol
+Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
+---
+ drivers/pci/controller/pcie-mediatek-gen3.c | 37 +++++++++++++++++----
+ 1 file changed, 31 insertions(+), 6 deletions(-)
+
+--- a/drivers/pci/controller/pcie-mediatek-gen3.c
++++ b/drivers/pci/controller/pcie-mediatek-gen3.c
+@@ -33,5 +33,7 @@
+ /* AN7581 SCU register */
+ #define SCU_PCIC			0x88
+ #define SCU_PCIC_PCIE_CTRL		GENMASK(7, 0)
++#define SCU_PCIC_PERSTOUT0		BIT(29)
++#define EN7581_PCIE2_REG_BASE		0x1fc40000
+ 
+ /* PCIe register */
+@@ -968,9 +970,10 @@ static int mtk_pcie_en7581_power_up(struct mtk_gen3_pcie *pcie)
+ {
+ 	struct pci_host_bridge *host = pci_host_bridge_from_priv(pcie);
+ 	unsigned int num_lanes = max(1, pcie->num_lanes);
+-	struct regmap *pbus_regmap, *scu;
++	struct regmap *pbus_regmap, *scu = NULL;
+ 	struct device *dev = pcie->dev;
+ 	struct resource_entry *entry;
++	bool wait_for_pcie0_perst;
+ 	u32 val, args[2], size;
+ 	resource_size_t addr;
+ 	int i, err;
+@@ -978,7 +981,11 @@ static int mtk_pcie_en7581_power_up(struct mtk_gen3_pcie *pcie)
+ 	if (num_lanes > 2)
+ 		return dev_err_probe(dev, -EINVAL, "unsupported num-lanes, maximum 2 lanes supported\n");
+ 
+-	if (num_lanes == 2) {
++	wait_for_pcie0_perst = pcie->reg_base == EN7581_PCIE2_REG_BASE &&
++			       of_property_read_bool(dev->of_node,
++						     "airoha,wait-for-pcie0-perst");
++
++	if (num_lanes == 2 || wait_for_pcie0_perst) {
+ 		scu = syscon_regmap_lookup_by_phandle(dev->of_node, "airoha,scu");
+ 		if (IS_ERR(scu))
+ 			return dev_err_probe(dev, PTR_ERR(scu), "failed to map SCU regmap\n");
+@@ -1098,17 +1105,19 @@ static int mtk_pcie_en7581_power_up(struct mtk_gen3_pcie *pcie)
+ 
+ 		mtk_pcie_configure_link_speed(pcie, base);
+ 
+-		val = FIELD_PREP(PCIE_VAL_LN0_DOWNSTREAM, 0x47) |
+-			FIELD_PREP(PCIE_VAL_LN1_DOWNSTREAM, 0x47) |
+-			FIELD_PREP(PCIE_VAL_LN0_UPSTREAM, 0x41) |
+-			FIELD_PREP(PCIE_VAL_LN1_UPSTREAM, 0x41);
+-		writel_relaxed(val, base + PCIE_EQ_PRESET_01_REG);
++		if (pcie->reg_base != EN7581_PCIE2_REG_BASE) {
++			val = FIELD_PREP(PCIE_VAL_LN0_DOWNSTREAM, 0x47) |
++				FIELD_PREP(PCIE_VAL_LN1_DOWNSTREAM, 0x47) |
++				FIELD_PREP(PCIE_VAL_LN0_UPSTREAM, 0x41) |
++				FIELD_PREP(PCIE_VAL_LN1_UPSTREAM, 0x41);
++			writel_relaxed(val, base + PCIE_EQ_PRESET_01_REG);
+ 
+-		val = PCIE_K_PHYPARAM_QUERY | PCIE_K_QUERY_TIMEOUT |
+-			FIELD_PREP(PCIE_K_PRESET_TO_USE_16G, 0x80) |
+-			FIELD_PREP(PCIE_K_PRESET_TO_USE, 0x2) |
+-			FIELD_PREP(PCIE_K_FINETUNE_MAX, 0xf);
+-		writel_relaxed(val, base + PCIE_PIPE4_PIE8_REG);
++			val = PCIE_K_PHYPARAM_QUERY | PCIE_K_QUERY_TIMEOUT |
++				FIELD_PREP(PCIE_K_PRESET_TO_USE_16G, 0x80) |
++				FIELD_PREP(PCIE_K_PRESET_TO_USE, 0x2) |
++				FIELD_PREP(PCIE_K_FINETUNE_MAX, 0xf);
++			writel_relaxed(val, base + PCIE_PIPE4_PIE8_REG);
++		}
+ 	}
+ 
+ 	dev_info(dev, "pre-training link configuration: Gen%u x%u\n",
+@@ -1112,6 +1121,16 @@ static int mtk_pcie_en7581_power_up(struct mtk_gen3_pcie *pcie)
+ 	dev_info(dev, "pre-training link configuration: Gen%u x%u\n",
+ 		 pcie->max_link_speed, pcie->num_lanes ?: 1);
+ 
++	if (wait_for_pcie0_perst) {
++		err = regmap_read_poll_timeout(scu, SCU_PCIC, val,
++					       val & SCU_PCIC_PERSTOUT0,
++					       1000, 3000000);
++		if (err)
++			dev_warn(dev, "timed out waiting for PCIe0 PERST\n");
++		else
++			dev_info(dev, "PCIe0 PERST released, starting PCIe2\n");
++	}
++
+ 	/* Deassert PERSTOUT for all relevant lines */
+ 	err = reset_control_bulk_deassert(MAX_NUM_PERSTOUT_RESETS,
+ 					  pcie->perstout_resets);
+ 	if (err) {
+ 		dev_err(dev, "failed to deassert PERSTOUTs\n");

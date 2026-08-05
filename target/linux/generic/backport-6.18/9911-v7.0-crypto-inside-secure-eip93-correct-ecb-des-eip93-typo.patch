@@ -1,0 +1,26 @@
+From 9503ab5a1d0ef4cad2731d88699d7e6bb1a8a85d Mon Sep 17 00:00:00 2001
+From: Mieczyslaw Nalewaj <namiltd@yahoo.com>
+Date: Sat, 21 Mar 2026 10:59:37 +0100
+Subject: [PATCH] crypto: inside-secure/eip93 - correct ecb(des-eip93) typo
+
+Correct the typo in the name "ecb(des-eip93)".
+
+Signed-off-by: Mieczyslaw Nalewaj <namiltd@yahoo.com>
+Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
+---
+ drivers/crypto/inside-secure/eip93/eip93-cipher.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-cipher.c b/drivers/crypto/inside-secure/eip93/eip93-cipher.c
+index 0713c71ab458..b91586853c27 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-cipher.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-cipher.c
+@@ -320,7 +320,7 @@ struct eip93_alg_template eip93_alg_ecb_des = {
+ 		.ivsize	= 0,
+ 		.base = {
+ 			.cra_name = "ecb(des)",
+-			.cra_driver_name = "ebc(des-eip93)",
++			.cra_driver_name = "ecb(des-eip93)",
+ 			.cra_priority = EIP93_CRA_PRIORITY,
+ 			.cra_flags = CRYPTO_ALG_ASYNC |
+ 					CRYPTO_ALG_KERN_DRIVER_ONLY,

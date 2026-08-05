@@ -1,0 +1,23 @@
+From cd2d0f7ee500cbdf302b2042e9e4804107e06148 Mon Sep 17 00:00:00 2001
+From: Peter Chiu <chui-hao.chiu@mediatek.com>
+Date: Mon, 13 Feb 2023 11:03:53 +0800
+Subject: [PATCH] hostapd: 6G band does not require DFS
+
+6 GHz operation is not radar DFS based. Do not route 6 GHz AP bring-up
+through the DFS requirement path.
+
+Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
+---
+ src/ap/dfs.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -1561,6 +1561,7 @@ int hostapd_is_dfs_required(struct hosta
+ 	if ((!(iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD) &&
+ 	     !iface->conf->ieee80211h) ||
+ 	    !iface->current_mode ||
++	    is_6ghz_freq(iface->freq) ||
+ 	    iface->current_mode->mode != HOSTAPD_MODE_IEEE80211A)
+ 		return 0;
+ 

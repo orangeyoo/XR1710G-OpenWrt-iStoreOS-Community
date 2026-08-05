@@ -1,0 +1,27 @@
+#!/bin/sh
+
+case "$ACTION" in
+	add|move) ;;
+	*) exit 0 ;;
+esac
+
+DEV="${DEVICENAME:-$INTERFACE}"
+[ -n "$DEV" ] || exit 0
+
+case "$DEV" in
+	phy*-ap*|ap-mld*) ;;
+	*) exit 0 ;;
+esac
+
+# Coalesce bursts of WiFi device creation / bridge attach events into
+# one delayed reload so fw4 sees the final bridge topology.
+[ -f /tmp/.flow-offload-wifi-pending ] && exit 0
+touch /tmp/.flow-offload-wifi-pending
+
+(
+	sleep 10
+	rm -f /tmp/.flow-offload-wifi-pending
+	/etc/init.d/firewall reload
+) 2>/dev/null &
+
+exit 0

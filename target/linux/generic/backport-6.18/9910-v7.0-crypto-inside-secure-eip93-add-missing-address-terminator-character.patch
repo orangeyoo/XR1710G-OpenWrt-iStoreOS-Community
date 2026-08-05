@@ -1,0 +1,195 @@
+From fdacdc8cf897703a5a3e8b521448befbb6620034 Mon Sep 17 00:00:00 2001
+From: Mieczyslaw Nalewaj <namiltd@yahoo.com>
+Date: Sat, 21 Mar 2026 11:23:06 +0100
+Subject: [PATCH] crypto: inside-secure/eip93 - add missing address terminator
+ character
+
+Add the missing > characters to the end of the email address
+
+Signed-off-by: Mieczyslaw Nalewaj <namiltd@yahoo.com>
+Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
+---
+ drivers/crypto/inside-secure/eip93/eip93-aead.c   | 2 +-
+ drivers/crypto/inside-secure/eip93/eip93-aead.h   | 2 +-
+ drivers/crypto/inside-secure/eip93/eip93-aes.h    | 2 +-
+ drivers/crypto/inside-secure/eip93/eip93-cipher.c | 2 +-
+ drivers/crypto/inside-secure/eip93/eip93-cipher.h | 2 +-
+ drivers/crypto/inside-secure/eip93/eip93-common.c | 2 +-
+ drivers/crypto/inside-secure/eip93/eip93-common.h | 2 +-
+ drivers/crypto/inside-secure/eip93/eip93-des.h    | 2 +-
+ drivers/crypto/inside-secure/eip93/eip93-hash.c   | 2 +-
+ drivers/crypto/inside-secure/eip93/eip93-hash.h   | 2 +-
+ drivers/crypto/inside-secure/eip93/eip93-main.c   | 2 +-
+ drivers/crypto/inside-secure/eip93/eip93-main.h   | 2 +-
+ drivers/crypto/inside-secure/eip93/eip93-regs.h   | 2 +-
+ 13 files changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-aead.c b/drivers/crypto/inside-secure/eip93/eip93-aead.c
+index 1a08aed5de13..2bbd0af7b0e0 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-aead.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-aead.c
+@@ -3,7 +3,7 @@
+  * Copyright (C) 2019 - 2021
+  *
+  * Richard van Schagen <vschagen@icloud.com>
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ 
+ #include <crypto/aead.h>
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-aead.h b/drivers/crypto/inside-secure/eip93/eip93-aead.h
+index e2fa8fd39c50..d933a8fbdf04 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-aead.h
++++ b/drivers/crypto/inside-secure/eip93/eip93-aead.h
+@@ -3,7 +3,7 @@
+  * Copyright (C) 2019 - 2021
+  *
+  * Richard van Schagen <vschagen@icloud.com>
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ #ifndef _EIP93_AEAD_H_
+ #define _EIP93_AEAD_H_
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-aes.h b/drivers/crypto/inside-secure/eip93/eip93-aes.h
+index 1d83d39cab2a..82064cc8f5c7 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-aes.h
++++ b/drivers/crypto/inside-secure/eip93/eip93-aes.h
+@@ -3,7 +3,7 @@
+  * Copyright (C) 2019 - 2021
+  *
+  * Richard van Schagen <vschagen@icloud.com>
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ #ifndef _EIP93_AES_H_
+ #define _EIP93_AES_H_
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-cipher.c b/drivers/crypto/inside-secure/eip93/eip93-cipher.c
+index b91586853c27..4dd7ab7503e8 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-cipher.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-cipher.c
+@@ -3,7 +3,7 @@
+  * Copyright (C) 2019 - 2021
+  *
+  * Richard van Schagen <vschagen@icloud.com>
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ 
+ #include <crypto/aes.h>
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-cipher.h b/drivers/crypto/inside-secure/eip93/eip93-cipher.h
+index 6e2545ebd879..47e4e84ff14e 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-cipher.h
++++ b/drivers/crypto/inside-secure/eip93/eip93-cipher.h
+@@ -3,7 +3,7 @@
+  * Copyright (C) 2019 - 2021
+  *
+  * Richard van Schagen <vschagen@icloud.com>
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ #ifndef _EIP93_CIPHER_H_
+ #define _EIP93_CIPHER_H_
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-common.c b/drivers/crypto/inside-secure/eip93/eip93-common.c
+index f4ad6beff15e..6f147014f996 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-common.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-common.c
+@@ -3,7 +3,7 @@
+  * Copyright (C) 2019 - 2021
+  *
+  * Richard van Schagen <vschagen@icloud.com>
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ 
+ #include <crypto/aes.h>
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-common.h b/drivers/crypto/inside-secure/eip93/eip93-common.h
+index 80964cfa34df..41c43782eb5c 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-common.h
++++ b/drivers/crypto/inside-secure/eip93/eip93-common.h
+@@ -3,7 +3,7 @@
+  * Copyright (C) 2019 - 2021
+  *
+  * Richard van Schagen <vschagen@icloud.com>
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ 
+ #ifndef _EIP93_COMMON_H_
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-des.h b/drivers/crypto/inside-secure/eip93/eip93-des.h
+index 74748df04acf..53ffe0f341b8 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-des.h
++++ b/drivers/crypto/inside-secure/eip93/eip93-des.h
+@@ -3,7 +3,7 @@
+  * Copyright (C) 2019 - 2021
+  *
+  * Richard van Schagen <vschagen@icloud.com>
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ #ifndef _EIP93_DES_H_
+ #define _EIP93_DES_H_
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-hash.c b/drivers/crypto/inside-secure/eip93/eip93-hash.c
+index 2705855475b2..84d3ff2d3836 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-hash.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-hash.c
+@@ -2,7 +2,7 @@
+ /*
+  * Copyright (C) 2024
+  *
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ 
+ #include <crypto/sha1.h>
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-hash.h b/drivers/crypto/inside-secure/eip93/eip93-hash.h
+index 556f22fc1dd0..29da18d78894 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-hash.h
++++ b/drivers/crypto/inside-secure/eip93/eip93-hash.h
+@@ -3,7 +3,7 @@
+  * Copyright (C) 2019 - 2021
+  *
+  * Richard van Schagen <vschagen@icloud.com>
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ #ifndef _EIP93_HASH_H_
+ #define _EIP93_HASH_H_
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-main.c b/drivers/crypto/inside-secure/eip93/eip93-main.c
+index 76858bb4fcc2..7dccfdeb7b11 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-main.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-main.c
+@@ -3,7 +3,7 @@
+  * Copyright (C) 2019 - 2021
+  *
+  * Richard van Schagen <vschagen@icloud.com>
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ 
+ #include <linux/atomic.h>
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-main.h b/drivers/crypto/inside-secure/eip93/eip93-main.h
+index 79b078f0e5da..990c2401b7ce 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-main.h
++++ b/drivers/crypto/inside-secure/eip93/eip93-main.h
+@@ -3,7 +3,7 @@
+  * Copyright (C) 2019 - 2021
+  *
+  * Richard van Schagen <vschagen@icloud.com>
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ #ifndef _EIP93_MAIN_H_
+ #define _EIP93_MAIN_H_
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-regs.h b/drivers/crypto/inside-secure/eip93/eip93-regs.h
+index 116b3fbb6ad7..96285ca6fbbe 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-regs.h
++++ b/drivers/crypto/inside-secure/eip93/eip93-regs.h
+@@ -3,7 +3,7 @@
+  * Copyright (C) 2019 - 2021
+  *
+  * Richard van Schagen <vschagen@icloud.com>
+- * Christian Marangi <ansuelsmth@gmail.com
++ * Christian Marangi <ansuelsmth@gmail.com>
+  */
+ #ifndef REG_EIP93_H
+ #define REG_EIP93_H

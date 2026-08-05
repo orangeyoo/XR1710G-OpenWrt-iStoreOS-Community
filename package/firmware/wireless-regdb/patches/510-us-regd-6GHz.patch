@@ -1,0 +1,22 @@
+Remove the NO-IR flag from the US 6 GHz regulatory rule.
+
+On this tree, wireless-regdb is still converted by dbparse.py which only
+supports the older flag set and cannot encode finer grained 6 GHz AP
+exceptions such as VLP-only beaconing. In practice this leaves all US
+6 GHz channels unusable for AP mode on mt7996, while countries such as
+JP and KR work because their 6 GHz entries do not carry NO-IR.
+
+For this local target, prefer enabling US 6 GHz AP operation by dropping
+the blanket NO-IR restriction on the 5925-7125 MHz rule.
+---
+--- a/db.txt
++++ b/db.txt
+@@ -2052,7 +2052,7 @@ country US: DFS-FCC
+ 	(5850 - 5895 @ 40), (27), NO-OUTDOOR, AUTO-BW, NO-IR
+ 	# 6g band
+ 	# https://www.federalregister.gov/documents/2020/05/26/2020-11236/unlicensed-use-of-the-6ghz-band
+-	(5925 - 7125 @ 320), (12), NO-OUTDOOR, NO-IR
++	(5925 - 7125 @ 320), (12), NO-OUTDOOR
+ 	# 60g band
+ 	# reference: section IV-D https://docs.fcc.gov/public/attachments/FCC-16-89A1.pdf
+ 	# channels 1-6 EIRP=40dBm(43dBm peak)

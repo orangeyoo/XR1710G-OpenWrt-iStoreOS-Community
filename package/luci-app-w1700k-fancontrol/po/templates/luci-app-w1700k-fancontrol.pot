@@ -1,0 +1,200 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:155
+msgid "2.4 GHz Radio"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:156
+msgid "5 GHz Radio"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:157
+msgid "6 GHz Radio"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:127
+msgid "Active Preset"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:16
+msgid "Automatic"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:17
+msgid "Automatic (Closed Loop)"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:158
+msgid "Automatic (Follow Curve)"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:17
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:27
+msgid "Balanced"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:173
+msgid "Balanced - Good mix of noise and cooling"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:146
+msgid "Board (Fan Curve)"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:145
+msgid "CPU"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:151
+msgid "Configure fan control mode and speed curves."
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:154
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:121
+msgid "Control Mode"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:204
+msgid "Curve Points"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:180
+msgid "Curve Preview"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:16
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:26
+msgid "Custom"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:175
+msgid "Custom - Define your own curve"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:188
+msgid "Custom Curve Editor"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:189
+msgid "Define temperature thresholds and corresponding fan speeds."
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/root/usr/share/luci/menu.d/luci-app-w1700k-fancontrol.json:3
+msgid "Fan Control"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:150
+msgid "Fan Control - Settings"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:113
+msgid "Fan Control - Status"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:171
+msgid "Fan Curve Preset"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:62
+msgid "Fan Speed"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:117
+msgid "Fan Status"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:14
+msgid "Full Speed"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/root/usr/share/rpcd/acl.d/luci-app-w1700k-fancontrol.json:3
+msgid "Grant access to W1700K fan control"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:147
+msgid "LAN2 10G PHY"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:15
+msgid "Manual"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:159
+msgid "Manual (Fixed Speed)"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:163
+msgid "Manual Fan Speed (PWM)"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:130
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:192
+msgid "Manual Override"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:157
+msgid "Mode"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:15
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:25
+msgid "Performance"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:174
+msgid "Performance - Higher speeds, lower temps"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:211
+msgid "Point %d PWM (0-255)"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:207
+msgid "Point %d Temperature (°C)"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:14
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:24
+msgid "Quiet"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:172
+msgid "Quiet - Lower speeds, higher temps"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:164
+msgid "Set a fixed PWM value (0-255). 0 = Off, 255 = Full Speed"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/root/usr/share/luci/menu.d/luci-app-w1700k-fancontrol.json:22
+msgid "Settings"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/root/usr/share/luci/menu.d/luci-app-w1700k-fancontrol.json:14
+msgid "Status"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:143
+msgid "System"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:67
+msgid "Temperature (°C)"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:139
+msgid "Temperatures"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:18
+msgid "Unknown"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:148
+msgid "WAN 10G PHY"
+msgstr ""
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:153
+msgid "WiFi"
+msgstr ""

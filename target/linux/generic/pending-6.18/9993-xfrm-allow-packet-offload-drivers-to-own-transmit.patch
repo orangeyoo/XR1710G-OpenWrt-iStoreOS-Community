@@ -1,0 +1,68 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Sat, 23 May 2026 20:05:10 +0900
+Subject: [PATCH] xfrm: allow packet offload drivers to own transmit
+
+Some packet-mode ESP engines are reachable through a device-private
+descriptor path rather than through the normal netdev hard-start path. The
+generic packet offload path can already hand plaintext packets directly to
+the offload netdev, but that assumes the device transmit path itself is the
+hardware IPsec path.
+
+Add an optional xfrmdev_ops transmit callback so a driver can consume the
+packet offload skb and submit it through its private packet engine path. If
+the callback is absent, keep the existing packet offload direct-output
+behavior unchanged.
+
+The Airoha SOE path uses this hook to submit ESP packets through its QDMA hop
+descriptor path instead of relying on the regular netdev hard-start transmit
+entry point.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+ include/linux/netdevice.h | 3 +++
+ net/xfrm/xfrm_output.c    | 11 +++++++++++
+ 2 files changed, 14 insertions(+)
+
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index d593dda..db59844 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -1035,6 +1035,9 @@ struct xfrmdev_ops {
+ 	int	(*xdo_dev_policy_add) (struct xfrm_policy *x, struct netlink_ext_ack *extack);
+ 	void	(*xdo_dev_policy_delete) (struct xfrm_policy *x);
+ 	void	(*xdo_dev_policy_free) (struct xfrm_policy *x);
++	/* Optional packet-offload TX path. The driver consumes skb. */
++	int	(*xdo_dev_packet_xmit)(struct sk_buff *skb,
++				       struct xfrm_state *x);
+ };
+ #endif
+ 
+diff --git a/net/xfrm/xfrm_output.c b/net/xfrm/xfrm_output.c
+index 54222fc..e1cca58 100644
+--- a/net/xfrm/xfrm_output.c
++++ b/net/xfrm/xfrm_output.c
+@@ -763,12 +763,23 @@ int xfrm_output(struct sock *sk, struct sk_buff *skb)
+ 	}
+ 
+ 	if (x->xso.type == XFRM_DEV_OFFLOAD_PACKET) {
++#ifdef CONFIG_XFRM_OFFLOAD
++		const struct xfrmdev_ops *ops;
++#endif
++
++#ifdef CONFIG_XFRM_OFFLOAD
++		ops = x->xso.dev->xfrmdev_ops;
++		/* Callback validates, consumes skb and returns final TX status. */
++		if (ops && ops->xdo_dev_packet_xmit)
++			return ops->xdo_dev_packet_xmit(skb, x);
++#endif
++
+ 		if (!xfrm_dev_offload_ok(skb, x)) {
+ 			XFRM_INC_STATS(net, LINUX_MIB_XFRMOUTERROR);
+ 			kfree_skb(skb);
+ 			return -EHOSTUNREACH;
+ 		}
+ 
+ 		/* Exclusive direct xmit for tunnel mode, as
+ 		 * some filtering or matching rules may apply
+ 		 * in transport mode.

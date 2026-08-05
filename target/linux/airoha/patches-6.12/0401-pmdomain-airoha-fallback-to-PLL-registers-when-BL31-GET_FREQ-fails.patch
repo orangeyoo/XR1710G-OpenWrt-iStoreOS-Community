@@ -1,0 +1,100 @@
+--- a/drivers/pmdomain/mediatek/airoha-cpu-pmdomain.c	2026-04-02 12:03:41.783492903 +0800
++++ b/drivers/pmdomain/mediatek/airoha-cpu-pmdomain.c	2026-04-02 12:04:07.772626445 +0800
+@@ -3,7 +3,9 @@
+ #include <linux/arm-smccc.h>
+ #include <linux/bitfield.h>
+ #include <linux/clk-provider.h>
++#include <linux/io.h>
+ #include <linux/module.h>
++#include <linux/of.h>
+ #include <linux/platform_device.h>
+ #include <linux/pm_domain.h>
+ #include <linux/slab.h>
+@@ -15,10 +17,15 @@
+ 						 FIELD_PREP(AIROHA_AVS_OP_MASK, 0x1))
+ #define AIROHA_AVS_OP_GET_FREQ			(AIROHA_AVS_OP_BASE | \
+ 						 FIELD_PREP(AIROHA_AVS_OP_MASK, 0x2))
++#define AIROHA_EN7581_CPUPLL_SDM_PCW		0x1fa202b4
++#define AIROHA_EN7581_PLL_PCW			GENMASK(31, 24)
++#define AIROHA_EN7581_PLL_POSDIV		GENMASK(6, 4)
+ 
+ struct airoha_cpu_pmdomain_priv {
+ 	struct clk_hw hw;
+ 	struct generic_pm_domain pd;
++	struct device *dev;
++	void __iomem *en7581_pll_regs;
+ };
+ 
+ static long airoha_cpu_pmdomain_clk_round(struct clk_hw *hw, unsigned long rate,
+@@ -30,13 +37,53 @@
+ static unsigned long airoha_cpu_pmdomain_clk_get(struct clk_hw *hw,
+ 						 unsigned long parent_rate)
+ {
++	struct airoha_cpu_pmdomain_priv *priv =
++		container_of(hw, struct airoha_cpu_pmdomain_priv, hw);
+ 	struct arm_smccc_res res;
++	s64 freq_mhz;
++	u32 pcw, posdiv;
+ 
+ 	arm_smccc_1_1_invoke(AIROHA_SIP_AVS_HANDLE, AIROHA_AVS_OP_GET_FREQ,
+ 			     0, 0, 0, 0, 0, 0, &res);
+ 
+ 	/* SMCCC returns freq in MHz */
+-	return (int)(res.a0 * 1000 * 1000);
++	freq_mhz = (s64)res.a0;
++	if (freq_mhz > 0 && freq_mhz <= 2000)
++		return (unsigned long)freq_mhz * 1000 * 1000;
++
++	/*
++	 * Older EN7581 secure firmware exposes the AVS SMC handler but can
++	 * still return 0 for GET_FREQ, which prevents cpufreq-dt from
++	 * registering a policy. Fall back to the CPU PLL registers used by
++	 * the vendor BL31 implementation in that case.
++	 */
++	if (!priv->en7581_pll_regs)
++		return 0;
++
++	pcw = FIELD_GET(AIROHA_EN7581_PLL_PCW,
++			readl_relaxed(priv->en7581_pll_regs));
++	posdiv = FIELD_GET(AIROHA_EN7581_PLL_POSDIV,
++			   readl_relaxed(priv->en7581_pll_regs + sizeof(u32)));
++
++	switch (posdiv) {
++	case 0:
++		freq_mhz = pcw * 50;
++		break;
++	case 1:
++		freq_mhz = pcw * 25;
++		break;
++	default:
++		return 0;
++	}
++
++	if (freq_mhz < 500 || freq_mhz > 1200 || freq_mhz % 50)
++		return 0;
++
++	dev_warn_once(priv->dev,
++		      "BL31 AVS GET_FREQ returned %lld, falling back to direct PLL register decode\n",
++		      (long long)(s64)res.a0);
++
++	return (unsigned long)freq_mhz * 1000 * 1000;
+ }
+ 
+ /* Airoha CPU clk SMCC is always enabled */
+@@ -80,6 +127,16 @@
+ 	if (!priv)
+ 		return -ENOMEM;
+ 
++	priv->dev = dev;
++
++	if (of_machine_is_compatible("airoha,en7581")) {
++		priv->en7581_pll_regs = devm_ioremap(dev,
++						     AIROHA_EN7581_CPUPLL_SDM_PCW,
++						     sizeof(u32) * 2);
++		if (!priv->en7581_pll_regs)
++			return -ENOMEM;
++	}
++
+ 	/* Init and register a get-only clk for Cpufreq */
+ 	priv->hw.init = &init;
+ 	ret = devm_clk_hw_register(dev, &priv->hw);

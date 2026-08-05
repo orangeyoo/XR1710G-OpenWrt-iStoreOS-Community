@@ -1,0 +1,75 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Mon, 1 Jun 2026 13:30:00 +0900
+Subject: [PATCH] net: airoha: add SOE register definitions
+
+Add the FE, QDMA and PPE register definitions used by the SOE packet
+path. Later Ethernet, PPE and provider patches consume these symbolic
+fields instead of open-coding offsets and bit layouts.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+diff --git a/drivers/net/ethernet/airoha/airoha_regs.h b/drivers/net/ethernet/airoha/airoha_regs.h
+index a13a3db..700ba69 100644
+--- a/drivers/net/ethernet/airoha/airoha_regs.h
++++ b/drivers/net/ethernet/airoha/airoha_regs.h
+@@ -71,6 +71,9 @@
+ #define REG_FE_PSE_QUEUE_CFG_VAL	0x0084
+ #define PSE_CFG_OQ_RSV_MASK		GENMASK(13, 0)
+ 
++/* PSE selector readback used while validating SOE output queue routing. */
++#define REG_FE_PSE_OQUEUE_EN		0x0088
++
+ #define PSE_FQ_CFG			0x008c
+ #define PSE_FQ_LIMIT_MASK		GENMASK(14, 0)
+ 
+@@ -82,6 +85,10 @@
+ #define PSE_SHARE_USED_MTHD_MASK	GENMASK(31, 16)
+ #define PSE_SHARE_USED_HTHD_MASK	GENMASK(15, 0)
+ 
++/* TDMA/SOE port 7 needs shared-buffer flow control enabled in the PSE. */
++#define REG_PSE_FC_CFG			0x0098
++#define PSE_TDMA_SHARE_BUF_DIS_MASK	BIT(23)
++
+ #define REG_GDM_MISC_CFG		0x0148
+ #define GDM2_RDM_ACK_WAIT_PREF_MASK	BIT(9)
+ #define GDM2_CHN_VLD_MODE_MASK		BIT(5)
+@@ -266,6 +273,8 @@
+ #define PPE_GLO_CFG_EN_MASK			BIT(0)
+ 
+ #define REG_PPE_PPE_FLOW_CFG(_n)		(((_n) ? PPE2_BASE : PPE1_BASE) + 0x204)
++#define PPE_FLOW_CFG_IP6_IPSEC_MASK	BIT(28)
++#define PPE_FLOW_CFG_IP4_IPSEC_MASK	BIT(27)
+ #define PPE_FLOW_CFG_IP6_HASH_GRE_KEY_MASK	BIT(20)
+ #define PPE_FLOW_CFG_IP4_HASH_GRE_KEY_MASK	BIT(19)
+ #define PPE_FLOW_CFG_IP4_HASH_FLOW_LABEL_MASK	BIT(18)
+@@ -881,6 +890,8 @@
+ #define QDMA_DESC_NEXT_ID_MASK		GENMASK(15, 0)
+ /* TX MSG0 */
+ #define QDMA_ETH_TXMSG_MIC_IDX_MASK	BIT(30)
++/* SOE submit metadata: msg0 carries SA index, msg1 selects port 7 OQ8/OQ9. */
++#define QDMA_ETH_TXMSG_SOE_SA_MASK	GENMASK(29, 24)
+ #define QDMA_ETH_TXMSG_SP_TAG_MASK	GENMASK(29, 14)
+ #define QDMA_ETH_TXMSG_ICO_MASK		BIT(13)
+ #define QDMA_ETH_TXMSG_UCO_MASK		BIT(12)
+@@ -903,6 +914,11 @@
+ 
+ /* RX MSG0 */
+ #define QDMA_ETH_RXMSG_SPTAG		GENMASK(21, 14)
++/* SOE completion metadata can use the full 16-bit SP tag word. */
++#define QDMA_ETH_RXMSG_SPTAG_FULL	GENMASK(29, 14)
++/* SOE completion metadata returned by the QDMA RX descriptor. */
++#define QDMA_ETH_RXMSG_SOE_MASK		BIT(10)
++#define QDMA_ETH_RXMSG_HOP_FLAGS_MASK	GENMASK(2, 0)
+ /* RX MSG1 */
+ #define QDMA_ETH_RXMSG_DEI_MASK		BIT(31)
+ #define QDMA_ETH_RXMSG_IP6_MASK		BIT(30)
+@@ -914,6 +930,8 @@
+ #define QDMA_ETH_RXMSG_CRSN_MASK	GENMASK(20, 16)
+ #define QDMA_ETH_RXMSG_PPE_ENTRY_MASK	GENMASK(15, 0)
+ /* RX MSG2 */
++/* SW_UDF carries the SA index for SOE completion frames. */
++#define QDMA_ETH_RXMSG_SW_UDF_MASK	GENMASK(31, 24)
+ #define QDMA_ETH_RXMSG_AGG_COUNT_MASK	GENMASK(31, 24)
+ #define QDMA_ETH_RXMSG_L2_LEN_MASK	GENMASK(6, 0)
+ /* RX MSG3 */

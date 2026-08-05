@@ -1,0 +1,14 @@
+Raise the local US 6 GHz software cap for lab-only indoor standard-power tests.
+
+This is not a real AFC implementation. It only lifts the legacy regdb ceiling
+used by this local build so the driver is not capped at the earlier 29 dBm
+LPI approximation. Keep NO-OUTDOOR in place and pair this with an indoor
+standard-power AP type on the hostapd side.
+---
+--- a/db.txt
++++ b/db.txt
+@@ -2053,3 +2053,3 @@ country US: DFS-FCC
+ 	# 6g band
+ 	# https://www.federalregister.gov/documents/2020/05/26/2020-11236/unlicensed-use-of-the-6ghz-band
+-	(5925 - 7125 @ 320), (29), NO-OUTDOOR
++	(5925 - 7125 @ 320), (36), NO-OUTDOOR

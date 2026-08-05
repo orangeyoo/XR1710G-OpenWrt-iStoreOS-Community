@@ -1,0 +1,214 @@
+From 55bb5d8b5d55a26941fb08be2701931ce8affd43 Mon Sep 17 00:00:00 2001
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Mon, 25 May 2026 04:13:48 +0900
+Subject: [PATCH] crypto: eip93: handle request ID exhaustion
+
+The driver stores the async request pointer in an IDR and places the ID in
+the hardware descriptor. The old allocation used the ring depth as the IDR
+limit. It also did not check allocation failure, so request pressure could
+encode a negative error value as a descriptor user ID.
+
+Allocate request IDs from the full user ID field range and wait while the
+IDR is full. Publish the descriptor only after DMA mappings and ID
+allocation have succeeded. Add unwind paths for mappings that are active
+when ID allocation fails, and tolerate stale or missing result IDs in the
+interrupt handler.
+
+Fixes: 9739f5f93b78 ("crypto: eip93 - Add Inside Secure SafeXcel EIP-93 crypto engine support")
+Reported-by: Benjamin Larsson <benjamin.larsson@genexis.eu>
+Suggested-by: Benjamin Larsson <benjamin.larsson@genexis.eu>
+Tested-by: Aleksander Jan Bajkowski <olek2@wp.pl>
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+ .../crypto/inside-secure/eip93/eip93-common.c | 48 +++++++++++++++----
+ .../crypto/inside-secure/eip93/eip93-common.h |  3 ++
+ .../crypto/inside-secure/eip93/eip93-hash.c   | 26 +++++++---
+ .../crypto/inside-secure/eip93/eip93-main.c   |  6 +++
+ .../crypto/inside-secure/eip93/eip93-main.h   |  2 +
+ 5 files changed, 69 insertions(+), 16 deletions(-)
+
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-common.c b/drivers/crypto/inside-secure/eip93/eip93-common.c
+index f422c93748c9..88b89d05d510 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-common.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-common.c
+@@ -65,6 +65,31 @@ int eip93_parse_ctrl_stat_err(struct eip93_device *eip93, int err)
+ 	}
+ }
+ 
++int eip93_alloc_request_id(struct eip93_device *eip93, void *request)
++{
++	int id;
++
++	scoped_guard(spinlock_bh, &eip93->ring->idr_lock)
++		id = idr_alloc(&eip93->ring->crypto_async_idr, request, 0,
++			       EIP93_REQUEST_IDR_LIMIT, GFP_ATOMIC);
++
++	return id;
++}
++
++int eip93_alloc_request_id_wait(struct eip93_device *eip93, void *request)
++{
++	int id;
++
++	for (;;) {
++		id = eip93_alloc_request_id(eip93, request);
++		if (id != -ENOSPC)
++			return id;
++
++		usleep_range(EIP93_RING_BUSY_DELAY,
++			     EIP93_RING_BUSY_DELAY * 2);
++	}
++}
++
+ static void *eip93_ring_next_wptr(struct eip93_device *eip93,
+ 				  struct eip93_desc_ring *ring)
+ {
+@@ -597,15 +622,6 @@ int eip93_send_req(struct crypto_async_request *async,
+ 	cdesc.sa_addr = rctx->sa_record_base;
+ 	cdesc.arc4_addr = 0;
+ 
+-	scoped_guard(spinlock_bh, &eip93->ring->idr_lock)
+-		crypto_async_idr = idr_alloc(&eip93->ring->crypto_async_idr, async, 0,
+-					     EIP93_RING_NUM - 1, GFP_ATOMIC);
+-
+-	cdesc.user_id = FIELD_PREP(EIP93_PE_USER_ID_CRYPTO_IDR, (u16)crypto_async_idr) |
+-			FIELD_PREP(EIP93_PE_USER_ID_DESC_FLAGS, rctx->desc_flags);
+-
+-	rctx->cdesc = &cdesc;
+-
+ 	/* map DMA_BIDIRECTIONAL to invalidate cache on destination
+ 	 * implies __dma_cache_wback_inv
+ 	 */
+@@ -620,8 +636,22 @@ int eip93_send_req(struct crypto_async_request *async,
+ 		goto free_sg_dma;
+ 	}
+ 
++	crypto_async_idr = eip93_alloc_request_id_wait(eip93, async);
++	if (crypto_async_idr < 0) {
++		err = crypto_async_idr;
++		goto free_src_sg_dma;
++	}
++
++	cdesc.user_id = FIELD_PREP(EIP93_PE_USER_ID_CRYPTO_IDR, crypto_async_idr) |
++			FIELD_PREP(EIP93_PE_USER_ID_DESC_FLAGS, rctx->desc_flags);
++
++	rctx->cdesc = &cdesc;
++
+ 	return eip93_scatter_combine(eip93, rctx, datalen, split, offsetin);
+ 
++free_src_sg_dma:
++	if (src != dst)
++		dma_unmap_sg(eip93->dev, src, rctx->src_nents, DMA_TO_DEVICE);
+ free_sg_dma:
+ 	dma_unmap_sg(eip93->dev, dst, rctx->dst_nents, DMA_BIDIRECTIONAL);
+ free_sa_state_ctr_dma:
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-common.h b/drivers/crypto/inside-secure/eip93/eip93-common.h
+index 41c43782eb5c..3898962d0abf 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-common.h
++++ b/drivers/crypto/inside-secure/eip93/eip93-common.h
+@@ -17,6 +17,9 @@ void eip93_set_sa_record(struct sa_record *sa_record, const unsigned int keylen,
+ 
+ int eip93_parse_ctrl_stat_err(struct eip93_device *eip93, int err);
+ 
++int eip93_alloc_request_id(struct eip93_device *eip93, void *request);
++int eip93_alloc_request_id_wait(struct eip93_device *eip93, void *request);
++
+ int eip93_hmac_setkey(u32 ctx_flags, const u8 *key, unsigned int keylen,
+ 		      unsigned int hashlen, u8 *ipad, u8 *opad,
+ 		      bool skip_ipad);
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-hash.c b/drivers/crypto/inside-secure/eip93/eip93-hash.c
+index 060e90c5eaa7..512e0e2ce25e 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-hash.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-hash.c
+@@ -221,6 +221,7 @@ static int eip93_send_hash_req(struct crypto_async_request *async, u8 *data,
+ 	struct eip93_device *eip93 = ctx->eip93;
+ 	struct eip93_descriptor cdesc = { };
+ 	dma_addr_t src_addr;
++	bool hmac_sa_mapped = false;
+ 	int ret;
+ 
+ 	/* Map block data to DMA */
+@@ -258,22 +259,23 @@ static int eip93_send_hash_req(struct crypto_async_request *async, u8 *data,
+ 				ret = dma_mapping_error(eip93->dev, rctx->sa_record_hmac_base);
+ 				if (ret) {
+ 					rctx->sa_record_hmac_base = 0;
+-					dma_unmap_single(eip93->dev, src_addr, len,
+-							 DMA_TO_DEVICE);
+-					return ret;
++					goto unmap_src;
+ 				}
+ 
+ 				cdesc.sa_addr = rctx->sa_record_hmac_base;
++				hmac_sa_mapped = true;
+ 			}
+ 
+ 			cdesc.pe_ctrl_stat_word |= EIP93_PE_CTRL_PE_HASH_FINAL;
+ 		}
+ 
+-		scoped_guard(spinlock_bh, &eip93->ring->idr_lock)
+-			crypto_async_idr = idr_alloc(&eip93->ring->crypto_async_idr, async, 0,
+-						     EIP93_RING_NUM - 1, GFP_ATOMIC);
++		crypto_async_idr = eip93_alloc_request_id_wait(eip93, async);
++		if (crypto_async_idr < 0) {
++			ret = crypto_async_idr;
++			goto unmap_hmac_sa;
++		}
+ 
+-		cdesc.user_id |= FIELD_PREP(EIP93_PE_USER_ID_CRYPTO_IDR, (u16)crypto_async_idr) |
++		cdesc.user_id |= FIELD_PREP(EIP93_PE_USER_ID_CRYPTO_IDR, crypto_async_idr) |
+ 				 FIELD_PREP(EIP93_PE_USER_ID_DESC_FLAGS, EIP93_DESC_LAST);
+ 	}
+ 
+@@ -291,6 +293,16 @@ static int eip93_send_hash_req(struct crypto_async_request *async, u8 *data,
+ 
+ 	*data_dma = src_addr;
+ 	return 0;
++
++unmap_hmac_sa:
++	if (hmac_sa_mapped) {
++		dma_unmap_single(eip93->dev, rctx->sa_record_hmac_base,
++				 sizeof(rctx->sa_record_hmac), DMA_TO_DEVICE);
++		rctx->sa_record_hmac_base = 0;
++	}
++unmap_src:
++	dma_unmap_single(eip93->dev, src_addr, len, DMA_TO_DEVICE);
++	return ret;
+ }
+ 
+ static int eip93_hash_init(struct ahash_request *req)
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-main.c b/drivers/crypto/inside-secure/eip93/eip93-main.c
+index e3bd28cc0c67..0de18a0cbe33 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-main.c
++++ b/drivers/crypto/inside-secure/eip93/eip93-main.c
+@@ -257,6 +257,12 @@ static void eip93_handle_result_descriptor(struct eip93_device *eip93)
+ 		idr_remove(&eip93->ring->crypto_async_idr, crypto_idr);
+ 	}
+ 
++	if (!async) {
++		dev_warn_ratelimited(eip93->dev, "missing request id %u\n",
++				     crypto_idr);
++		goto get_more;
++	}
++
+ 	/* Parse error in ctrl stat word */
+ 	err = eip93_parse_ctrl_stat_err(eip93, err);
+ 
+diff --git a/drivers/crypto/inside-secure/eip93/eip93-main.h b/drivers/crypto/inside-secure/eip93/eip93-main.h
+index 990c2401b7ce..5237b75bba62 100644
+--- a/drivers/crypto/inside-secure/eip93/eip93-main.h
++++ b/drivers/crypto/inside-secure/eip93/eip93-main.h
+@@ -13,11 +13,13 @@
+ #include <crypto/internal/skcipher.h>
+ #include <linux/bitfield.h>
+ #include <linux/interrupt.h>
++#include <linux/limits.h>
+ 
+ #define EIP93_RING_BUSY_DELAY		500
+ 
+ #define EIP93_RING_NUM			512
+ #define EIP93_RING_BUSY			32
++#define EIP93_REQUEST_IDR_LIMIT		(U16_MAX + 1)
+ #define EIP93_CRA_PRIORITY		1500
+ 
+ #define EIP93_RING_SA_STATE_ADDR(base, idx)	((base) + (idx))

@@ -1,0 +1,80 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Yanghan Ye <yyh94306@gmail.com>
+Date: Fri, 3 Apr 2026 00:00:00 +0800
+Subject: [PATCH] net: airoha: classify external lan ports from DT
+
+XR1710G and W1700K expose an external PHY on GDM4, but that port is a
+LAN member, not a WAN uplink. The current driver assumes only GDM1 is a
+LAN port on EN7581 and therefore treats GDM4 as WAN.
+
+That misclassification feeds directly into the recent offload code paths:
+- the port is pinned to the WAN QDMA block
+- FE LAN/WAN MAC programming uses the wrong register bank
+- PPE fast-path handling misses the LAN case
+
+As a result, NPU/PPE offload never becomes effective on these boards and
+traffic falls back to CPU forwarding.
+
+Allow board DTS files to mark external LAN ports explicitly and keep an
+OpenWrt netdev-name fallback for already named boards.
+
+Assisted-by: Codex:gpt-5.6-sol
+Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
+---
+ drivers/net/ethernet/airoha/airoha_eth.c | 13 +++++++++++++
+ drivers/net/ethernet/airoha/airoha_eth.h |  7 ++-----
+ 2 files changed, 15 insertions(+), 5 deletions(-)
+
+--- a/drivers/net/ethernet/airoha/airoha_eth.c
++++ b/drivers/net/ethernet/airoha/airoha_eth.c
+@@ -78,6 +78,19 @@ static bool airhoa_is_phy_external(struc
+ }
+ #endif
+ 
++static bool airoha_port_is_lan(struct device_node *np, u32 id)
++{
++	const char *name;
++
++	if (of_property_read_bool(np, "airoha,lan-port"))
++		return true;
++
++	if (!of_property_read_string(np, "openwrt,netdev-name", &name))
++		return !strncmp(name, "lan", 3);
++
++	return id == AIROHA_GDM1_IDX;
++}
++
+ static void airoha_set_macaddr(struct airoha_gdm_port *port, const u8 *addr)
+ {
+ 	struct airoha_eth *eth = port->qdma->eth;
+@@ -3100,6 +3113,7 @@ static int airoha_alloc_gdm_port(struct
+ 	spin_lock_init(&port->stats.lock);
+ 	port->eth = eth;
+ 	port->dev = dev;
++	port->lan = airoha_port_is_lan(np, id);
+ 	port->id = id;
+ 	eth->ports[p] = port;
+ 
+--- a/drivers/net/ethernet/airoha/airoha_eth.h
++++ b/drivers/net/ethernet/airoha/airoha_eth.h
+@@ -537,6 +537,7 @@ struct airoha_gdm_port {
+ 	struct airoha_eth *eth;
+ 	struct net_device *dev;
+ 	int id;
++	bool lan;
+ 
+ #if defined(CONFIG_PCS_AIROHA)
+ 	struct phylink *phylink;
+@@ -637,11 +638,7 @@ static inline bool airoha_is_lan_gdm_por
+ 
+ static inline bool airoha_is_lan_gdm_port(struct airoha_gdm_port *port)
+ {
+-	/* GDM1 port on EN7581 SoC is connected to the lan dsa switch.
+-	 * GDM{2,3,4} can be used as wan port connected to an external
+-	 * phy module.
+-	 */
+-	return port->id == 1;
++	return port->lan;
+ }
+ 
+ static inline bool airoha_is_7581(struct airoha_eth *eth)

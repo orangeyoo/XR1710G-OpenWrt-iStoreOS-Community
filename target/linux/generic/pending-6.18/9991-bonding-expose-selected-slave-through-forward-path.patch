@@ -1,0 +1,179 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Tue, 26 May 2026 04:53:59 +0900
+Subject: [PATCH] bonding: expose selected slave through forward path
+
+Bonding can choose a physical egress slave from the transmit flow, while
+forward path discovery only reports the upper device unless the bonding
+driver participates in the path walk.
+
+Add DEV_PATH_LAG and a bonding ndo_fill_forward_path implementation.
+Active-backup reports the active slave, and 802.3ad/XOR compute the same
+supported layer2, layer2+3 or layer3+4 hash from immutable flow keys.
+Modes that do not have a stable single slave, or policies that need
+packet parsing not represented by the flow keys, keep path discovery
+unsupported.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+--- a/drivers/net/bonding/bond_main.c
++++ b/drivers/net/bonding/bond_main.c
+@@ -4195,7 +4195,7 @@ static bool bond_flow_dissect(struct bon
+ 	return true;
+ }
+ 
+-static u32 bond_ip_hash(u32 hash, struct flow_keys *flow, int xmit_policy)
++static u32 bond_ip_hash(u32 hash, const struct flow_keys *flow, int xmit_policy)
+ {
+ 	hash ^= (__force u32)flow_get_u32_dst(flow) ^
+ 		(__force u32)flow_get_u32_src(flow);
+@@ -4279,6 +4279,41 @@ static u32 bond_xmit_hash_xdp(struct bon
+ 				sizeof(struct ethhdr), xdp->data_end - xdp->data);
+ }
+ 
++static bool bond_flow_hash(const struct bonding *bond,
++			   const struct net_device_path_ctx *ctx, u32 *hash)
++{
++	const struct flow_keys *flow = ctx->flow;
++	int xmit_policy = bond->params.xmit_policy;
++	u32 l2_hash;
++
++	if (!flow)
++		return false;
++	if (flow->control.addr_type != FLOW_DISSECTOR_KEY_IPV4_ADDRS &&
++	    flow->control.addr_type != FLOW_DISSECTOR_KEY_IPV6_ADDRS)
++		return false;
++
++	l2_hash = ctx->daddr[5] ^ ctx->dev->dev_addr[5] ^
++		  be16_to_cpu(flow->basic.n_proto);
++
++	switch (xmit_policy) {
++	case BOND_XMIT_POLICY_LAYER2:
++		*hash = l2_hash;
++		return true;
++	case BOND_XMIT_POLICY_LAYER23:
++		*hash = bond_ip_hash(l2_hash, flow, xmit_policy);
++		return true;
++	case BOND_XMIT_POLICY_LAYER34:
++		if (flow->icmp.id)
++			memcpy(hash, &flow->icmp, sizeof(*hash));
++		else
++			memcpy(hash, &flow->ports.ports, sizeof(*hash));
++		*hash = bond_ip_hash(*hash, flow, xmit_policy);
++		return true;
++	}
++
++	return false;
++}
++
+ /*-------------------------- Device entry points ----------------------------*/
+ 
+ void bond_work_init_all(struct bonding *bond)
+@@ -5197,37 +5232,34 @@ int bond_update_slave_arr(struct bonding
+ 	return ret;
+ }
+ 
+-static struct slave *bond_xmit_3ad_xor_slave_get(struct bonding *bond,
+-						 struct sk_buff *skb,
+-						 struct bond_up_slave *slaves)
++static struct slave *bond_xmit_hash_slave_get(struct bond_up_slave *slaves,
++					      u32 hash)
+ {
+-	struct slave *slave;
+ 	unsigned int count;
+-	u32 hash;
+ 
+-	hash = bond_xmit_hash(bond, skb);
+ 	count = slaves ? READ_ONCE(slaves->count) : 0;
+ 	if (unlikely(!count))
+ 		return NULL;
+ 
+-	slave = slaves->arr[hash % count];
+-	return slave;
++	return slaves->arr[hash % count];
++}
++
++static struct slave *bond_xmit_3ad_xor_slave_get(struct bonding *bond,
++						 struct sk_buff *skb,
++						 struct bond_up_slave *slaves)
++{
++	return bond_xmit_hash_slave_get(slaves, bond_xmit_hash(bond, skb));
+ }
+ 
+ static struct slave *bond_xdp_xmit_3ad_xor_slave_get(struct bonding *bond,
+ 						     struct xdp_buff *xdp)
+ {
+ 	struct bond_up_slave *slaves;
+-	unsigned int count;
+ 	u32 hash;
+ 
+ 	hash = bond_xmit_hash_xdp(bond, xdp);
+ 	slaves = rcu_dereference(bond->usable_slaves);
+-	count = slaves ? READ_ONCE(slaves->count) : 0;
+-	if (unlikely(!count))
+-		return NULL;
+-
+-	return slaves->arr[hash % count];
++	return bond_xmit_hash_slave_get(slaves, hash);
+ }
+ 
+ static bool bond_should_broadcast_neighbor(struct sk_buff *skb,
+@@ -5424,6 +5456,40 @@ static struct net_device *bond_xmit_get_
+ 	return NULL;
+ }
+ 
++static int bond_fill_forward_path(struct net_device_path_ctx *ctx,
++				  struct net_device_path *path)
++{
++	struct bonding *bond = netdev_priv(ctx->dev);
++	struct slave *slave = NULL;
++	struct bond_up_slave *slaves;
++	u32 hash;
++
++	switch (BOND_MODE(bond)) {
++	case BOND_MODE_ACTIVEBACKUP:
++		slave = bond_xmit_activebackup_slave_get(bond);
++		break;
++	case BOND_MODE_8023AD:
++	case BOND_MODE_XOR:
++		if (!bond_flow_hash(bond, ctx, &hash))
++			return -EOPNOTSUPP;
++
++		slaves = rcu_dereference(bond->usable_slaves);
++		slave = bond_xmit_hash_slave_get(slaves, hash);
++		break;
++	default:
++		return -EOPNOTSUPP;
++	}
++
++	if (!slave)
++		return -ENODEV;
++
++	path->type = DEV_PATH_LAG;
++	path->dev = ctx->dev;
++	ctx->dev = slave->dev;
++
++	return 0;
++}
++
+ static void bond_sk_to_flow(struct sock *sk, struct flow_keys *flow)
+ {
+ 	switch (sk->sk_family) {
+@@ -5893,6 +5959,7 @@ static const struct net_device_ops bond_
+ 	.ndo_features_check	= passthru_features_check,
+ 	.ndo_get_xmit_slave	= bond_xmit_get_slave,
+ 	.ndo_sk_get_lower_dev	= bond_sk_get_lower_dev,
++	.ndo_fill_forward_path	= bond_fill_forward_path,
+ 	.ndo_bpf		= bond_xdp,
+ 	.ndo_xdp_xmit           = bond_xdp_xmit,
+ 	.ndo_xdp_get_xmit_slave = bond_xdp_get_xmit_slave,
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -869,6 +869,7 @@ enum net_device_path_type {
+ 	DEV_PATH_ETHERNET = 0,
+ 	DEV_PATH_VLAN,
+ 	DEV_PATH_BRIDGE,
++	DEV_PATH_LAG,
+ 	DEV_PATH_PPPOE,
+ 	DEV_PATH_DSA,
+ 	DEV_PATH_MTK_WDMA,

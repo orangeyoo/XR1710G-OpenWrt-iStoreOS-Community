@@ -1,0 +1,176 @@
+From ddf38b0a103b3adb6afd0461dc453bf9d10b3234 Mon Sep 17 00:00:00 2001
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Wed, 20 May 2026 16:47:32 +0900
+Subject: [PATCH] xfrm: add a lower-device offload handle resolver
+
+An upper device can own an XFRM offload state while the selected datapath
+device is one of its lower devices. A single xso.offload_handle is not
+enough for that case because each lower device may return a different
+hardware handle for the same state.
+
+Add an optional xfrmdev_ops resolver and a lower-driver opt-in flag so
+helper-aware lower drivers can resolve the handle for the lower device
+they are transmitting or receiving on. Keep the direct-device path as
+the fast path and clear upper private state when device offload state is
+freed.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+ include/linux/netdevice.h | 27 +++++++++++++++++++++
+ include/net/xfrm.h        | 50 +++++++++++++++++++++++++++++++++++++--
+ net/xfrm/xfrm_state.c     |  1 +
+ 3 files changed, 76 insertions(+), 2 deletions(-)
+
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 0e1e581efc5a..b4e844e90db8 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -1033,6 +1033,16 @@ struct netdev_bpf {
+ #define XDP_WAKEUP_TX (1 << 1)
+ 
+ #ifdef CONFIG_XFRM_OFFLOAD
++/*
++ * xfrmdev_ops.flags values.
++ *
++ * XFRMDEV_OPS_F_LOWER_HANDLE marks a lower driver whose datapath gets XFRM
++ * hardware handles with xfrm_dev_state_lower_handle(). This is required when
++ * the XFRM state is owned by an upper device because xso.offload_handle may
++ * not contain the handle for the current lower device.
++ */
++#define XFRMDEV_OPS_F_LOWER_HANDLE	BIT(0)
++
+ struct xfrmdev_ops {
+ 	int	(*xdo_dev_state_add)(struct net_device *dev,
+ 				     struct xfrm_state *x,
+@@ -1035,9 +1045,26 @@ struct xfrmdev_ops {
+ 	int	(*xdo_dev_policy_add) (struct xfrm_policy *x, struct netlink_ext_ack *extack);
+ 	void	(*xdo_dev_policy_delete) (struct xfrm_policy *x);
+ 	void	(*xdo_dev_policy_free) (struct xfrm_policy *x);
++	/*
++	 * Resolve the offload handle for lower_dev when this upper device
++	 * owns the XFRM state. This belongs in xfrmdev_ops because the
++	 * resolver is an XFRM offload operation of the device that owns the
++	 * state. Keeping the dispatch here avoids a bonding-specific dependency
++	 * in the XFRM helper.
++	 *
++	 * Upper devices like bonding may implement this callback when they
++	 * keep the lower-device handle mapping. Lower devices must leave it
++	 * NULL because they do not own that map. Lower drivers advertise
++	 * that their datapath calls the resolver with
++	 * XFRMDEV_OPS_F_LOWER_HANDLE instead.
++	 */
++	unsigned long (*xdo_dev_state_lower_handle)(struct net_device *dev,
++						    struct xfrm_state *x,
++						    struct net_device *lower_dev);
++	u32	flags;
+ 	/* Optional packet-offload TX path. The driver consumes skb. */
+ 	int	(*xdo_dev_packet_xmit)(struct sk_buff *skb,
+ 				       struct xfrm_state *x);
+ };
+ #endif
+ 
+diff --git a/include/net/xfrm.h b/include/net/xfrm.h
+index 874409127e29..69a33da10a6a 100644
+--- a/include/net/xfrm.h
++++ b/include/net/xfrm.h
+@@ -162,6 +162,10 @@ struct xfrm_dev_offload {
+ 	 */
+ 	struct net_device	*real_dev;
+ 	unsigned long		offload_handle;
++	/* Private state owned by dev in this structure when that device is an
++	 * upper device. Lower drivers must not use this directly.
++	 */
++	void __rcu		*upper_priv;
+ 	u8			dir : 2;
+ 	u8			type : 2;
+ 	u8			flags : 2;
+@@ -1701,6 +1705,40 @@ struct xfrm_state *xfrm_state_lookup_byspi(struct net *net, __be32 spi,
+ int xfrm_state_check_expire(struct xfrm_state *x);
+ void xfrm_state_update_stats(struct net *net);
+ #ifdef CONFIG_XFRM_OFFLOAD
++/*
++ * Return the hardware offload handle lower_dev should use for x. States
++ * installed directly on lower_dev use a nonzero xso.offload_handle. During
++ * upper-device callbacks, xso.real_dev may identify the lower device whose
++ * callback is running; use xso.offload_handle directly in that case. Other
++ * states owned by an upper device are resolved through the owner's
++ * xdo_dev_state_lower_handle(). Bonding uses that callback for replicated XFRM
++ * states because it installs the state on each slave and keeps the per-slave
++ * hardware handles internally.
++ */
++static inline unsigned long
++xfrm_dev_state_lower_handle(struct xfrm_state *x, struct net_device *lower_dev)
++{
++	struct xfrm_dev_offload *xdo = &x->xso;
++	struct net_device *real_dev = READ_ONCE(xdo->real_dev);
++	struct net_device *dev = READ_ONCE(xdo->dev);
++	unsigned long offload_handle = READ_ONCE(xdo->offload_handle);
++
++	if (!dev || !lower_dev)
++		return 0;
++
++	if (dev == lower_dev && offload_handle)
++		return offload_handle;
++
++	if (real_dev == lower_dev && offload_handle)
++		return offload_handle;
++
++	if (dev->xfrmdev_ops && dev->xfrmdev_ops->xdo_dev_state_lower_handle)
++		return dev->xfrmdev_ops->xdo_dev_state_lower_handle(dev, x,
++								    lower_dev);
++
++	return 0;
++}
++
+ static inline void xfrm_dev_state_update_stats(struct xfrm_state *x)
+ {
+ 	struct xfrm_dev_offload *xdo = &x->xso;
+@@ -1712,6 +1750,12 @@ static inline void xfrm_dev_state_update_stats(struct xfrm_state *x)
+ 
+ }
+ #else
++static inline unsigned long
++xfrm_dev_state_lower_handle(struct xfrm_state *x, struct net_device *lower_dev)
++{
++	return 0;
++}
++
+ static inline void xfrm_dev_state_update_stats(struct xfrm_state *x) {}
+ #endif
+ void xfrm_state_insert(struct xfrm_state *x);
+@@ -2090,15 +2134,18 @@ static inline void xfrm_dev_state_advance_esn(struct xfrm_state *x)
+ static inline bool xfrm_dst_offload_ok(struct dst_entry *dst)
+ {
+ 	struct xfrm_state *x = dst->xfrm;
++	bool has_offload_state;
+ 	struct xfrm_dst *xdst;
+ 
+ 	if (!x || !x->type_offload)
+ 		return false;
+ 
+ 	xdst = (struct xfrm_dst *) dst;
+-	if (!x->xso.offload_handle && !xdst->child->xfrm)
++	has_offload_state = x->xso.offload_handle ||
++			    rcu_access_pointer(x->xso.upper_priv);
++	if (!has_offload_state && !xdst->child->xfrm)
+ 		return true;
+-	if (x->xso.offload_handle && (x->xso.dev == xfrm_dst_path(dst)->dev) &&
++	if (has_offload_state && (x->xso.dev == xfrm_dst_path(dst)->dev) &&
+ 	    !xdst->child->xfrm)
+ 		return true;
+ 
+diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c
+index 589c3b6e4679..90785e9ba159 100644
+--- a/net/xfrm/xfrm_state.c
++++ b/net/xfrm/xfrm_state.c
+@@ -791,6 +791,7 @@ void xfrm_dev_state_free(struct xfrm_state *x)
+ 		if (dev->xfrmdev_ops->xdo_dev_state_free)
+ 			dev->xfrmdev_ops->xdo_dev_state_free(dev, x);
+ 		WRITE_ONCE(xso->dev, NULL);
++		RCU_INIT_POINTER(xso->upper_priv, NULL);
+ 		xso->type = XFRM_DEV_OFFLOAD_UNSPECIFIED;
+ 		netdev_put(dev, &xso->dev_tracker);
+ 	}
+-- 
+2.53.0

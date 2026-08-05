@@ -1,0 +1,245 @@
+#!/bin/sh
+
+set -u
+
+section() {
+	printf '\n===== %s =====\n' "$*"
+}
+
+run() {
+	printf '\n+'
+	printf ' %s' "$@"
+	printf '\n'
+	"$@" 2>&1 || true
+}
+
+have() {
+	command -v "$1" >/dev/null 2>&1
+}
+
+read_counter() {
+	cat "/sys/class/net/$1/statistics/$2" 2>/dev/null || printf '0\n'
+}
+
+show_hwmon() {
+	section "HWMON TEMPERATURES"
+	for hwmon in /sys/class/hwmon/hwmon*; do
+		[ -d "$hwmon" ] || continue
+		printf '%s name=' "$hwmon"
+		cat "$hwmon/name" 2>/dev/null || printf 'unknown\n'
+		for value in "$hwmon"/temp*_input "$hwmon"/temp*_max; do
+			[ -f "$value" ] || continue
+			printf '  %s=' "${value##*/}"
+			cat "$value"
+		done
+	done
+}
+
+show_mdio() {
+	section "MDIO DEVICES"
+	for device in /sys/bus/mdio_bus/devices/*; do
+		[ -e "$device" ] || continue
+		name=${device##*/}
+		phy_id=$(cat "$device/phy_id" 2>/dev/null || printf 'unknown')
+		driver=$(readlink -f "$device/driver" 2>/dev/null || true)
+		driver=${driver##*/}
+		of_node=$(readlink -f "$device/of_node" 2>/dev/null || true)
+		printf '%s phy_id=%s driver=%s\n' "$name" "$phy_id" "$driver"
+		[ -n "$of_node" ] && printf '  of_node=%s\n' "$of_node"
+
+		rtl826x=0
+		case "$phy_id" in
+		0x001cc8*|0x001cca*) rtl826x=1 ;;
+		esac
+		case "$driver" in
+		RTL82*Gbps\ PHY) rtl826x=1 ;;
+		esac
+
+		if [ "$rtl826x" -eq 1 ]; then
+			if have mdio && [ "${name#*:}" != "$name" ]; then
+				bus=${name%:*}
+				addr=0x${name##*:}
+				section "RTL826X STANDARD REGISTERS $name"
+				printf 'PMA control and status (status is read twice):\n'
+				run mdio "$bus" mmd "${addr}:1" raw 0
+				run mdio "$bus" mmd "${addr}:1" raw 1
+				run mdio "$bus" mmd "${addr}:1" raw 1
+				printf 'PCS status (read twice):\n'
+				run mdio "$bus" mmd "${addr}:3" raw 1
+				run mdio "$bus" mmd "${addr}:3" raw 1
+				printf 'AN control, status, advertisement and partner ability:\n'
+				run mdio "$bus" mmd "${addr}:7" raw 0
+				run mdio "$bus" mmd "${addr}:7" raw 1
+				run mdio "$bus" mmd "${addr}:7" raw 1
+				run mdio "$bus" mmd "${addr}:7" raw 16
+				run mdio "$bus" mmd "${addr}:7" raw 19
+				run mdio "$bus" mmd "${addr}:7" raw 32
+				run mdio "$bus" mmd "${addr}:7" raw 33
+				printf 'Realtek package model and version:\n'
+				run mdio "$bus" mmd "${addr}:1" raw 2
+				run mdio "$bus" mmd "${addr}:1" raw 3
+				run mdio "$bus" mmd "${addr}:30" raw 0x103
+				run mdio "$bus" mmd "${addr}:30" raw 0x104
+			fi
+		fi
+	done
+
+	if have mdio; then
+		section "MDIO BUSES"
+		run mdio
+	fi
+}
+
+show_interface() {
+	iface=$1
+	[ -d "/sys/class/net/$iface" ] || return
+
+	section "INTERFACE $iface"
+	run ip -details -statistics link show dev "$iface"
+	run ethtool "$iface"
+	run ethtool --show-eee "$iface"
+	run ethtool --show-fec "$iface"
+	run ethtool --show-pause "$iface"
+	run ethtool --show-priv-flags "$iface"
+	run ethtool -S "$iface"
+	printf '\nphydev=%s\n' "$(readlink -f "/sys/class/net/$iface/phydev" 2>/dev/null || true)"
+}
+
+snapshot() {
+	section "SYSTEM"
+	run date
+	run uptime
+	run uname -a
+	have ubus && run ubus call system board
+
+	section "RTL826X FIRMWARE"
+	for firmware in /lib/firmware/rtl826*.bin; do
+		[ -f "$firmware" ] || continue
+		run ls -l "$firmware"
+		have sha256sum && run sha256sum "$firmware"
+	done
+
+	if [ "$#" -eq 0 ]; then
+		set -- wan lan1 lan2 lan3
+	fi
+	for iface in "$@"; do
+		show_interface "$iface"
+	done
+
+	show_mdio
+	show_hwmon
+
+	section "NETWORK COUNTERS"
+	run cat /proc/net/dev
+
+	section "NETWORK INTERRUPTS"
+	grep -Ei 'airoha|eth|gdm|mdio|phy|pcs|xsi' /proc/interrupts 2>/dev/null || true
+
+	section "KERNEL LOG"
+	dmesg | grep -Ei 'rtl|826[14]|airoha.*(eth|pcs)|gdm[24]|mdio|phy|phylink|usxgmii|xfi|link (up|down)|firmware' | tail -n 400
+}
+
+watch_link() {
+	iface=${1:-wan}
+	interval=${2:-1}
+	[ -d "/sys/class/net/$iface" ] || {
+		printf 'Interface %s does not exist\n' "$iface" >&2
+		exit 1
+	}
+
+	prev_rx=$(read_counter "$iface" rx_packets)
+	prev_tx=$(read_counter "$iface" tx_packets)
+	prev_rx_err=$(read_counter "$iface" rx_errors)
+	prev_tx_err=$(read_counter "$iface" tx_errors)
+	prev_rx_drop=$(read_counter "$iface" rx_dropped)
+	prev_tx_drop=$(read_counter "$iface" tx_dropped)
+
+	printf 'Watching %s every %ss; stop with Ctrl-C\n' "$iface" "$interval"
+	while :; do
+		rx=$(read_counter "$iface" rx_packets)
+		tx=$(read_counter "$iface" tx_packets)
+		rx_err=$(read_counter "$iface" rx_errors)
+		tx_err=$(read_counter "$iface" tx_errors)
+		rx_drop=$(read_counter "$iface" rx_dropped)
+		tx_drop=$(read_counter "$iface" tx_dropped)
+		printf '%s carrier=%s state=%s speed=%s duplex=%s rx=+%s tx=+%s rxerr=+%s txerr=+%s rxdrop=+%s txdrop=+%s flaps=%s\n' \
+			"$(date '+%F %T')" \
+			"$(cat "/sys/class/net/$iface/carrier" 2>/dev/null || printf '?')" \
+			"$(cat "/sys/class/net/$iface/operstate" 2>/dev/null || printf '?')" \
+			"$(cat "/sys/class/net/$iface/speed" 2>/dev/null || printf '?')" \
+			"$(cat "/sys/class/net/$iface/duplex" 2>/dev/null || printf '?')" \
+			"$((rx - prev_rx))" "$((tx - prev_tx))" \
+			"$((rx_err - prev_rx_err))" "$((tx_err - prev_tx_err))" \
+			"$((rx_drop - prev_rx_drop))" "$((tx_drop - prev_tx_drop))" \
+			"$(cat "/sys/class/net/$iface/carrier_changes" 2>/dev/null || printf '?')"
+		prev_rx=$rx
+		prev_tx=$tx
+		prev_rx_err=$rx_err
+		prev_tx_err=$tx_err
+		prev_rx_drop=$rx_drop
+		prev_tx_drop=$tx_drop
+		sleep "$interval"
+	done
+}
+
+set_dyndbg() {
+	state=${1:-}
+	control=/sys/kernel/debug/dynamic_debug/control
+	if [ ! -e "$control" ]; then
+		grep -qs ' /sys/kernel/debug ' /proc/mounts || \
+			mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null || true
+	fi
+	[ -e "$control" ] || {
+		printf 'dynamic debug is unavailable\n' >&2
+		exit 1
+	}
+
+	case "$state" in
+	on)
+		flag=+p
+		;;
+	off)
+		flag=-p
+		;;
+	*)
+		printf 'Usage: %s dyndbg on|off\n' "$0" >&2
+		exit 1
+		;;
+	esac
+
+	printf 'file drivers/net/phy/realtek/* %s\n' "$flag" > "$control"
+	printf 'file drivers/net/phy/phylink.c %s\n' "$flag" > "$control"
+	printf 'file drivers/net/pcs/airoha/* %s\n' "$flag" > "$control"
+	printf 'RTL826x and Airoha PCS dynamic debug: %s\n' "$state"
+}
+
+usage() {
+	cat <<EOF
+Usage:
+  $0 snapshot [INTERFACE ...]
+  $0 watch INTERFACE [INTERVAL_SECONDS]
+  $0 dyndbg on|off
+EOF
+}
+
+command=${1:-snapshot}
+[ "$#" -eq 0 ] || shift
+
+case "$command" in
+snapshot)
+	snapshot "$@"
+	;;
+watch)
+	watch_link "$@"
+	;;
+dyndbg)
+	set_dyndbg "$@"
+	;;
+-h|--help|help)
+	usage
+	;;
+*)
+	usage >&2
+	exit 1
+	;;
+esac

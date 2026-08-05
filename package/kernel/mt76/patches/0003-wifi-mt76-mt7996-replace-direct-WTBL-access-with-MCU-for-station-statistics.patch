@@ -1,0 +1,571 @@
+From patchwork Tue Apr  7 10:45:55 2026
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Joshua Klinesmith <joshuaklinesmith@gmail.com>
+X-Patchwork-Id: 14514179
+X-Patchwork-Delegate: nbd@nbd.name
+Received: from mail-yw1-f182.google.com (mail-yw1-f182.google.com
+ [209.85.128.182])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3DED839D6DA
+	for <linux-wireless@vger.kernel.org>; Tue,  7 Apr 2026 10:46:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+ arc=none smtp.client-ip=209.85.128.182
+ARC-Seal: i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1775558762; cv=none;
+ b=bax3pIGGlllC5hHoQWgv1ndeCO6KVUE7ufBMFeoBeBo0qvlOWii2Y244NpL5X8vAjwkVx3F6Te2di9vK3mkRc3otrEyLAhF30PbciJYkKhK4R/SiKEGVs/zPReaUmHMtGGjC9XvOHi4h0i7/pc/0UR1fitc/n52xcSzjAaQngUE=
+ARC-Message-Signature: i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1775558762; c=relaxed/simple;
+	bh=KzCWgqU+IhleKRUt2GYZfDqGAIlgsdtbDD9bYFUtl2Y=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version;
+ b=sr7dadTE23qzY0u2Lv1W6J1EHl3DB6QaqCkrRMZHVl3WOg2EUtdoMw9lZRfZtPjfx3Kf/JRk8sEs1hti4c0zcohmJ/pp8vPLX43Vn3gW5qq0gQbRVTHHUko4w2pErMnEUn3PFwVq+oK6+/qeXIviWRfgBcJVUQvMGUgAwvGAwjI=
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org;
+ dmarc=pass (p=none dis=none) header.from=gmail.com;
+ spf=pass smtp.mailfrom=gmail.com;
+ dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com
+ header.b=cz2WTd2Y; arc=none smtp.client-ip=209.85.128.182
+Authentication-Results: smtp.subspace.kernel.org;
+ dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+ spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com
+ header.b="cz2WTd2Y"
+Received: by mail-yw1-f182.google.com with SMTP id
+ 00721157ae682-79ea87af213so85006647b3.0
+        for <linux-wireless@vger.kernel.org>;
+ Tue, 07 Apr 2026 03:46:00 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1775558759; x=1776163559;
+ darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=TFu7/65ERhIDpydkOjgi0fOTCwEEMyQDActZ2NxpxtA=;
+        b=cz2WTd2Y9ElFnmjR+NfbTNIY703aa3ho8qHl1z1Fg6RjMUFfXYRO6erbMOH3KFOrm7
+         bKd56LnwdO86nXmmqGBZTJOh0hlYjSo1za20X2AJ4gw3zZk7ag9ky1V8BCw8sQM1a/NM
+         hdgYcJqvfe0IgUrzI2c/MDc9wKW6475XCZFvlddahOWmDoCXU7NV0xl2F3f+Z6aMhbyX
+         ttyr/H/TM0L/MUJSbJ5lR39yQh7NIqya/6gXoNsAkSgj7wGS4tKDTMraN4UwJYgnkcTA
+         PhgewlaxDemmuOqgYD3VkPcD8SRROu9kVNfDWn6kRd5bIxulcoHuP5uQCawuq+zyMhOk
+         u2Yw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1775558759; x=1776163559;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=TFu7/65ERhIDpydkOjgi0fOTCwEEMyQDActZ2NxpxtA=;
+        b=qzHblcFygl5g5n552FOH2gkoW7XqgeG4Ukso7KoF4uXXK5J55wBs/vDFycQCny5CZD
+         HmyEob9bm8RdYmOBXe/g7yzzENZ8j3NX1fG1MgArZ8aEdtg2YYxq87JzZ8V4xNecU+dm
+         KKsKtwgX9UrU+R3Am5N/BDtBVNx3E37cS4838Rz3+GVBCx3+VVdrdkUF/kMT/YJfpXPl
+         b/hRznSY0xGX5X/lTx79BNcGrU/RG7MPd8/talUc64YiliEPOguiA9HDgr2sCKV3eu+0
+         Aq3X8BirucjMhPuTHRLxlILqpQym8/Z19j9grctBs+x5YzMueGvkYT4bbh0Gx5M+R7aV
+         Jzlw==
+X-Gm-Message-State: AOJu0YzPTaWuaU+JskBjhVb6S6OJBeSYrATxPNr0yIpz0jRt3hRmJP2r
+	+krH1OfMkxQcMU1DV/Pv+T57A7+JDYUYcHzbryWM0SFFdKyVRSv4UmQvlKDTnPeK
+X-Gm-Gg: AeBDietFVj2BZ7qTDRtymZU7BDMLsUJJr/zQykupDDacMUqfFUrYz2cCpMBZBtFTbu4
+	peX2CmNOiocj1HTtX1u1NurOprs0nUAiOvmW5+BWI3C/PifV83rGtDqMPz0eEqvT85LNc4U23F6
+	1gJleOS/pjZFDjjg/XAhqC9dDqz5tcyUSPHE1NK2Z9Qe5OJXCe4X5wz1JH6ECku5JJCiQzAm3mS
+	jQX5XBSFOeDCr1aBPP7CMiy/XT7zzEcmytNiMmAy2NgAVNSkdsotcdKHhcsifXz/Vdnp+zSEOLs
+	ZHVMgaNpqF67b29jDgX3VCOs+VOs2ip331im4UldsnOVXAdziezlHtxZ2NFYqd3Z5AeQ+IRIAyd
+	S2Na+Q3WGIkJ3Ndnj4dQ5wbDXZCdp4YNiWVOCkYgCd2jgLBZ2ElheDE1113qujzCK+UiNUrEaK4
+	TdXx+LULzcN2bIvLM1ddSHbl+tfbJymHYUWYxIKQ2zMvYL0ts97pk549ZNN7YSqqYt05UNhwY=
+X-Received: by 2002:a05:690c:3684:b0:79e:c253:f723 with SMTP id
+ 00721157ae682-7a3bee2ddecmr146542007b3.34.1775558758737;
+        Tue, 07 Apr 2026 03:45:58 -0700 (PDT)
+Received: from DEV.lan (c-75-74-152-49.hsd1.fl.comcast.net. [75.74.152.49])
+        by smtp.gmail.com with ESMTPSA id
+ 00721157ae682-7a3711eebfesm68209177b3.43.2026.04.07.03.45.56
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 07 Apr 2026 03:45:58 -0700 (PDT)
+From: Joshua Klinesmith <joshuaklinesmith@gmail.com>
+To: linux-wireless@vger.kernel.org
+Cc: nbd@nbd.name,
+	lorenzo@kernel.org,
+	ryder.lee@mediatek.com,
+	shayne.chen@mediatek.com,
+	sean.wang@mediatek.com,
+	Joshua Klinesmith <joshuaklinesmith@gmail.com>
+Subject: [PATCH wireless v3] wifi: mt76: mt7996: replace direct WTBL access
+ with MCU for station statistics
+Date: Tue,  7 Apr 2026 06:45:55 -0400
+Message-ID: <20260407104555.4342-1-joshuaklinesmith@gmail.com>
+X-Mailer: git-send-email 2.43.0
+Precedence: bulk
+X-Mailing-List: linux-wireless@vger.kernel.org
+List-Id: <linux-wireless.vger.kernel.org>
+List-Subscribe: <mailto:linux-wireless+subscribe@vger.kernel.org>
+List-Unsubscribe: <mailto:linux-wireless+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+
+Direct MMIO access to WTBL entries for airtime and RSSI statistics in
+mt7996_mac_sta_poll() races with firmware, causing warnings at
+mt7996_mac_wtbl_lmac_addr, MCU message timeouts, and firmware
+communication breakdown. The function was called from
+mt7996_mac_tx_free() on every TX-Free-Done event, compounding the
+issue with heavy CPU overhead.
+
+Replace the direct WTBL polling with firmware MCU queries:
+- Airtime: UNI_ALL_STA_TXRX_AIR_TIME via the existing all_sta_info
+  MCU command, with a new handler in mt7996_mcu_rx_all_sta_info_event()
+- RSSI: UNI_PER_STA_RSSI via new mt7996_mcu_get_per_sta_info() using
+  MCU_WM_UNI_CMD(PER_STA_INFO)
+
+Both queries run from mt7996_mac_work() every 5th tick under dev mutex,
+matching the pattern already used for TX rate, admission stats, and
+MSDU count reporting.
+
+Remove mt7996_mac_sta_poll() and its airtime_ac tracking array entirely,
+along with the now-orphaned mt76_wcid_add_poll() producers in the RX
+status, TX free, and TX status paths that fed the removed consumer.
+
+The per-sta-info response handler validates the firmware-returned entry
+count against what was requested and against the skb payload length
+before walking the response array, and uses bounds-checked
+mt76_wcid_ptr() for WLAN ID lookup. RSSI polling is batched in groups
+of PER_STA_INFO_MAX_NUM to cover the full WTBL capacity.
+
+Vendor driver analysis (mt_wifi.ko from Xiaomi AX3000T MT7981 firmware)
+confirms the RCPI-to-RSSI conversion formula (rcpi - 220) / 2 and that
+the vendor never performs direct WTBL reads for statistics.
+
+Fixes: 98686cd21624 ("wifi: mt76: mt7996: add driver for MediaTek Wi-Fi 7 (802.11be) devices")
+Link: https://github.com/openwrt/openwrt/issues/21177
+Signed-off-by: Joshua Klinesmith <joshuaklinesmith@gmail.com>
+---
+ .../mt76_connac_mcu.h  |   7 +
+ .../mt7996/mac.c   | 144 +-----------------
+ .../mt7996/mcu.c   | 133 ++++++++++++++++
+ .../mt7996/mcu.h   |  25 +++
+ .../mt7996/mt7996.h    |   2 +-
+ 5 files changed, 168 insertions(+), 143 deletions(-)
+
+diff --git a/mt76_connac_mcu.h b/mt76_connac_mcu.h
+index 8d59cf43f0e2..14d3ee7defa1 100644
+--- a/mt76_connac_mcu.h
++++ b/mt76_connac_mcu.h
+@@ -1392,6 +1392,13 @@ enum {
+ 	UNI_OFFLOAD_OFFLOAD_BMC_RPY_DETECT,
+ };
+ 
++#define PER_STA_INFO_MAX_NUM	90
++
++enum UNI_PER_STA_INFO_TAG {
++	UNI_PER_STA_RSSI,
++	UNI_PER_STA_MAX_NUM
++};
++
+ enum UNI_ALL_STA_INFO_TAG {
+ 	UNI_ALL_STA_TXRX_RATE,
+ 	UNI_ALL_STA_TX_STAT,
+diff --git a/mt7996/mac.c b/mt7996/mac.c
+index d4f3ee943b47..ad8377375265 100644
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -111,119 +111,6 @@ u32 mt7996_mac_wtbl_lmac_addr(struct mt7996_dev *dev, u16 wcid, u8 dw)
+ 	return MT_WTBL_LMAC_OFFS(wcid, dw);
+ }
+ 
+-static void mt7996_mac_sta_poll(struct mt7996_dev *dev)
+-{
+-	static const u8 ac_to_tid[] = {
+-		[IEEE80211_AC_BE] = 0,
+-		[IEEE80211_AC_BK] = 1,
+-		[IEEE80211_AC_VI] = 4,
+-		[IEEE80211_AC_VO] = 6
+-	};
+-	struct mt7996_sta_link *msta_link;
+-	struct mt76_vif_link *mlink;
+-	struct ieee80211_sta *sta;
+-	struct mt7996_sta *msta;
+-	u32 tx_time[IEEE80211_NUM_ACS], rx_time[IEEE80211_NUM_ACS];
+-	LIST_HEAD(sta_poll_list);
+-	struct mt76_wcid *wcid;
+-	int i;
+-
+-	spin_lock_bh(&dev->mt76.sta_poll_lock);
+-	list_splice_init(&dev->mt76.sta_poll_list, &sta_poll_list);
+-	spin_unlock_bh(&dev->mt76.sta_poll_lock);
+-
+-	rcu_read_lock();
+-
+-	while (true) {
+-		bool clear = false;
+-		u32 addr, val;
+-		u16 idx;
+-		s8 rssi[4];
+-
+-		spin_lock_bh(&dev->mt76.sta_poll_lock);
+-		if (list_empty(&sta_poll_list)) {
+-			spin_unlock_bh(&dev->mt76.sta_poll_lock);
+-			break;
+-		}
+-		msta_link = list_first_entry(&sta_poll_list,
+-					     struct mt7996_sta_link,
+-					     wcid.poll_list);
+-		msta = msta_link->sta;
+-		wcid = &msta_link->wcid;
+-		list_del_init(&wcid->poll_list);
+-		spin_unlock_bh(&dev->mt76.sta_poll_lock);
+-
+-		idx = wcid->idx;
+-
+-		/* refresh peer's airtime reporting */
+-		addr = mt7996_mac_wtbl_lmac_addr(dev, idx, 20);
+-
+-		for (i = 0; i < IEEE80211_NUM_ACS; i++) {
+-			u32 tx_last = msta_link->airtime_ac[i];
+-			u32 rx_last = msta_link->airtime_ac[i + 4];
+-
+-			msta_link->airtime_ac[i] = mt76_rr(dev, addr);
+-			msta_link->airtime_ac[i + 4] = mt76_rr(dev, addr + 4);
+-
+-			tx_time[i] = msta_link->airtime_ac[i] - tx_last;
+-			rx_time[i] = msta_link->airtime_ac[i + 4] - rx_last;
+-
+-			if ((tx_last | rx_last) & BIT(30))
+-				clear = true;
+-
+-			addr += 8;
+-		}
+-
+-		if (clear) {
+-			mt7996_mac_wtbl_update(dev, idx,
+-					       MT_WTBL_UPDATE_ADM_COUNT_CLEAR);
+-			memset(msta_link->airtime_ac, 0,
+-			       sizeof(msta_link->airtime_ac));
+-		}
+-
+-		if (!wcid->sta)
+-			continue;
+-
+-		sta = container_of((void *)msta, struct ieee80211_sta,
+-				   drv_priv);
+-		for (i = 0; i < IEEE80211_NUM_ACS; i++) {
+-			u8 q = mt76_connac_lmac_mapping(i);
+-			u32 tx_cur = tx_time[q];
+-			u32 rx_cur = rx_time[q];
+-			u8 tid = ac_to_tid[i];
+-
+-			if (!tx_cur && !rx_cur)
+-				continue;
+-
+-			ieee80211_sta_register_airtime(sta, tid, tx_cur, rx_cur);
+-		}
+-
+-		/* get signal strength of resp frames (CTS/BA/ACK) */
+-		addr = mt7996_mac_wtbl_lmac_addr(dev, idx, 34);
+-		val = mt76_rr(dev, addr);
+-
+-		rssi[0] = to_rssi(GENMASK(7, 0), val);
+-		rssi[1] = to_rssi(GENMASK(15, 8), val);
+-		rssi[2] = to_rssi(GENMASK(23, 16), val);
+-		rssi[3] = to_rssi(GENMASK(31, 14), val);
+-
+-		mlink = rcu_dereference(msta->vif->mt76.link[wcid->link_id]);
+-		if (mlink) {
+-			struct mt76_phy *mphy = mt76_vif_link_phy(mlink);
+-
+-			if (mphy)
+-				msta_link->ack_signal =
+-					mt76_rx_signal(mphy->antenna_mask,
+-						       rssi);
+-		}
+-
+-		ewma_avg_signal_add(&msta_link->avg_ack_signal,
+-				    -msta_link->ack_signal);
+-	}
+-
+-	rcu_read_unlock();
+-}
+-
+ /* The HW does not translate the mac header to 802.3 for mesh point */
+ static int mt7996_reverse_frag0_hdr_trans(struct sk_buff *skb, u16 hdr_gap)
+ {
+@@ -508,7 +395,6 @@ mt7996_mac_fill_rx(struct mt7996_dev *dev, enum mt76_rxq_id q,
+ 		msta_link = container_of(status->wcid, struct mt7996_sta_link,
+ 					 wcid);
+ 		msta = msta_link->sta;
+-		mt76_wcid_add_poll(&dev->mt76, &msta_link->wcid);
+ 	}
+ 
+ 	status->freq = mphy->chandef.chan->center_freq;
+@@ -1355,9 +1241,6 @@ mt7996_mac_tx_free(struct mt7996_dev *dev, void *data, int len)
+ 		info = le32_to_cpu(*cur_info);
+ 		if (info & MT_TXFREE_INFO_PAIR) {
+ 			struct ieee80211_sta *sta;
+-			unsigned long valid_links;
+-			struct mt7996_sta *msta;
+-			unsigned int id;
+ 			u16 idx;
+ 
+ 			idx = FIELD_GET(MT_TXFREE_INFO_WLAN_ID, info);
+@@ -1371,22 +1254,6 @@ mt7996_mac_tx_free(struct mt7996_dev *dev, void *data, int len)
+ 			link_sta = rcu_dereference(sta->link[wcid->link_id]);
+ 			if (!link_sta)
+ 				goto next;
+-
+-			msta = (struct mt7996_sta *)sta->drv_priv;
+-			valid_links = sta->valid_links ?: BIT(0);
+-
+-			/* For MLD STA, add all link's wcid to sta_poll_list */
+-			for_each_set_bit(id, &valid_links,
+-					 IEEE80211_MLD_MAX_NUM_LINKS) {
+-				struct mt7996_sta_link *msta_link;
+-
+-				msta_link = mt7996_sta_link(msta, id);
+-				if (!msta_link)
+-					continue;
+-
+-				mt76_wcid_add_poll(&dev->mt76,
+-						   &msta_link->wcid);
+-			}
+ next:
+ 			/* ver 7 has a new DW with pair = 1, skip it */
+ 			if (ver == 7 && ((void *)(cur_info + 1) < end) &&
+@@ -1424,8 +1291,6 @@ mt7996_mac_tx_free(struct mt7996_dev *dev, void *data, int len)
+ 		}
+ 	}
+ 
+-	mt7996_mac_sta_poll(dev);
+-
+ 	if (wake)
+ 		mt76_set_tx_blocked(&dev->mt76, false);
+ 
+@@ -1590,7 +1455,6 @@ mt7996_mac_add_txs_skb(struct mt7996_dev *dev, struct mt76_wcid *wcid,
+ 
+ static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
+ {
+-	struct mt7996_sta_link *msta_link;
+ 	struct mt76_wcid *wcid;
+ 	__le32 *txs_data = data;
+ 	u16 wcidx;
+@@ -1610,12 +1474,6 @@ static void mt7996_mac_add_txs(struct mt7996_dev *dev, void *data)
+ 
+ 	mt7996_mac_add_txs_skb(dev, wcid, pid, txs_data);
+ 
+-	if (!wcid->sta)
+-		goto out;
+-
+-	msta_link = container_of(wcid, struct mt7996_sta_link, wcid);
+-	mt76_wcid_add_poll(&dev->mt76, &msta_link->wcid);
+-
+ out:
+ 	rcu_read_unlock();
+ }
+@@ -2947,6 +2805,8 @@ void mt7996_mac_work(struct work_struct *work)
+ 		mt7996_mac_update_stats(phy);
+ 
+ 		mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_RATE);
++		mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_AIR_TIME);
++		mt7996_mcu_get_per_sta_info(phy, UNI_PER_STA_RSSI);
+ 		if (mtk_wed_device_active(&phy->dev->mt76.mmio.wed)) {
+ 			mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_ADM_STAT);
+ 			mt7996_mcu_get_all_sta_info(phy, UNI_ALL_STA_TXRX_MSDU_COUNT);
+diff --git a/mt7996/mcu.c b/mt7996/mcu.c
+index c0c042de477b..ffe30c914678 100644
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -616,6 +616,33 @@ mt7996_mcu_rx_all_sta_info_event(struct mt7996_dev *dev, struct sk_buff *skb)
+ 			wcid->stats.rx_packets +=
+ 				le32_to_cpu(res->msdu_cnt[i].rx_msdu_cnt);
+ 			break;
++		case UNI_ALL_STA_TXRX_AIR_TIME: {
++			static const u8 ac_to_tid[] = {
++				[IEEE80211_AC_BE] = 0,
++				[IEEE80211_AC_BK] = 1,
++				[IEEE80211_AC_VI] = 4,
++				[IEEE80211_AC_VO] = 6
++			};
++			struct ieee80211_sta *sta;
++
++			wlan_idx = le16_to_cpu(res->airtime[i].wlan_idx);
++			wcid = mt76_wcid_ptr(dev, wlan_idx);
++			sta = wcid_to_sta(wcid);
++			if (!sta)
++				break;
++
++			for (ac = 0; ac < IEEE80211_NUM_ACS; ac++) {
++				u8 lmac_ac = mt76_connac_lmac_mapping(ac);
++				u32 tx_cur = le32_to_cpu(res->airtime[i].tx[lmac_ac]);
++				u32 rx_cur = le32_to_cpu(res->airtime[i].rx[lmac_ac]);
++
++				if (!tx_cur && !rx_cur)
++					continue;
++
++				ieee80211_sta_register_airtime(sta, ac_to_tid[ac], tx_cur, rx_cur);
++			}
++			break;
++		}
+ 		default:
+ 			break;
+ 		}
+@@ -4755,6 +4782,112 @@ int mt7996_mcu_get_all_sta_info(struct mt7996_phy *phy, u16 tag)
+ 				 &req, sizeof(req), false);
+ }
+ 
++int mt7996_mcu_get_per_sta_info(struct mt7996_phy *phy, u16 tag)
++{
++	struct mt7996_dev *dev = phy->dev;
++	struct mt7996_mcu_per_sta_info_event *res;
++	struct mt76_wcid *wcid;
++	struct sk_buff *skb;
++	int i, ret, sta_num, resp_sta_num;
++	int wcid_idx = 0;
++	struct {
++		u8 _rsv1;
++		u8 unsolicit;
++		u8 _rsv2[2];
++
++		__le16 tag;
++		__le16 len;
++		__le16 sta_num;
++		u8 _rsv3[2];
++		__le16 wlan_idx[PER_STA_INFO_MAX_NUM];
++	} __packed req = {
++		.tag = cpu_to_le16(tag),
++		.len = cpu_to_le16(sizeof(req) - 4),
++	};
++
++	while (wcid_idx < mt7996_wtbl_size(dev)) {
++		sta_num = 0;
++
++		rcu_read_lock();
++		for (i = wcid_idx;
++		     i < mt7996_wtbl_size(dev) && sta_num < PER_STA_INFO_MAX_NUM;
++		     i++) {
++			wcid = rcu_dereference(dev->mt76.wcid[i]);
++			if (!wcid || !wcid->sta)
++				continue;
++			req.wlan_idx[sta_num++] = cpu_to_le16(i);
++		}
++		rcu_read_unlock();
++		wcid_idx = i;
++
++		if (!sta_num)
++			continue;
++
++		req.sta_num = cpu_to_le16(sta_num);
++
++		ret = mt76_mcu_send_and_get_msg(&dev->mt76,
++						MCU_WM_UNI_CMD(PER_STA_INFO),
++						&req, sizeof(req), true, &skb);
++		if (ret)
++			return ret;
++
++		res = (struct mt7996_mcu_per_sta_info_event *)skb->data;
++
++		resp_sta_num = le16_to_cpu(res->sta_num);
++		if (resp_sta_num > sta_num ||
++		    skb->len < struct_size(res, rssi, resp_sta_num)) {
++			dev_kfree_skb(skb);
++			return -EINVAL;
++		}
++
++		rcu_read_lock();
++		for (i = 0; i < resp_sta_num; i++) {
++			struct mt7996_sta_link *msta_link;
++			struct mt76_vif_data *mvif;
++			struct mt76_vif_link *mlink;
++			struct mt76_phy *mphy;
++			u16 wlan_idx;
++			s8 rssi[4];
++
++			switch (tag) {
++			case UNI_PER_STA_RSSI:
++				wlan_idx = le16_to_cpu(res->rssi[i].wlan_idx);
++				wcid = mt76_wcid_ptr(dev, wlan_idx);
++				if (!wcid || !wcid->sta)
++					break;
++
++				msta_link = container_of(wcid,
++							 struct mt7996_sta_link,
++							 wcid);
++
++				rssi[0] = (res->rssi[i].rcpi[0] - 220) / 2;
++				rssi[1] = (res->rssi[i].rcpi[1] - 220) / 2;
++				rssi[2] = (res->rssi[i].rcpi[2] - 220) / 2;
++				rssi[3] = (res->rssi[i].rcpi[3] - 220) / 2;
++
++				mvif = &msta_link->sta->vif->mt76;
++				mlink = rcu_dereference(mvif->link[wcid->link_id]);
++				if (mlink) {
++					mphy = mt76_vif_link_phy(mlink);
++					if (mphy)
++						msta_link->ack_signal =
++							mt76_rx_signal(mphy->antenna_mask,
++								       rssi);
++				}
++
++				ewma_avg_signal_add(&msta_link->avg_ack_signal,
++						    -msta_link->ack_signal);
++				break;
++			}
++		}
++		rcu_read_unlock();
++
++		dev_kfree_skb(skb);
++	}
++
++	return 0;
++}
++
+ int mt7996_mcu_wed_rro_reset_sessions(struct mt7996_dev *dev, u16 id)
+ {
+ 	struct {
+diff --git a/mt7996/mcu.h b/mt7996/mcu.h
+index e0b83ac9f5e2..b5bad9a76c49 100644
+--- a/mt7996/mcu.h
++++ b/mt7996/mcu.h
+@@ -220,6 +220,31 @@ struct mt7996_mcu_all_sta_info_event {
+ 			__le32 tx_msdu_cnt;
+ 			__le32 rx_msdu_cnt;
+ 		} __packed, msdu_cnt);
++
++		DECLARE_FLEX_ARRAY(struct {
++			__le16 wlan_idx;
++			u8 rsv[2];
++			__le32 tx[IEEE80211_NUM_ACS];
++			__le32 rx[IEEE80211_NUM_ACS];
++		} __packed, airtime);
++	} __packed;
++} __packed;
++
++struct mt7996_mcu_per_sta_info_event {
++	u8 rsv[4];
++	__le16 tag;
++	__le16 len;
++	u8 more;
++	u8 rsv2;
++	__le16 sta_num;
++	u8 rsv3[4];
++
++	union {
++		DECLARE_FLEX_ARRAY(struct {
++			__le16 wlan_idx;
++			u8 rsv[2];
++			u8 rcpi[4];
++		} __packed, rssi);
+ 	} __packed;
+ } __packed;
+ 
+diff --git a/mt7996/mt7996.h b/mt7996/mt7996.h
+index 7a884311800e..b523e971f78c 100644
+--- a/mt7996/mt7996.h
++++ b/mt7996/mt7996.h
+@@ -222,7 +222,6 @@ struct mt7996_sta_link {
+ 	struct mt7996_sta *sta;
+ 
+ 	struct list_head rc_list;
+-	u32 airtime_ac[8];
+ 
+ 	int ack_signal;
+ 	struct ewma_avg_signal avg_ack_signal;
+@@ -741,6 +740,7 @@ int mt7996_mcu_trigger_assert(struct mt7996_dev *dev);
+ void mt7996_mcu_rx_event(struct mt7996_dev *dev, struct sk_buff *skb);
+ void mt7996_mcu_exit(struct mt7996_dev *dev);
+ int mt7996_mcu_get_all_sta_info(struct mt7996_phy *phy, u16 tag);
++int mt7996_mcu_get_per_sta_info(struct mt7996_phy *phy, u16 tag);
+ int mt7996_mcu_wed_rro_reset_sessions(struct mt7996_dev *dev, u16 id);
+ int mt7996_mcu_set_sniffer_mode(struct mt7996_phy *phy, bool enabled);
+ 

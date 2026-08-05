@@ -1,0 +1,141 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Mon, 1 Jun 2026 13:30:00 +0900
+Subject: [PATCH] netfilter: flowtable: support XFRM forward paths
+
+Allow flowtable offload setup to build hardware rules whose transmit
+path is an XFRM packet-offload state rather than a plain neighbor
+transmit. This provides the rule allocation and redirect support used by
+SOE-backed ESP flows.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+diff --git a/net/netfilter/nf_flow_table_offload.c b/net/netfilter/nf_flow_table_offload.c
+index d4d49ae..a9f0c9d 100644
+--- a/net/netfilter/nf_flow_table_offload.c
++++ b/net/netfilter/nf_flow_table_offload.c
+@@ -12,6 +12,9 @@
+ #include <net/netfilter/nf_conntrack_acct.h>
+ #include <net/netfilter/nf_conntrack_core.h>
+ #include <net/netfilter/nf_conntrack_tuple.h>
++#include <net/ip6_route.h>
++#include <net/route.h>
++#include <net/xfrm.h>
+ 
+ #define NF_FLOW_RULE_ACTION_MAX	24
+ 
+@@ -254,6 +257,7 @@ static int flow_offload_eth_src(struct net *net,
+ 	case FLOW_OFFLOAD_XMIT_DIRECT:
+ 		addr = this_tuple->out.h_source;
+ 		break;
++	case FLOW_OFFLOAD_XMIT_XFRM:
+ 	case FLOW_OFFLOAD_XMIT_NEIGH:
+ 		other_tuple = &flow->tuplehash[!dir].tuple;
+ 		dev = dev_get_by_index(net, other_tuple->iifidx);
+@@ -307,6 +311,42 @@ static int flow_offload_eth_dst(struct net *net,
+ 	case FLOW_OFFLOAD_XMIT_DIRECT:
+ 		ether_addr_copy(ha, this_tuple->out.h_dest);
+ 		break;
++	case FLOW_OFFLOAD_XMIT_XFRM: {
++		struct xfrm_state *x = dst_xfrm(this_tuple->dst_cache);
++		__be32 nexthop;
++
++		if (!x)
++			return -EOPNOTSUPP;
++
++		dst_cache = xfrm_dst_path(this_tuple->dst_cache);
++		switch (x->props.family) {
++		case AF_INET:
++			nexthop = rt_nexthop(dst_rtable(dst_cache),
++					     x->id.daddr.a4);
++			daddr = &nexthop;
++			break;
++		case AF_INET6:
++			daddr = rt6_nexthop(dst_rt6_info(dst_cache),
++					    &x->id.daddr.in6);
++			break;
++		default:
++			return -EOPNOTSUPP;
++		}
++
++		n = dst_neigh_lookup(dst_cache, daddr);
++		if (!n)
++			return -ENOENT;
++
++		read_lock_bh(&n->lock);
++		nud_state = n->nud_state;
++		ether_addr_copy(ha, n->ha);
++		read_unlock_bh(&n->lock);
++		neigh_release(n);
++
++		if (!(nud_state & NUD_VALID))
++			return -ENOENT;
++		break;
++	}
+ 	case FLOW_OFFLOAD_XMIT_NEIGH:
+ 		other_tuple = &flow->tuplehash[!dir].tuple;
+ 		daddr = &other_tuple->src_v4;
+@@ -601,6 +641,7 @@ static int flow_offload_redirect(struct net *net,
+ 		this_tuple = &flow->tuplehash[dir].tuple;
+ 		ifindex = this_tuple->out.hw_ifidx;
+ 		break;
++	case FLOW_OFFLOAD_XMIT_XFRM:
+ 	case FLOW_OFFLOAD_XMIT_NEIGH:
+ 		other_tuple = &flow->tuplehash[!dir].tuple;
+ 		ifindex = other_tuple->iifidx;
+@@ -849,6 +890,9 @@ static void __nf_flow_offload_destroy(struct nf_flow_rule *flow_rule)
+ 	struct flow_action_entry *entry;
+ 	int i;
+ 
++	if (!flow_rule)
++		return;
++
+ 	for (i = 0; i < flow_rule->rule->action.num_entries; i++) {
+ 		entry = &flow_rule->rule->action.entries[i];
+ 		if (entry->id != FLOW_ACTION_REDIRECT)
+@@ -872,18 +916,19 @@ static int nf_flow_offload_alloc(const struct flow_offload_work *offload,
+ 				 struct nf_flow_rule *flow_rule[])
+ {
+ 	struct net *net = read_pnet(&offload->flowtable->net);
++	int ok_count = 0;
++	int dir;
+ 
+-	flow_rule[0] = nf_flow_offload_rule_alloc(net, offload,
+-						  FLOW_OFFLOAD_DIR_ORIGINAL);
+-	if (!flow_rule[0])
+-		return -ENOMEM;
++	for (dir = 0; dir < FLOW_OFFLOAD_DIR_MAX; dir++) {
++		flow_rule[dir] = nf_flow_offload_rule_alloc(net, offload, dir);
++		if (flow_rule[dir]) {
++			ok_count++;
++			continue;
++		}
++	}
+ 
+-	flow_rule[1] = nf_flow_offload_rule_alloc(net, offload,
+-						  FLOW_OFFLOAD_DIR_REPLY);
+-	if (!flow_rule[1]) {
+-		__nf_flow_offload_destroy(flow_rule[0]);
++	if (!ok_count)
+ 		return -ENOMEM;
+-	}
+ 
+ 	return 0;
+ }
+@@ -962,10 +1007,14 @@ static int flow_offload_rule_add(struct flow_offload_work *offload,
+ {
+ 	int ok_count = 0;
+ 
+-	ok_count += flow_offload_tuple_add(offload, flow_rule[0],
++	if (flow_rule[FLOW_OFFLOAD_DIR_ORIGINAL])
++		ok_count += flow_offload_tuple_add(offload,
++						   flow_rule[FLOW_OFFLOAD_DIR_ORIGINAL],
+ 					   FLOW_OFFLOAD_DIR_ORIGINAL);
+ 	if (test_bit(NF_FLOW_HW_BIDIRECTIONAL, &offload->flow->flags))
+-		ok_count += flow_offload_tuple_add(offload, flow_rule[1],
++		if (flow_rule[FLOW_OFFLOAD_DIR_REPLY])
++			ok_count += flow_offload_tuple_add(offload,
++							   flow_rule[FLOW_OFFLOAD_DIR_REPLY],
+ 						   FLOW_OFFLOAD_DIR_REPLY);
+ 	if (ok_count == 0)
+ 		return -ENOENT;

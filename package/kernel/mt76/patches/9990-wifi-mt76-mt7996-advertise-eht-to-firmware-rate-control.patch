@@ -1,0 +1,37 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Subject: [PATCH] wifi: mt76: mt7996: advertise EHT to firmware rate control
+
+mt7996_mcu_sta_rate_ctrl_tlv() already marks HE-capable stations with
+MODE_HE and fills the rest of the rate-control TLV from link capabilities.
+Extend the same TLV construction for EHT stations by setting MODE_EHT when
+the link station advertises EHT capability.
+
+With EHT explicitly advertised in the firmware rate-control input, mt7996
+firmware does not have to infer a 320 MHz Wi-Fi 7 peer from other station
+records alone. On W1700K2 diagnostics this keeps the RA supp_mode in the
+expected OFDM | HE | EHT shape instead of OFDM | HE for QCNCM865 EHT320
+clients.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+ mt7996/mcu.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/mt7996/mcu.c b/mt7996/mcu.c
+index f3426115bba1..25c3d23538a8 100644
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -2549,7 +2549,10 @@ mt7996_mcu_sta_rate_ctrl_tlv(struct sk_buff *skb, struct mt7996_dev *dev,
+ 		if (link_sta->he_6ghz_capa.capa)
+ 			ra->af = le16_get_bits(link_sta->he_6ghz_capa.capa,
+ 					       IEEE80211_HE_6GHZ_CAP_MAX_AMPDU_LEN_EXP);
+ 	}
++	if (link_sta->eht_cap.has_eht)
++		ra->supp_mode |= MODE_EHT;
++
+ 	ra->sta_cap = cpu_to_le32(cap);
+ 
+ 	memset(ra->rx_rcpi, INIT_RCPI, sizeof(ra->rx_rcpi));
+-- 
+2.43.0

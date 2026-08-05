@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# Enable routed/NAT hardware flow offload by default on AN7581 boards.
+# This is required for WAN <-> LAN PPE/NPU fastpath via fw4/nft_flow_offload.
+
+. /lib/functions.sh
+
+config_load firewall
+
+config_get flow_offloading defaults flow_offloading
+config_get flow_offloading_hw defaults flow_offloading_hw
+
+[ -n "$flow_offloading" ] || uci set firewall.@defaults[0].flow_offloading='1'
+[ -n "$flow_offloading_hw" ] || uci set firewall.@defaults[0].flow_offloading_hw='1'
+
+uci commit firewall
+
+exit 0

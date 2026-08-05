@@ -1,0 +1,28 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Mon, 1 Jun 2026 13:30:00 +0900
+Subject: [PATCH] net: airoha: extend offload metadata for SOE
+
+Extend the Airoha offload metadata contract with the XFRM/SOE fields
+required by the PPE driver. The PPE patch consumes these fields when
+committing inline ESP flow entries.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+diff --git a/include/linux/soc/airoha/airoha_offload.h b/include/linux/soc/airoha/airoha_offload.h
+index d01ef4a..2227a48 100644
+--- a/include/linux/soc/airoha/airoha_offload.h
++++ b/include/linux/soc/airoha/airoha_offload.h
+@@ -11,7 +11,12 @@
+ #include <linux/workqueue.h>
+ 
+ enum {
++	PPE_CPU_REASON_UN_HIT = 0x0d,
++	PPE_CPU_REASON_HIT_UNBIND = 0x0e,
+ 	PPE_CPU_REASON_HIT_UNBIND_RATE_REACHED = 0x0f,
++	PPE_CPU_REASON_HIT_BIND_FORCE_CPU = 0x16,
++	PPE_CPU_REASON_HIT_BIND_EXCEED_MTU = 0x1c,
++	PPE_CPU_REASON_NOT_THROUGH_PPE = 0x1e,
+ };
+ 
+ struct airoha_ppe_dev {

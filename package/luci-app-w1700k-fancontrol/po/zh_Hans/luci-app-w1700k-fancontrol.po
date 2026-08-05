@@ -1,0 +1,209 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-w1700k-fancontrol\n"
+"PO-Revision-Date: 2026-08-05 18:30+0800\n"
+"Last-Translator: Yanghan Ye <yyh94306@gmail.com>\n"
+"Language-Team: Chinese (Simplified Han script)\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:155
+msgid "2.4 GHz Radio"
+msgstr "2.4 GHz 射频"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:156
+msgid "5 GHz Radio"
+msgstr "5 GHz 射频"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:157
+msgid "6 GHz Radio"
+msgstr "6 GHz 射频"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:127
+msgid "Active Preset"
+msgstr "当前预设"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:16
+msgid "Automatic"
+msgstr "自动"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:17
+msgid "Automatic (Closed Loop)"
+msgstr "自动（闭环）"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:158
+msgid "Automatic (Follow Curve)"
+msgstr "自动（跟随曲线）"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:17
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:27
+msgid "Balanced"
+msgstr "均衡"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:173
+msgid "Balanced - Good mix of noise and cooling"
+msgstr "均衡 - 兼顾噪声和散热"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:146
+msgid "Board (Fan Curve)"
+msgstr "主板（风扇曲线）"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:145
+msgid "CPU"
+msgstr "CPU"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:151
+msgid "Configure fan control mode and speed curves."
+msgstr "配置风扇控制模式和转速曲线。"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:154
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:121
+msgid "Control Mode"
+msgstr "控制模式"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:204
+msgid "Curve Points"
+msgstr "曲线节点"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:180
+msgid "Curve Preview"
+msgstr "曲线预览"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:16
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:26
+msgid "Custom"
+msgstr "自定义"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:175
+msgid "Custom - Define your own curve"
+msgstr "自定义 - 设置自己的曲线"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:188
+msgid "Custom Curve Editor"
+msgstr "自定义曲线编辑器"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:189
+msgid "Define temperature thresholds and corresponding fan speeds."
+msgstr "设置温度阈值及对应的风扇转速。"
+
+#: ../../package/luci-app-w1700k-fancontrol/root/usr/share/luci/menu.d/luci-app-w1700k-fancontrol.json:3
+msgid "Fan Control"
+msgstr "风扇控制"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:150
+msgid "Fan Control - Settings"
+msgstr "风扇控制 - 设置"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:113
+msgid "Fan Control - Status"
+msgstr "风扇控制 - 状态"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:171
+msgid "Fan Curve Preset"
+msgstr "风扇曲线预设"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:62
+msgid "Fan Speed"
+msgstr "风扇转速"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:117
+msgid "Fan Status"
+msgstr "风扇状态"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:14
+msgid "Full Speed"
+msgstr "全速"
+
+#: ../../package/luci-app-w1700k-fancontrol/root/usr/share/rpcd/acl.d/luci-app-w1700k-fancontrol.json:3
+msgid "Grant access to W1700K fan control"
+msgstr "授予访问 W1700K 风扇控制的权限"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:147
+msgid "LAN2 10G PHY"
+msgstr "LAN2 10G PHY"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:15
+msgid "Manual"
+msgstr "手动"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:159
+msgid "Manual (Fixed Speed)"
+msgstr "手动（固定转速）"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:163
+msgid "Manual Fan Speed (PWM)"
+msgstr "手动风扇转速（PWM）"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:130
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:192
+msgid "Manual Override"
+msgstr "手动覆盖"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:157
+msgid "Mode"
+msgstr "模式"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:15
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:25
+msgid "Performance"
+msgstr "性能"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:174
+msgid "Performance - Higher speeds, lower temps"
+msgstr "性能 - 更高转速和更低温度"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:211
+msgid "Point %d PWM (0-255)"
+msgstr "节点 %d PWM（0-255）"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:207
+msgid "Point %d Temperature (°C)"
+msgstr "节点 %d 温度（°C）"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:14
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:24
+msgid "Quiet"
+msgstr "静音"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:172
+msgid "Quiet - Lower speeds, higher temps"
+msgstr "静音 - 更低转速和更高温度"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:164
+msgid "Set a fixed PWM value (0-255). 0 = Off, 255 = Full Speed"
+msgstr "设置固定 PWM 值（0-255）。0 表示关闭，255 表示全速。"
+
+#: ../../package/luci-app-w1700k-fancontrol/root/usr/share/luci/menu.d/luci-app-w1700k-fancontrol.json:22
+msgid "Settings"
+msgstr "设置"
+
+#: ../../package/luci-app-w1700k-fancontrol/root/usr/share/luci/menu.d/luci-app-w1700k-fancontrol.json:14
+msgid "Status"
+msgstr "状态"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:143
+msgid "System"
+msgstr "系统"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/settings.js:67
+msgid "Temperature (°C)"
+msgstr "温度（°C）"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:139
+msgid "Temperatures"
+msgstr "温度"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:18
+msgid "Unknown"
+msgstr "未知"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:148
+msgid "WAN 10G PHY"
+msgstr "WAN 10G PHY"
+
+#: ../../package/luci-app-w1700k-fancontrol/htdocs/luci-static/resources/view/fan/status.js:153
+msgid "WiFi"
+msgstr "WiFi"

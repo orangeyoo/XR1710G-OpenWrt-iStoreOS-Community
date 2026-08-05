@@ -1,0 +1,44 @@
+#!/bin/sh
+
+. /lib/functions.sh
+. /lib/functions/system.sh
+
+[ "$(board_name)" = "econet,xr1710g-ubi" ] || exit 0
+
+config_load wireless
+
+changed=0
+
+set_xr1710g_radio_defaults() {
+	local cfg="$1"
+	local band
+
+	config_get band "$cfg" band
+
+	case "$band" in
+	2g)
+		uci set wireless."$cfg".country='US'
+		;;
+	5g)
+		uci set wireless."$cfg".country='US'
+		uci set wireless."$cfg".channel='36'
+		uci set wireless."$cfg".htmode='EHT160'
+		;;
+	6g)
+		uci set wireless."$cfg".country='US'
+		uci set wireless."$cfg".channel='37'
+		uci set wireless."$cfg".htmode='EHT320'
+		;;
+	*)
+		return 0
+		;;
+	esac
+
+	changed=1
+}
+
+config_foreach set_xr1710g_radio_defaults wifi-device
+
+[ "$changed" -eq 1 ] && uci commit wireless
+
+exit 0

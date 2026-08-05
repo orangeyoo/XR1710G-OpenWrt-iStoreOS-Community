@@ -1,0 +1,22 @@
+From: Jihong Min <hurryman2212@gmail.com>
+Date: Mon, 1 Jun 2026 13:30:00 +0900
+Subject: [PATCH] net: airoha: build SOE provider
+
+Link the SOE provider into the existing airoha Ethernet module when
+NET_AIROHA_SOE is enabled. Keeping this as the last airoha-local step
+avoids wiring the build before the provider source exists in the patch
+series.
+
+Assisted-by: Codex:gpt-5.5
+Signed-off-by: Jihong Min <hurryman2212@gmail.com>
+---
+diff --git a/drivers/net/ethernet/airoha/Makefile b/drivers/net/ethernet/airoha/Makefile
+index 9446805..b68b8f6 100644
+--- a/drivers/net/ethernet/airoha/Makefile
++++ b/drivers/net/ethernet/airoha/Makefile
+@@ -6,4 +6,5 @@
+ obj-$(CONFIG_NET_AIROHA) += airoha-eth.o
+ airoha-eth-y := airoha_eth.o airoha_ppe.o
+ airoha-eth-$(CONFIG_DEBUG_FS) += airoha_ppe_debugfs.o
++airoha-eth-$(CONFIG_NET_AIROHA_SOE) += airoha_soe.o
+ obj-$(CONFIG_NET_AIROHA_NPU) += airoha_npu.o

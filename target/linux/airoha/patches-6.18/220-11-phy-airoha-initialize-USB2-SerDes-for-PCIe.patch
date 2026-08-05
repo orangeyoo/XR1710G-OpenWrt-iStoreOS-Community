@@ -1,0 +1,125 @@
+From: Yanghan Ye <yyh94306@gmail.com>
+Date: Mon, 13 Jul 2026 10:10:00 +0800
+Subject: [PATCH] phy: airoha: initialize USB2 SerDes for PCIe
+
+The EN7581 PCIe2 controller reuses the USB2 USB3 SerDes. The USB PHY
+driver selects the PCIe mux but skips PHY initialization and power
+transitions in PCIe mode, leaving the link stuck in receiver lock.
+
+Mirror the PCIe2 PHY sequence from the vendor SDK. The four analog
+settings are shared with USB3 initialization, while PCIe uses distinct
+GPIO control values for power-on and power-off.
+
+Assisted-by: Codex:gpt-5.6-sol
+Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
+---
+ drivers/phy/airoha/phy-airoha-usb.c | 57 ++++++++++++++++++++++++++++-------
+ 1 file changed, 45 insertions(+), 12 deletions(-)
+
+--- a/drivers/phy/airoha/phy-airoha-usb.c
++++ b/drivers/phy/airoha/phy-airoha-usb.c
+@@ -245,11 +245,8 @@ static void airoha_usb_phy_u2_init(struct
+ 	usleep_range(1000, 1500);
+ }
+ 
+-/*
+- * USB 3.0 mode can only work if USB serdes is correctly set.
+- * This is validated in xLate function.
+- */
+-static void airoha_usb_phy_u3_init(struct airoha_usb_phy_priv *priv)
++/* Common USB3 SerDes settings required by both USB3 and PCIe modes. */
++static void airoha_usb_phy_u3_serdes_init(struct airoha_usb_phy_priv *priv)
+ {
+ 	regmap_update_bits(priv->regmap, AIROHA_USB_PHY_U3_PHYA_REG8,
+ 			   AIROHA_USB_PHY_SSUSB_CDR_RST_DLY,
+@@ -266,6 +263,15 @@ static void airoha_usb_phy_u3_init(struct
+ 	regmap_set_bits(priv->regmap, AIROHA_USB_PHY_U3_PHYA_REG1,
+ 			FIELD_PREP(AIROHA_USB_PHY_SSUSB_XTAL_TOP_RESERVE, 0x600));
+-
++}
++
++/*
++ * USB 3.0 mode can only work if USB serdes is correctly set.
++ * This is validated in xLate function.
++ */
++static void airoha_usb_phy_u3_init(struct airoha_usb_phy_priv *priv)
++{
++	airoha_usb_phy_u3_serdes_init(priv);
++
+ 	regmap_update_bits(priv->regmap, AIROHA_USB_PHY_U3_PHYA_DA_REG19,
+ 			   AIROHA_USB_PHY_SSUSB_PLL_SSC_DELTA1_U3,
+ 			   FIELD_PREP(AIROHA_USB_PHY_SSUSB_PLL_SSC_DELTA1_U3, 0x43));
+@@ -281,8 +287,10 @@ static int airoha_usb_phy_init(struct phy
+ 		airoha_usb_phy_u2_init(priv);
+ 		break;
+ 	case PHY_TYPE_USB3:
+-		if (phy_get_mode(phy) == PHY_MODE_PCIE)
+-			return 0;
++		if (phy_get_mode(phy) == PHY_MODE_PCIE) {
++			airoha_usb_phy_u3_serdes_init(priv);
++			break;
++		}
+ 
+ 		airoha_usb_phy_u3_init(priv);
+ 		break;
+@@ -316,6 +324,16 @@ static int airoha_usb_phy_u3_power_on(str
+ 	return 0;
+ }
+ 
++static int airoha_usb_phy_pcie_power_on(struct airoha_usb_phy_priv *priv)
++{
++	regmap_write(priv->regmap, AIROHA_USB_PHY_GPIO_CTLD,
++		     AIROHA_USB_PHY_MCU_BUS_CK_GATE_EN);
++
++	usleep_range(1000, 1500);
++
++	return 0;
++}
++
+ static int airoha_usb_phy_power_on(struct phy *phy)
+ {
+ 	struct airoha_usb_phy_instance *instance = phy_get_drvdata(phy);
+@@ -326,8 +344,10 @@ static int airoha_usb_phy_power_on(struct
+ 		airoha_usb_phy_u2_power_on(priv);
+ 		break;
+ 	case PHY_TYPE_USB3:
+-		if (phy_get_mode(phy) == PHY_MODE_PCIE)
+-			return 0;
++		if (phy_get_mode(phy) == PHY_MODE_PCIE) {
++			airoha_usb_phy_pcie_power_on(priv);
++			break;
++		}
+ 
+ 		airoha_usb_phy_u3_power_on(priv);
+ 		break;
+@@ -359,6 +379,17 @@ static int airoha_usb_phy_u3_power_off(st
+ 	return 0;
+ }
+ 
++static int airoha_usb_phy_pcie_power_off(struct airoha_usb_phy_priv *priv)
++{
++	regmap_write(priv->regmap, AIROHA_USB_PHY_GPIO_CTLD,
++		     AIROHA_USB_PHY_SSUSB_IP_SW_RST |
++		     AIROHA_USB_PHY_MCU_BUS_CK_GATE_EN);
++
++	usleep_range(1000, 1500);
++
++	return 0;
++}
++
+ static int airoha_usb_phy_power_off(struct phy *phy)
+ {
+ 	struct airoha_usb_phy_instance *instance = phy_get_drvdata(phy);
+@@ -369,8 +400,10 @@ static int airoha_usb_phy_power_off(struc
+ 		airoha_usb_phy_u2_power_off(priv);
+ 		break;
+ 	case PHY_TYPE_USB3:
+-		if (phy_get_mode(phy) == PHY_MODE_PCIE)
+-			return 0;
++		if (phy_get_mode(phy) == PHY_MODE_PCIE) {
++			airoha_usb_phy_pcie_power_off(priv);
++			break;
++		}
+ 
+ 		airoha_usb_phy_u3_power_off(priv);
+ 		break;
