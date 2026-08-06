@@ -1,0 +1,50 @@
+From: XR1710G Community <noreply@example.invalid>
+Date: Sun, 2 Aug 2026 11:00:00 +0800
+Subject: [PATCH] wifi: mt76: mt7996: report only terminal tx failures
+
+cfg80211 defines tx_failed as transmissions that exhausted their retries
+without receiving an ACK.  MT7996 TX-Free-Done provides the retry count in
+MT_TXFREE_INFO_COUNT and the terminal outcome in MT_TXFREE_INFO_STAT.
+
+The driver currently adds the retry count to both tx_retries and tx_failed.
+As a result, a successfully delivered MPDU that needed retries is also
+reported as failed, and `iw station dump` commonly shows tx_failed almost
+equal to tx_retries even when packet delivery is healthy.
+
+Count retries only in tx_retries and use the terminal status bit for
+tx_failed.  This matches the cfg80211 ABI and the mt7925 TX-Free-Done path.
+
+Signed-off-by: XR1710G Community <noreply@example.invalid>
+---
+ mt7996/mac.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/mt7996/mac.c b/mt7996/mac.c
+index 367b51a..c7e208f 100644
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -1362,7 +1362,7 @@ next:
+ 				cur_info++;
+ 			continue;
+ 		} else if (info & MT_TXFREE_INFO_HEADER) {
+-			u32 tx_retries = 0, tx_failed = 0, count;
++			u32 tx_retries = 0, count;
+ 
+ 			if (!wcid)
+ 				continue;
+@@ -1370,11 +1370,10 @@ next:
+ 
+ 			count = FIELD_GET(MT_TXFREE_INFO_COUNT, info);
+ 			tx_retries = count ? count - 1 : 0;
+-			tx_failed = tx_retries +
+-				!!FIELD_GET(MT_TXFREE_INFO_STAT, info);
+ 
+ 			wcid->stats.tx_retries += tx_retries;
+-			wcid->stats.tx_failed += tx_failed;
++			wcid->stats.tx_failed +=
++				!!FIELD_GET(MT_TXFREE_INFO_STAT, info);
+ 			continue;
+ 		}
+ 
+-- 
+2.51.0

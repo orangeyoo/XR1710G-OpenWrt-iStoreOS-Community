@@ -1,0 +1,19 @@
+# Pin every feed so the image can be reproduced.  These five revisions are the
+# exact heads resolved from feeds.conf.default for the validated local build.
+src-git packages https://git.openwrt.org/feed/packages.git^bd08229d5e93b7753a384a49fa0258847988fc53
+src-git luci https://git.openwrt.org/project/luci.git^fb6b224af5c4456c5d863e47f6647645384b1677
+src-git routing https://git.openwrt.org/feed/routing.git^c7872431105f69894201dc522b7560e47d1e8ba9
+src-git telephony https://git.openwrt.org/feed/telephony.git^5d68d53c160a325ea9d03fce393e051573bcc736
+src-git video https://github.com/openwrt/video.git^a951381b6c58b9b1eb087f09c9a20cff4ffe8063
+src-git istore https://github.com/linkease/istore.git^7c5c69796fd9798610a56a80e1895aa9033e1e6c
+src-git linkease_nas https://github.com/linkease/nas-packages.git^e6953655559ceafd1684d8f9ac3c7d8d602771bc
+src-git linkease_nas_luci https://github.com/linkease/nas-packages-luci.git^a2f8a871477c79744051f4fdc7f703a23b91c227
+# This is the aggregate feed used by current iStoreOS. At this pinned commit
+# its submodules select luci-theme-argon 774d1faa and argon-config 5efedae3.
+src-git istoreos_third https://github.com/jjm2473/openwrt-third.git^02355a3eb0c58b4d2747e1ec0fc78ac2cd0f8519
+# OpenClash is pinned to the version verified on the first XR1710G.
+src-git openclash https://github.com/vernesong/OpenClash.git^a9e5d98cd664917724dbfb0a31440e512ab45a1b
+src-git kenzok8 https://github.com/kenzok8/openwrt-clashoo.git^3f88fbc93d3c6c83a148f2bd9aaed71409f78325
+src-git sirpdboy https://github.com/sirpdboy/luci-app-poweroffdevice.git^8f53359c3234c7c398b846b5425f9b0b017c03ec
+src-git wukongdaily https://github.com/wukongdaily/luci-app-run.git^a114f683c19bcac4b8c378048e94408bed183b2f
+src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git^f06b6b448928501e7511bdfb3497b1186d919316

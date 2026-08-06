@@ -1,0 +1,6 @@
+Upstream repository: https://github.com/YYH2913/http-uboot
+Upstream baseline: e8cc89cc1270dc365fe7305be2b5ff953640fea2
+Our RC1 patch commit: 68154481d64f965b2e5d694f4982dc310f67ecbc
+Reference validated flash-slot SHA-256: 44e8911c55d3e8f2a8be1befb8a8d892047780ab46850057949a661ec2e45953
+RC1 flash-slot SHA-256: c309ea96f8edfaabf8d72c5bd0edcf1bfa91f3e879d35e310c31ea479768fd31
+Raw U-Boot SHA-256 after RC1 patch: e417021919930b8faec118f7ef33cfcb7864005ff872ae21531668e5d8a67308

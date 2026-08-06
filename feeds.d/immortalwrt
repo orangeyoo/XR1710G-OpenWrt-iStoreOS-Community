@@ -1,0 +1,7 @@
+src-include defaults feeds.conf.default
+src-git kcptun https://github.com/kuoruan/openwrt-kcptun.git
+#src-git airohanpu https://github.com/rchen14b/luci-app-airoha-npu.git;main
+src-git kenzok8 https://github.com/kenzok8/openwrt-clashoo.git;main
+src-git sirpdboy https://github.com/sirpdboy/luci-app-poweroffdevice.git;master
+src-git wukongdaily https://github.com/wukongdaily/luci-app-run.git;master
+src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main

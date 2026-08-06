@@ -1,0 +1,251 @@
+From 68154481d64f965b2e5d694f4982dc310f67ecbc Mon Sep 17 00:00:00 2001
+From: Codex <codex@localhost>
+Date: Mon, 3 Aug 2026 17:35:16 +0800
+Subject: [PATCH] httpd: pace XR1710G recovery uploads
+
+XR1710G firmware images can exceed 70 MiB. The recovery HTTP server used
+manual receive-window accounting, but returned every byte of credit as soon
+as it copied each pbuf. Chrome and Edge could therefore burst data faster
+than the bootloader network path could sustain and report Network Error.
+
+Use a literal 16 KiB receive window and return 8 KiB of credit every 16 ms.
+This applies TCP backpressure at about 512 KiB/s, matching the paced upload
+rate verified on hardware. Also notify the application on TCP errors so
+deferred timers and partial POST state are discarded before a retry.
+
+Keep all existing image validation, target bounds, and deferred erase/write
+behavior unchanged.
+
+Signed-off-by: Codex <codex@localhost>
+---
+ configs/xr1710g_defconfig           |  4 +-
+ lib/lwip/lwip/src/apps/http/httpd.c | 17 ++++++
+ lib/lwip/u-boot/lwipopts.h          |  9 +++-
+ net/lwip/httpd_recovery.c           | 82 +++++++++++++++++++++++++++--
+ 4 files changed, 104 insertions(+), 8 deletions(-)
+
+diff --git a/configs/xr1710g_defconfig b/configs/xr1710g_defconfig
+index 813f174cf4..217da27185 100644
+--- a/configs/xr1710g_defconfig
++++ b/configs/xr1710g_defconfig
+@@ -1,4 +1,6 @@
+ CONFIG_ARM=y
++CONFIG_LOCALVERSION="-http-upload-fix-rc1"
++# CONFIG_LOCALVERSION_AUTO is not set
+ CONFIG_ARCH_AIROHA=y
+ CONFIG_TARGET_AN7581=y
+ CONFIG_TEXT_BASE=0x81E00000
+@@ -55,7 +57,7 @@ CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG=y
+ CONFIG_NET_RANDOM_ETHADDR=y
+ CONFIG_NET_LWIP=y
+ CONFIG_PROT_TCP_LWIP=y
+-CONFIG_LWIP_TCP_WND=65535
++CONFIG_LWIP_TCP_WND=16384
+ CONFIG_HTTPD_RECOVERY=y
+ CONFIG_SYS_RX_ETH_BUFFER=64
+ CONFIG_REGMAP=y
+diff --git a/lib/lwip/lwip/src/apps/http/httpd.c b/lib/lwip/lwip/src/apps/http/httpd.c
+index 6ccc516c30..73c58d7878 100644
+--- a/lib/lwip/lwip/src/apps/http/httpd.c
++++ b/lib/lwip/lwip/src/apps/http/httpd.c
+@@ -2479,6 +2479,23 @@ http_err(void *arg, err_t err)
+   LWIP_DEBUGF(HTTPD_DEBUG, ("http_err: %s\n", lwip_strerr(err)));
+ 
+   if (hs != NULL) {
++#if LWIP_HTTPD_SUPPORT_POST
++    bool post_incomplete = hs->post_content_len_left != 0;
++
++#if LWIP_HTTPD_POST_MANUAL_WND
++    if (hs->no_auto_wnd != 0 && hs->unrecved_bytes != 0) {
++      post_incomplete = true;
++    }
++#endif /* LWIP_HTTPD_POST_MANUAL_WND */
++    if (post_incomplete) {
++      /*
++       * The PCB has already gone away, but the application still needs to
++       * cancel deferred receive-window credits and discard the partial POST.
++       */
++      http_uri_buf[0] = 0;
++      httpd_post_finished(hs, http_uri_buf, LWIP_HTTPD_URI_BUF_LEN);
++    }
++#endif /* LWIP_HTTPD_SUPPORT_POST */
+     http_state_free(hs);
+   }
+ }
+diff --git a/lib/lwip/u-boot/lwipopts.h b/lib/lwip/u-boot/lwipopts.h
+index f146f496de..2d4b6a3f02 100644
+--- a/lib/lwip/u-boot/lwipopts.h
++++ b/lib/lwip/u-boot/lwipopts.h
+@@ -145,8 +145,13 @@
+ #if defined(CONFIG_PROT_TCP_LWIP)
+ #define LWIP_TCP                        1
+ #define TCP_WND                         CONFIG_LWIP_TCP_WND
+-#define LWIP_WND_SCALE                  1
+-#define TCP_RCV_SCALE                   0x7
++/*
++ * Recovery runs on a directly attached LAN and needs a bounded receive burst
++ * more than it needs a large bandwidth-delay product.  Keep the advertised
++ * window literal so manual POST credits provide predictable backpressure.
++ */
++#define LWIP_WND_SCALE                  0
++#define TCP_RCV_SCALE                   0
+ #define TCP_SND_BUF                     (2 * TCP_MSS)
+ #ifdef CONFIG_PROT_TCP_SACK_LWIP
+ #define LWIP_TCP_SACK_OUT               1
+diff --git a/net/lwip/httpd_recovery.c b/net/lwip/httpd_recovery.c
+index 3d308cd241..a9bec9fb81 100644
+--- a/net/lwip/httpd_recovery.c
++++ b/net/lwip/httpd_recovery.c
+@@ -67,6 +67,13 @@ ulong airoha_recovery_get_lan_activity_ms(void);
+ /* Delay before reboot after flashing completes, to let browser finish reads */
+ #define REBOOT_DELAY_MS        3000
+ #define FLASH_START_DELAY_MS   3000
++/*
++ * Return POST receive-window credit at the same conservative rate that was
++ * proven reliable with the external paced uploader.  TCP handles the pacing,
++ * so an ordinary browser can upload the complete image without custom tools.
++ */
++#define RECOVERY_UPLOAD_CREDIT_BYTES       (8 * 1024U)
++#define RECOVERY_UPLOAD_CREDIT_INTERVAL_MS 16U
+ #define RECOVERY_STATIC_IPADDR           "192.168.255.1"
+ #define RECOVERY_STATIC_NETMASK          "255.255.255.0"
+ #define RECOVERY_STATIC_GATEWAY          "0.0.0.0"
+@@ -133,6 +140,9 @@ static u32 recv_total;
+ static int post_ok;
+ static int flash_request;
+ static volatile int reboot_request;
++static void *post_connection;
++static u32 post_recved_pending;
++static bool post_credit_timer_active;
+ /* Progress for /status polling */
+ static volatile u32 prog_total; /* combined total for backward compat */
+ static volatile u32 prog_done;  /* combined done for backward compat */
+@@ -182,8 +192,61 @@ static void reboot_delay_cb(void *arg)
+     reboot_request = 1;
+ }
+ 
++static void recovery_upload_credit_cb(void *arg)
++{
++	void *connection = post_connection;
++	u16_t credit;
++
++	(void)arg;
++	post_credit_timer_active = false;
++
++	if (!post_ok || !connection || !post_recved_pending)
++		return;
++
++	credit = min_t(u32, post_recved_pending,
++		       RECOVERY_UPLOAD_CREDIT_BYTES);
++	post_recved_pending -= credit;
++
++	httpd_post_data_recved(connection, credit);
++
++	/* httpd_post_data_recved() can finish the POST and clear this state. */
++	if (post_ok && post_connection == connection && post_recved_pending) {
++		post_credit_timer_active = true;
++		sys_timeout(RECOVERY_UPLOAD_CREDIT_INTERVAL_MS,
++			    recovery_upload_credit_cb, NULL);
++	}
++}
++
++static void recovery_cancel_upload_credit(void)
++{
++	if (post_credit_timer_active)
++		sys_untimeout(recovery_upload_credit_cb, NULL);
++
++	post_credit_timer_active = false;
++	post_connection = NULL;
++	post_recved_pending = 0;
++}
++
++static void recovery_queue_upload_credit(void *connection, u16_t bytes)
++{
++	if (!bytes)
++		return;
++
++	post_connection = connection;
++	if (post_recved_pending > UINT_MAX - bytes)
++		post_recved_pending = UINT_MAX;
++	else
++		post_recved_pending += bytes;
++	if (!post_credit_timer_active) {
++		post_credit_timer_active = true;
++		sys_timeout(RECOVERY_UPLOAD_CREDIT_INTERVAL_MS,
++			    recovery_upload_credit_cb, NULL);
++	}
++}
++
+ static void recovery_cancel_timeouts(void)
+ {
++	recovery_cancel_upload_credit();
+ 	sys_untimeout(post_delay_cb, NULL);
+ 	sys_untimeout(reboot_delay_cb, NULL);
+ 	flash_request = 0;
+@@ -2695,7 +2758,7 @@ err_t httpd_post_begin(void *connection, const char *uri, const char *http_reque
+                        u16_t http_request_len, int content_len, char *response_uri,
+                        u16_t response_uri_len, u8_t *post_auto_wnd)
+ {
+-    (void)http_request; (void)http_request_len; (void)connection;
++	(void)http_request; (void)http_request_len;
+     /*
+      * Throttle large uploads explicitly: XR1710G recovery accepts firmware
+      * images that are much larger than a typical lwIP POST body and manual
+@@ -2711,6 +2774,7 @@ err_t httpd_post_begin(void *connection, const char *uri, const char *http_reque
+         return ERR_ARG;
+     }
+ 
++	recovery_cancel_upload_credit();
+     post_ok = 0;
+     recovery_ubi_attach_error = 0;
+     recv_off = 0;
+@@ -2813,6 +2877,7 @@ err_t httpd_post_begin(void *connection, const char *uri, const char *http_reque
+     }
+ 
+     post_ok = 1;
++	post_connection = connection;
+     /* Leave response_uri untouched here so the POST can complete normally. */
+     if (current_target == TARGET_FIRMWARE)
+         printf("httpd: accepting %u-byte firmware for UBI %s\n",
+@@ -2846,7 +2911,7 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
+ 
+ #if LWIP_HTTPD_POST_MANUAL_WND
+     if (recved)
+-        httpd_post_data_recved(connection, recved);
++		recovery_queue_upload_credit(connection, recved);
+ #endif
+ 
+     return ERR_OK;
+@@ -2854,19 +2919,26 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
+ 
+ void httpd_post_finished(void *connection, char *response_uri, u16_t response_uri_len)
+ {
++	bool complete = post_ok && recv_total && recv_off >= recv_total;
++
+     (void)connection;
+     printf("httpd: post finished, %u/%u bytes received\n", recv_off, recv_total);
++	recovery_cancel_upload_credit();
+     /* Tell httpd which page to return after POST (keep user on main page) */
+-    if (post_ok && recv_total && (recv_off >= recv_total))
++    if (complete) {
+         strlcpy(response_uri, "/ok", response_uri_len);
+-    else
++    } else {
++		post_ok = 0;
++		flash_request = 0;
++		sys_untimeout(post_delay_cb, NULL);
+         strlcpy(response_uri, "/fail.html", response_uri_len);
++    }
+ 
+     /*
+      * Delay flashing slightly so the browser can finish receiving the POST
+      * response before erase/write work blocks the network loop.
+      */
+-    if (post_ok && recv_total && (recv_off >= recv_total))
++    if (complete)
+         sys_timeout(FLASH_START_DELAY_MS, post_delay_cb, NULL);
+ }
+ 
+-- 
+2.54.0.windows.1
+

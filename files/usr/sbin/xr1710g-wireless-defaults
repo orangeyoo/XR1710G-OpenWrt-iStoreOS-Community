@@ -1,0 +1,158 @@
+#!/bin/sh
+# Apply the XR1710G wireless policy once, after all three radios exist.
+#
+# OpenWrt's boot service runs an early `wifi config` before kmodloader.  On
+# XR1710G that first pass cannot see mt7996 yet, so /etc/config/wireless may be
+# empty when uci-defaults starts.  Re-run discovery here (after kmodloader),
+# wait for every band, and only then mark the policy as complete.
+
+set -eu
+
+MARKER='system.@system[0].xr1710g_wireless_defaults'
+MAX_ATTEMPTS="${XR1710G_WIFI_WAIT_ATTEMPTS:-30}"
+
+xr1710g_board_name() {
+	if [ -r /tmp/sysinfo/board_name ]; then
+		cat /tmp/sysinfo/board_name
+	elif command -v board_name >/dev/null 2>&1; then
+		command board_name
+	fi
+}
+
+radios_for_band() {
+	uci -q show wireless 2>/dev/null |
+		sed -n \
+			-e "s/^wireless\.\([^.=]*\)\.band='$1'$/\1/p" \
+			-e "s/^wireless\.\([^.=]*\)\.band=$1$/\1/p"
+}
+
+ifaces_for_radio() {
+	uci -q show wireless 2>/dev/null |
+		sed -n \
+			-e "s/^wireless\.\([^.=]*\)\.device='$1'$/\1/p" \
+			-e "s/^wireless\.\([^.=]*\)\.device=$1$/\1/p"
+}
+
+wireless_is_complete() {
+	local band radio radios ifaces
+
+	for band in 2g 5g 6g; do
+		radios="$(radios_for_band "$band")"
+		[ -n "$radios" ] || return 1
+		for radio in $radios; do
+			ifaces="$(ifaces_for_radio "$radio")"
+			[ -n "$ifaces" ] || return 1
+		done
+	done
+}
+
+delete_if_present() {
+	uci -q delete "$1" >/dev/null 2>&1 || true
+}
+
+apply_ap_common() {
+	local iface="$1"
+
+	# The board's 16-airoha-wifi-tuning uci-default also runs before mt7996
+	# exists on a clean boot.  Carry its two client-stability settings into
+	# this post-kmod policy so they cannot be silently skipped.
+	uci -q set wireless."$iface".uapsd='0'
+	uci -q set wireless."$iface".disassoc_low_ack='0'
+	uci -q set wireless."$iface".ieee80211k='1'
+	uci -q set wireless."$iface".rrm_neighbor_report='1'
+	uci -q set wireless."$iface".rrm_beacon_report='1'
+	uci -q set wireless."$iface".bss_transition='1'
+	uci -q set wireless."$iface".disabled='0'
+}
+
+apply_policy() {
+	local radio iface
+
+	for radio in $(radios_for_band 2g); do
+		uci -q set wireless."$radio".country='US'
+		for iface in $(ifaces_for_radio "$radio"); do
+			[ "$(uci -q get wireless."$iface".mode 2>/dev/null || true)" = 'ap' ] || continue
+			uci -q set wireless."$iface".ssid='XR1710G-CHANGE-ME'
+			uci -q set wireless."$iface".encryption='psk-mixed'
+			uci -q set wireless."$iface".key='XR1710G-CHANGE-ME'
+			apply_ap_common "$iface"
+			uci -q set wireless."$iface".ieee80211r='0'
+			delete_if_present wireless."$iface".mobility_domain
+			delete_if_present wireless."$iface".ft_over_ds
+			delete_if_present wireless."$iface".ft_psk_generate_local
+		done
+	done
+
+	for radio in $(radios_for_band 5g); do
+		uci -q set wireless."$radio".country='US'
+		# Keep the EHT80 value used in the two-router throughput/roaming tests.
+		# The early board default requests EHT160 but cannot run before mt7996;
+		# do not silently introduce that unverified width during this repair.
+		uci -q set wireless."$radio".channel='36'
+		uci -q set wireless."$radio".htmode='EHT80'
+		for iface in $(ifaces_for_radio "$radio"); do
+			[ "$(uci -q get wireless."$iface".mode 2>/dev/null || true)" = 'ap' ] || continue
+			uci -q set wireless."$iface".ssid='XR1710G-5G-CHANGE-ME'
+			uci -q set wireless."$iface".encryption='sae-mixed'
+			uci -q set wireless."$iface".key='XR1710G-CHANGE-ME'
+			apply_ap_common "$iface"
+			uci -q set wireless."$iface".ieee80211r='1'
+			uci -q set wireless."$iface".mobility_domain='6616'
+			uci -q set wireless."$iface".ft_over_ds='0'
+			uci -q set wireless."$iface".ft_psk_generate_local='1'
+		done
+	done
+
+	for radio in $(radios_for_band 6g); do
+		uci -q set wireless."$radio".country='US'
+		uci -q set wireless."$radio".channel='37'
+		uci -q set wireless."$radio".htmode='EHT80'
+		for iface in $(ifaces_for_radio "$radio"); do
+			uci -q set wireless."$iface".mode='mesh'
+			delete_if_present wireless."$iface".ssid
+			delete_if_present wireless."$iface".owe_groups
+			uci -q set wireless."$iface".mesh_id='XR1710G-6G-BACKHAUL'
+			uci -q set wireless."$iface".encryption='sae'
+			uci -q set wireless."$iface".key='XR1710G-CHANGE-ME'
+			uci -q set wireless."$iface".mesh_fwding='1'
+			delete_if_present wireless."$iface".wds
+			delete_if_present wireless."$iface".owe_transition_ifname
+			delete_if_present wireless."$iface".owe_transition_ssid
+			uci -q set wireless."$iface".disabled='0'
+		done
+	done
+
+	uci -q commit wireless
+	uci -q set "$MARKER"='1'
+	uci -q commit system
+}
+
+[ "$(xr1710g_board_name)" = 'econet,xr1710g-ubi' ] || exit 0
+[ "$(uci -q get "$MARKER" 2>/dev/null || true)" = '1' ] && exit 0
+
+case "$MAX_ATTEMPTS" in
+	''|*[!0-9]*) MAX_ATTEMPTS=30 ;;
+esac
+[ "$MAX_ATTEMPTS" -gt 0 ] || MAX_ATTEMPTS=1
+
+attempt=1
+while :; do
+	# This invocation happens after /sbin/kmodloader in /etc/init.d/boot.
+	# It is safe to repeat: mac80211.uc only adds radios not already present.
+	if command -v wifi >/dev/null 2>&1; then
+		wifi config >/dev/null 2>&1 || true
+	fi
+
+	if wireless_is_complete; then
+		apply_policy
+		exit 0
+	fi
+
+	[ "$attempt" -lt "$MAX_ATTEMPTS" ] || break
+	attempt=$((attempt + 1))
+	sleep 1
+done
+
+printf '%s\n' \
+	'XR1710G wireless defaults: 2.4/5/6 GHz configuration was not generated; will retry next boot' >&2
+exit 1

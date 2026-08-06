@@ -1,0 +1,76 @@
+#!/bin/sh
+# Collect a bounded, privacy-filtered XR1710G Wi-Fi/mesh diagnostic bundle.
+# This does not claim to fix airtime_link_metric_get(); it gathers the evidence
+# needed to identify whether the warning comes from hostapd, nl80211 or mt76.
+
+set -u
+
+OUT="${1:-/tmp/xr1710g-mesh-diag-$(date +%Y%m%d-%H%M%S).txt}"
+TMP="${OUT}.tmp.$$"
+
+cleanup() {
+	rm -f "$TMP"
+}
+trap cleanup EXIT INT TERM
+
+redact() {
+	sed -E \
+		-e 's/([Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Kk][Ee][Yy]|[Ss][Aa][Ee]_[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Pp][Ss][Kk])=[^[:space:]]+/\1=<redacted>/g' \
+		-e "s/(option[[:space:]]+(key|password|sae_password|psk)[[:space:]]+)'[^']*'/\1'<redacted>'/Ig" \
+		-e 's/([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}/<mac>/g'
+}
+
+section() {
+	printf '\n===== %s =====\n' "$1"
+}
+
+{
+	section "identity"
+	date -u
+	cat /etc/openwrt_release 2>/dev/null
+	uname -a
+	ubus call system board 2>/dev/null
+
+	section "radio-phy"
+	iw reg get 2>&1
+	iw phy 2>&1
+
+	section "interfaces"
+	iw dev 2>&1
+	ip -details link show 2>&1
+	ubus call network.wireless status 2>&1
+
+	section "wireless-uci-redacted"
+	uci show wireless 2>&1
+
+	section "stations-and-mesh-paths"
+	for dev in $(iw dev 2>/dev/null | awk '$1 == "Interface" { print $2 }'); do
+		printf '\n--- %s station dump ---\n' "$dev"
+		iw dev "$dev" station dump 2>&1
+		printf '\n--- %s mpath dump ---\n' "$dev"
+		iw dev "$dev" mpath dump 2>&1
+		printf '\n--- %s info ---\n' "$dev"
+		iw dev "$dev" info 2>&1
+	done
+
+	section "loaded-modules"
+	lsmod 2>&1 | grep -E '(^Module|mt76|mt7996|mac80211|cfg80211|airoha)' || true
+
+	section "firmware-and-packages"
+	find /lib/firmware -maxdepth 3 -type f 2>/dev/null | grep -E 'mt7996|MT7996|airoha' | sort
+	if command -v apk >/dev/null 2>&1; then
+		apk query --installed 2>&1 | grep -E '(^|[-])(wpad|hostapd|mt76|mt7996|wireless-regdb|iw)([- ]|$)' || true
+	elif command -v opkg >/dev/null 2>&1; then
+		opkg list-installed 2>&1 | grep -E '^(wpad|hostapd|kmod-mt76|kmod-mt7996|wireless-regdb|iw)( |-|$)' || true
+	fi
+
+	section "recent-kernel-log"
+	dmesg 2>&1 | tail -n 600 | grep -Ei 'mt76|mt7996|mac80211|cfg80211|mesh|airtime|firmware|npu|airoha|warning|error|failed' || true
+
+	section "recent-system-log"
+	logread 2>&1 | tail -n 1200 | grep -Ei 'hostapd|wpa_supplicant|mesh|airtime|nl80211|mt76|mt7996|warning|error|failed' || true
+} > "$TMP"
+
+redact < "$TMP" > "$OUT"
+chmod 600 "$OUT"
+printf 'Diagnostic report written to %s\n' "$OUT"

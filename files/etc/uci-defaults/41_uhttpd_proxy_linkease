@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# iStoreOS' LinkEase Full package expects the base system to reserve this
+# same-origin entry.  The mapping does not start or install the optional
+# backend; it is inert until an owner installs LinkEase Full and opens /apps.
+uci -q show uhttpd.main.proxy_prefix | grep -qF "'/apps=" || \
+uci -q batch <<-EOF >/dev/null
+	add_list uhttpd.main.proxy_prefix='/apps=http://127.0.0.1:19290'
+	commit uhttpd
+EOF
+
+exit 0

@@ -1,0 +1,255 @@
+name: Build Airoha_an7581-Wrt
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      ssh:
+        description: 'SSH connection to Actions'
+        required: false
+        default: 'false'
+env:
+  ARCHITECTURE: xr1710g
+  UPLOAD_BIN_DIR: false
+  UPLOAD_FIRMWARE: true
+  UPLOAD_RELEASE: true
+  TZ: Asia/Shanghai
+  DIY_P2_DIR: diy-part2.d
+  TARGET: openwrt
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: 服务器信息
+      run: |
+        echo "------------------------------- CPU -------------------------------"
+        echo "物理数量: $(cat /proc/cpuinfo| grep 'physical id'| sort| uniq| wc -l)"
+        echo "型号: $(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c | xargs)"
+        echo "------------------------------- 内存 -------------------------------"
+        sudo lshw -short -C memory | grep GiB
+        echo "------------------------------- 磁盘 -------------------------------"
+        df -Th
+
+    - name: 初始化编译环境
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /etc/mysql /etc/php \
+          /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install $(cat $GITHUB_WORKSPACE/depends/ubuntu-22.04)
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
+
+    - name: 检查首启配置
+      run: |
+        CONFIG_PATH="./files/etc/uci-defaults/99-custom.sh"
+        echo "首启配置路径: $CONFIG_PATH"
+        cat "$CONFIG_PATH"
+
+    - name: 克隆源码 — OpenWrt
+      if: ${{ env.TARGET == 'openwrt' }}
+      env:
+        REPO_URL: https://github.com/YYH2913/openwrt
+        REPO_BRANCH: xr1710g-6.18-integration
+        REPO_COMMIT: 2a845ee80c7c52caafe57d518a15b16738eb9ed7
+      run: |
+        df -hT $PWD
+        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        git -C openwrt checkout "$REPO_COMMIT"
+        chmod -R +x openwrt/
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
+    - name: 缓存构建动作
+      uses: klever1988/cachewrtbuild@main
+      with:
+        ccache: 'true'
+        mixkey: ubuntu-22.04-${{ env.ARCHITECTURE }}-${{ env.TARGET }}-v4
+        prefix: ${{ github.workspace }}/openwrt
+
+    - name: 加载 99-custom.sh 配置
+      run: |
+        cp -a files/. openwrt/files/
+        chmod 0755 openwrt/files/etc/uci-defaults/99-custom.sh
+        chmod 0755 openwrt/files/etc/uci-defaults/41_uhttpd_proxy_linkease
+        chmod 0755 openwrt/files/etc/uci-defaults/zz-xr1710g-services.sh
+        chmod 0755 openwrt/files/etc/init.d/xr1710g-bootlog
+        chmod 0755 openwrt/files/usr/sbin/xr1710g-role
+        chmod 0755 openwrt/files/usr/sbin/xr1710g-wireless-defaults
+        chmod 0755 openwrt/files/usr/sbin/xr1710g-mesh-diag
+        chmod 0755 openwrt/files/etc/openclash/core/clash_meta
+        echo "✅ 文件准备完成"
+
+    - name: 加载 feeds 配置 — OpenWrt
+      if: ${{ env.TARGET == 'openwrt' }}
+      run: cp feeds.d/openwrt openwrt/feeds.conf
+
+    - name: DIY part1 — 版本号
+      run: |
+        chmod +x scripts/diy-part1.sh
+        cd openwrt && "$GITHUB_WORKSPACE/scripts/diy-part1.sh"
+
+    - name: 更新 feeds
+      run: |
+        cd openwrt
+        ./scripts/feeds update -a
+        chmod +x "$GITHUB_WORKSPACE/scripts/prepare-istore-feed.sh"
+        "$GITHUB_WORKSPACE/scripts/prepare-istore-feed.sh"
+
+    - name: 安装 feeds
+      run: cd openwrt && ./scripts/feeds install -a
+
+    - name: 加载配置 — OpenWrt
+      if: ${{ env.TARGET == 'openwrt' }}
+      run: cp configs/openwrt.config openwrt/.config
+
+    - name: DIY part2 — OpenWrt
+      if: ${{ env.TARGET == 'openwrt' }}
+      run: |
+        # 1. 赋予 apps/ 目录下所有文件可执行权限
+        if [ -d "apps" ]; then
+          chmod -R +x apps/
+          # 2. 只有当 apps/ 目录下有内容时才进行复制
+          if [ -n "$(ls -A apps/ 2>/dev/null)" ]; then
+            cp -a apps/. openwrt/package/
+            echo "=== 已成功复制 apps/ 内容到 openwrt/package/ ==="
+          fi
+        fi
+        ls -la openwrt/package/
+        
+        chmod +x "$DIY_P2_DIR/openwrt.sh"
+        cd openwrt && "$GITHUB_WORKSPACE/$DIY_P2_DIR/openwrt.sh"
+
+    - name: SSH
+      uses: P3TERX/ssh2actions@v1.0.0
+      if: ${{ github.event.inputs.ssh == 'true' }}
+      env:
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+
+    - name: 下载软件包
+      id: package
+      run: |
+        cd openwrt
+        make defconfig
+        make download -j8
+        find dl -maxdepth 1 -type f -size -1024c -exec ls -l {} \;
+        find dl -maxdepth 1 -type f -size -1024c -exec rm -f {} \;
+
+    - name: 编译固件
+      id: compile
+      run: |
+        cd openwrt
+        echo "$(nproc) thread compile"
+        make defconfig
+        if ! make olddefconfig; then
+          yes "" | make oldconfig
+        fi
+        make -j$(nproc) || make -j1 || make -j1 V=s
+        chmod +x "$GITHUB_WORKSPACE/scripts/rebuild-initramfs-recovery.sh"
+        "$GITHUB_WORKSPACE/scripts/rebuild-initramfs-recovery.sh" "$PWD"
+        chmod +x "$GITHUB_WORKSPACE/scripts/verify-xr1710g-build.sh"
+        "$GITHUB_WORKSPACE/scripts/verify-xr1710g-build.sh" "$PWD"
+        cp "$GITHUB_WORKSPACE/RELEASE-NOTES.md" \
+          bin/targets/airoha/an7581/RELEASE-NOTES.md
+        cp "$GITHUB_WORKSPACE/UBOOT-FLASH-GUIDE.md" \
+          bin/targets/airoha/an7581/UBOOT-FLASH-GUIDE.md
+        # 去掉了 %H%M，仅保留年月日
+        echo "FILE_DATE=_$(date +'%Y%m%d')" >> $GITHUB_ENV
+        echo "COMPILED=true" >> $GITHUB_ENV
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: 磁盘空间
+      if: (!cancelled())
+      run: df -hT
+
+    - name: 上传 bin 目录
+      uses: actions/upload-artifact@v4
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+      with:
+        name: OpenWrt_bin_${{ env.TARGET }}${{ env.FILE_DATE }}
+        path: openwrt/bin
+
+    - name: 整理固件
+      id: organize
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      run: |
+        cd openwrt/bin/targets/*/*
+        rm -rf packages
+        shopt -s globstar nullglob
+
+        # Keep upstream filenames unchanged so sha256sums stays valid.
+        for f in **/*; do
+          [ -f "$f" ] || continue
+          case "$f" in
+            config.buildinfo|\
+            feeds.buildinfo|\
+            profiles.json|\
+            RELEASE-NOTES.md|\
+            UBOOT-FLASH-GUIDE.md|\
+            sha256sums|\
+            version.buildinfo|\
+            *xr1710g-ubi.manifest|\
+            *xr1710g-ubi-initramfs-recovery.itb|\
+            *xr1710g-ubi-squashfs-sysupgrade.itb) continue ;;
+            *) rm -f "$f" ;;
+          esac
+        done
+
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: 生成发布标签
+      id: tag
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
+      run: |
+        # 仅保留年月日作为标签
+        echo "release_tag=$(date +'%Y.%m.%d')" >> $GITHUB_OUTPUT
+        
+        # 写入发行说明文件
+        printf '%s\n' \
+          "设备: XR1710G (Airoha AN7581)" \
+          "发行版: iStoreOS-XR1710G-Community" \
+          "编译时间: $(date +'%Y年%m月%d日')" \
+          "登录IP: 以底座首次启动配置为准" \
+          "用户名: root" \
+          "默认密码: 空（首次登录后立即设置）" \
+          "警告: 本固件是 UBI 2.0；必须先确认匹配的 XR1710G chainloader/U-Boot，并从 Recovery 完整重建 UBI。禁止从未知或旧布局直接保留配置 sysupgrade。" \
+          "请先阅读附件 RELEASE-NOTES.md。" > release.txt
+
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: 发布到 Releases
+      uses: softprops/action-gh-release@v2
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      with:
+        tag_name: ${{ env.TARGET }}_${{ steps.tag.outputs.release_tag }}
+        name: iStoreOS-XR1710G-Community ${{ steps.tag.outputs.release_tag }}
+        body_path: release.txt
+        files: ${{ env.FIRMWARE }}/*
+
+    - name: 清理运行记录
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh run list --workflow="Build Airoha_an7581-Wrt" --limit 30 --json databaseId --jq '.[].databaseId' | \
+          tail -n +2 | xargs -I {} gh run delete {} --yes || true
+
+    - name: 清理旧 Release
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release list --limit 100 --json tagName,publishedAt --jq '.[] | "\(.tagName)"' | \
+          grep "^${{ env.TARGET }}_" | \
+          tail -n +5 | \
+          xargs -I {} gh release delete {} --yes --cleanup-tag || true

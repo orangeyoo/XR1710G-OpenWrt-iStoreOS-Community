@@ -1,0 +1,41 @@
+From 61280edc2e1d6e38566d386e64227655eee3120e Mon Sep 17 00:00:00 2001
+From: Kamil Bienkiewicz <perceivalpercy@gmail.com>
+Date: Tue, 28 Jul 2026 21:32:08 +0200
+Subject: [PATCH] nl80211: Report unexpected frame events to the correct BSS
+
+nl80211_spurious_frame() resolves the receiving BSS by ifindex and uses
+bss->addr as the BSSID of the event, but delivers the event to drv->ctx,
+which is the context of drv->first_bss.
+
+When several hostapd_iface instances share a single driver instance, that is
+not necessarily the BSS the frame was received on. hostapd then discards the
+unexpected four-address frame event, so the WDS station can authenticate and
+associate while its AP_VLAN interface is never created and no traffic passes.
+
+Use the receiving BSS context, as other per-BSS events already do.
+
+Upstream-Status: Backport [61280edc2e1d6e38566d386e64227655eee3120e]
+Signed-off-by: Kamil Bienkiewicz <perceivalpercy@gmail.com>
+---
+ src/drivers/driver_nl80211_event.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+--- a/src/drivers/driver_nl80211_event.c
++++ b/src/drivers/driver_nl80211_event.c
+@@ -2788,7 +2788,6 @@ static void nl80211_radar_event(struct i
+ static void nl80211_spurious_frame(struct i802_bss *bss, struct nlattr **tb,
+ 				   int wds)
+ {
+-	struct wpa_driver_nl80211_data *drv = bss->drv;
+ 	union wpa_event_data event;
+ 
+ 	if (!tb[NL80211_ATTR_MAC])
+@@ -2801,7 +2800,7 @@ static void nl80211_spurious_frame(struc
+ 	event.rx_from_unknown.link_id = tb[NL80211_ATTR_MLO_LINK_ID] ?
+ 		nla_get_u8(tb[NL80211_ATTR_MLO_LINK_ID]) : -1;
+ 
+-	wpa_supplicant_event(drv->ctx, EVENT_RX_FROM_UNKNOWN, &event);
++	wpa_supplicant_event(bss->ctx, EVENT_RX_FROM_UNKNOWN, &event);
+ }
+ 
+ 

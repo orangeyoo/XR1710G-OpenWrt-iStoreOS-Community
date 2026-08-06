@@ -1,0 +1,136 @@
+#!/bin/sh /etc/rc.common
+# Persistent, bounded boot history for XR1710G.
+# It distinguishes an orderly shutdown from a non-orderly previous boot.  It
+# cannot determine whether the latter was power loss, watchdog or a hard reset.
+
+START=12
+STOP=88
+
+STATE_DIR=/etc/xr1710g
+STATE_FILE="$STATE_DIR/boot-state"
+HISTORY_FILE="$STATE_DIR/boot-history.log"
+MAX_LINES=80
+
+is_xr1710g() {
+	[ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = 'econet,xr1710g-ubi' ]
+}
+
+state_value() {
+	sed -n "s/^$1=//p" "$STATE_FILE" 2>/dev/null | head -n1
+}
+
+now_epoch() {
+	date -u '+%s'
+}
+
+now_iso() {
+	date -u '+%Y-%m-%dT%H:%M:%SZ'
+}
+
+boot_id() {
+	cat /proc/sys/kernel/random/boot_id 2>/dev/null || printf 'unavailable\n'
+}
+
+trim_history() {
+	local tmp="$STATE_DIR/.boot-history.$$"
+	[ -f "$HISTORY_FILE" ] || return 0
+	tail -n "$MAX_LINES" "$HISTORY_FILE" > "$tmp" && mv -f "$tmp" "$HISTORY_FILE"
+	chmod 0600 "$HISTORY_FILE"
+}
+
+write_state() {
+	local id="$1" state="$2" started_epoch="$3" started_iso="$4"
+	local stopped_epoch="${5:-}" stopped_iso="${6:-}" tmp="$STATE_DIR/.boot-state.$$"
+	{
+		printf 'boot_id=%s\n' "$id"
+		printf 'state=%s\n' "$state"
+		printf 'started_epoch=%s\n' "$started_epoch"
+		printf 'started_iso=%s\n' "$started_iso"
+		[ -z "$stopped_epoch" ] || printf 'stopped_epoch=%s\n' "$stopped_epoch"
+		[ -z "$stopped_iso" ] || printf 'stopped_iso=%s\n' "$stopped_iso"
+	} > "$tmp"
+	chmod 0600 "$tmp"
+	mv -f "$tmp" "$STATE_FILE"
+}
+
+start() {
+	local id epoch stamp previous_id previous_state previous started_epoch started_iso event
+	is_xr1710g || return 0
+	umask 077
+	# /etc is an overlay during an installed boot, but a RAM-only Recovery has
+	# no persistent overlay.  Do not imply persistence or write flash-state
+	# files while the root filesystem itself is tmpfs/overlay-free.
+	grep -q ' /overlay ' /proc/mounts 2>/dev/null || return 0
+	mkdir -p "$STATE_DIR"
+	id="$(boot_id)"
+	epoch="$(now_epoch)"
+	stamp="$(now_iso)"
+	previous_id="$(state_value boot_id)"
+	previous_state="$(state_value state)"
+
+	if [ "$previous_id" = "$id" ] && [ "$previous_state" = 'open' ]; then
+		return 0
+	fi
+
+	if [ "$previous_id" = "$id" ]; then
+		event='SERVICE_START'
+		previous='same-boot-service-restart'
+	elif [ -z "$previous_id" ]; then
+		event='BOOT'
+		previous='first-record'
+	elif [ "$previous_state" = 'clean' ]; then
+		event='BOOT'
+		previous='ordered-shutdown'
+	else
+		event='BOOT'
+		previous='non-ordered-shutdown'
+	fi
+
+	started_epoch="$epoch"
+	started_iso="$stamp"
+	write_state "$id" open "$started_epoch" "$started_iso"
+	printf '%s\t%s\t%s\t%s\tprevious=%s\n' \
+		"$event" "$id" "$epoch" "$stamp" "$previous" >> "$HISTORY_FILE"
+	trim_history
+	sync
+}
+
+stop() {
+	local id state_id state started_epoch started_iso epoch stamp
+	is_xr1710g || return 0
+	[ -f "$STATE_FILE" ] || return 0
+	id="$(boot_id)"
+	state_id="$(state_value boot_id)"
+	state="$(state_value state)"
+	[ "$state_id" = "$id" ] && [ "$state" = 'open' ] || return 0
+	started_epoch="$(state_value started_epoch)"
+	started_iso="$(state_value started_iso)"
+	epoch="$(now_epoch)"
+	stamp="$(now_iso)"
+	write_state "$id" clean "$started_epoch" "$started_iso" "$epoch" "$stamp"
+	printf 'SHUTDOWN\t%s\t%s\t%s\tresult=ordered\n' \
+		"$id" "$epoch" "$stamp" >> "$HISTORY_FILE"
+	trim_history
+	sync
+}
+
+status() {
+	if [ -f "$STATE_FILE" ]; then
+		cat "$STATE_FILE"
+	else
+		echo 'No persistent XR1710G boot state has been recorded.'
+	fi
+	echo 'A state of open after a different boot ID means only non-orderly shutdown;'
+	echo 'it does not distinguish power loss, watchdog and hard reset.'
+}
+
+history() {
+	if [ -f "$HISTORY_FILE" ]; then
+		cat "$HISTORY_FILE"
+	else
+		echo 'No persistent XR1710G boot history has been recorded.'
+	fi
+}
+
+EXTRA_COMMANDS='status history'
+EXTRA_HELP='\n\tstatus\tShow the current persistent boot marker\n\thistory\tShow the bounded persistent boot history'

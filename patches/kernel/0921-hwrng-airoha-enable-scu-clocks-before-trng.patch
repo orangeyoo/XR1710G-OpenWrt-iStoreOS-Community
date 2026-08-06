@@ -1,0 +1,35 @@
+From: XR1710G Community <noreply@localhost>
+Subject: [PATCH] hwrng: airoha: enable SCU clocks before starting TRNG
+
+The existing Airoha follow-up enables RNG_EN and RNG_OSC_EN before opening
+the SCU bus and peripheral clock gates.  On one XR1710G cold boot this raced
+the startup health check and the hwrng registration failed with -ENODEV.
+
+Open the required clock gates first, then access and enable the TRNG block.
+This is intentionally a minimal ordering change; hardware validation still
+requires repeated cold boots on both XR1710G units.
+
+--- a/drivers/char/hw_random/airoha-trng.c
++++ b/drivers/char/hw_random/airoha-trng.c
+@@ -92,16 +92,16 @@ static int airoha_trng_init(struct hwrng
+ 	int ret;
+ 	u32 val;
+ 
+-	val = readl(trng->base + TRNG_NS_SEK_AND_DAT_EN);
+-	val |= RNG_EN | RNG_OSC_EN;
+-	writel(val, trng->base + TRNG_NS_SEK_AND_DAT_EN);
+-
+ 	if (trng->scu) {
+ 		regmap_set_bits(trng->scu, REG_SCU_BUS_CLK_GAT, SCU_TRNG_BUS_EN);
+ 		regmap_set_bits(trng->scu, REG_SCU_PER_CLK_GAT_1, SCU_TRNG_PER1_EN);
+ 		regmap_set_bits(trng->scu, REG_SCU_PER_CLK_GAT_2, SCU_TRNG_PER2_EN);
+ 	}
+ 
++	val = readl(trng->base + TRNG_NS_SEK_AND_DAT_EN);
++	val |= RNG_EN | RNG_OSC_EN;
++	writel(val, trng->base + TRNG_NS_SEK_AND_DAT_EN);
++
+ 	/* Set out of SW Reset */
+ 	airoha_trng_irq_unmask(trng);
+ 	writel(0, trng->base + TRNG_HEALTH_TEST_SW_RST);
+

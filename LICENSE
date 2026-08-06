@@ -1,0 +1,17 @@
+SPDX-License-Identifier: GPL-2.0-or-later
+
+The original build scripts, integration glue and documentation authored for
+this repository are licensed under the GNU General Public License, version 2
+or (at your option) any later version.
+
+This repository also contains or references third-party code, patches, feeds,
+packages and binary firmware. Those materials remain under their respective
+upstream licenses and copyright notices. A repository-level license does not
+replace or relicense those components. See ATTRIBUTION.md and the license
+headers in individual files.
+
+The complete GPL version 2 license text is available at:
+https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+
+You may redistribute and modify the repository-authored GPL-covered portions
+under GPL-2.0-or-later. There is no warranty, to the extent permitted by law.

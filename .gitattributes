@@ -1,0 +1,9 @@
+* text=auto
+*.patch text eol=lf
+*.sh text eol=lf
+files/etc/uci-defaults/41_uhttpd_proxy_linkease text eol=lf
+*.sh text eol=lf
+feeds.d/* text eol=lf
+packages/*.conf text eol=lf
+*.yml text eol=lf
+apps/** text eol=lf

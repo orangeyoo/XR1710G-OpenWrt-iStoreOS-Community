@@ -1,0 +1,44 @@
+--- a/feeds/packages/net/adguardhome/files/adguardhome.defaults
++++ b/feeds/packages/net/adguardhome/files/adguardhome.defaults
+@@ -10,6 +10,15 @@ NEW_CONFIG_DIR=/etc/adguardhome
+ NEW_CONFIG_FILE="$NEW_CONFIG_DIR/adguardhome.yaml"
+ 
+ start_service() {
++	# XR1710G community images ship AdGuard Home as an optional application.
++	# Package defaults may migrate and restart a real existing configuration,
++	# but must never expose the setup service on a clean router.
++	CONFIG_FILE="$OLD_CONFIG_NEW_OPT_FILE"
++	[ -n "$CONFIG_FILE" ] || CONFIG_FILE="$NEW_CONFIG_FILE"
++	if [ ! -s "$CONFIG_FILE" ] && [ ! -s "$OLD_CONFIG_FILE" ]; then
++		return 0
++	fi
++
+ 	if ! /etc/init.d/adguardhome running; then
+ 		/etc/init.d/adguardhome start
+ 	fi
+--- a/feeds/packages/net/adguardhome/files/adguardhome.init
++++ b/feeds/packages/net/adguardhome/files/adguardhome.init
+@@ -99,9 +99,21 @@ start_service() {
+ }
+ 
+ service_triggers() {
++	local config_file legacy_config
++
+ 	procd_add_reload_trigger adguardhome
+ 
+ 	if [ -n "$ADGUARDHOME_BOOT" ]; then
++		# Do not auto-start the first-run web service merely because an
++		# interface came up.  A manual `/etc/init.d/adguardhome start` still
++		# works and can create the initial YAML; after that, normal boot
++		# triggering is restored when the owner enables the service.
++		config_load adguardhome
++		config_get config_file config config_file
++		config_get legacy_config config config
++		config_file="${config_file:-${legacy_config:-/etc/adguardhome/adguardhome.yaml}}"
++		[ -s "$config_file" ] || return 0
++
+ 		# Wait for interfaces to be up before starting AdGuard Home for real.
+ 		# Prevents issues like https://github.com/openwrt/packages/issues/21868.
+ 		procd_add_raw_trigger 'interface.*.up' 5000 /etc/init.d/adguardhome restart
+ 	fi
+ }
