@@ -2,7 +2,7 @@
 
 ## 中文：普通用户只看这里
 
-Release 下载区只保留 4 个文件：
+Release 下载区保留 4 个刷写/校验文件，另附本说明：
 
 | 文件 | 用途 | 什么时候用 |
 |---|---|---|
@@ -21,7 +21,7 @@ Release 下载区只保留 4 个文件：
 
 ## English: the short version
 
-Only four files are kept in the Release assets:
+The Release contains four flashing/checksum files plus this short guide:
 
 | File | Purpose | When to use it |
 |---|---|---|
