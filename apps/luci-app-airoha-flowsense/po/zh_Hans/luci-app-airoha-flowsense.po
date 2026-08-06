@@ -34,7 +34,7 @@ msgid "State"
 msgstr "状态"
 
 msgid "Translated"
-msgstr "转换后"
+msgstr "转换结果"
 
 msgid "Type"
 msgstr "类型"

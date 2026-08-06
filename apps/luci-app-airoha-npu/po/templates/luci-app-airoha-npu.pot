@@ -38,7 +38,13 @@ msgid "CPU Frequency"
 msgstr ""
 
 #: feeds/luci/applications/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:229
-msgid "CPU set to"
+msgid "CPU set to "
+msgstr ""
+
+msgid "Error: "
+msgstr ""
+
+msgid "Failed: "
 msgstr ""
 
 #: feeds/luci/applications/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:291
@@ -46,9 +52,7 @@ msgid "Current Frequency"
 msgstr ""
 
 #: feeds/luci/applications/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:244
-msgid ""
-"Direct PLL programming. Governor locked to performance. Stock max: 1200 MHz. "
-"Tested stable up to 1500 MHz."
+msgid "Direct PLL. Stock max 1200 MHz. Stable up to 1500 MHz."
 msgstr ""
 
 #: feeds/luci/applications/luci-app-airoha-npu/htdocs/luci-static/resources/view/airoha_npu/status.js:360

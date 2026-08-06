@@ -432,11 +432,11 @@ function buildTachoInner(ppe, cs, mode) {
 	p.push('<text x="150" y="113" text-anchor="middle" fill="var(--soc-text)" font-size="9" font-weight="700" font-family="monospace" letter-spacing="2">'+modeText+'</text>');
 	p.push('<text x="150" y="124" text-anchor="middle" fill="'+statusCol+'" font-size="7" font-family="monospace" letter-spacing="1">'+statusText+'</text>');
 	p.push('<text x="150" y="144" text-anchor="middle" fill="'+bndColor+'" font-size="22" font-weight="700" font-family="monospace">'+bndTot+'</text>');
-	p.push('<text x="150" y="155" text-anchor="middle" fill="var(--soc-muted)" font-size="7" font-family="monospace" letter-spacing="2">BND FLOWS</text>');
+	p.push('<text x="150" y="155" text-anchor="middle" fill="var(--soc-muted)" font-size="7" font-family="monospace" letter-spacing="2">'+_('BND FLOWS')+'</text>');
 	p.push('<text x="117" y="175" text-anchor="middle" fill="#00c8ff"  font-size="8" font-family="monospace">v4: '+n4+'</text>');
 	p.push('<text x="183" y="175" text-anchor="middle" fill="#9c27b0"  font-size="8" font-family="monospace">v6: '+n6+'</text>');
 	p.push('<text x="150" y="189" text-anchor="middle" fill="'+unbColor+'" font-size="13" font-weight="700" font-family="monospace">'+unbTot+'</text>');
-	p.push('<text x="150" y="200" text-anchor="middle" fill="var(--soc-muted)" font-size="7" font-family="monospace" letter-spacing="1.5">UNB FLOWS</text>');
+	p.push('<text x="150" y="200" text-anchor="middle" fill="var(--soc-muted)" font-size="7" font-family="monospace" letter-spacing="1.5">'+_('UNB FLOWS')+'</text>');
 
 	return p.join('');
 }

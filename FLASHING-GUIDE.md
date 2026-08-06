@@ -37,3 +37,27 @@ Use the shortest path:
 3. Update U-Boot only when needed, using `uboot-first-release-flash-slot.bin` once. It is not a system image.
 
 Do not flash both system images one after another. Do not flash a raw `u-boot.bin` into the U-Boot slot. Confirm the device is a Gemtek XR1710G and verify `SHA256SUMS.txt` first.
+
+### 首次进入如何切换英文
+
+首启界面默认是简体中文。英文用户登录 LuCI 后：
+
+1. 打开左侧 **系统**。
+2. 进入 **系统** 或 **系统属性** 页面。
+3. 找到 **语言和界面**（Language and Style）。
+4. 将 **语言** 改为 **English**。
+5. 点击 **保存并应用**，刷新页面即可。
+
+也可以在 LuCI 的 **System → System → Language and Style** 中完成同样操作。语言切换不会修改 WAN、LAN、Wi-Fi 或 Mesh 配置。
+
+### Switching from Chinese to English
+
+The first boot uses Simplified Chinese. After logging in to LuCI:
+
+1. Open **System** in the left menu.
+2. Open the **System** or **System Properties** page.
+3. Find **Language and Style**.
+4. Select **English** in the **Language** field.
+5. Click **Save & Apply**, then refresh the page.
+
+The same path is **System → System → Language and Style**. Changing the UI language does not change WAN, LAN, Wi-Fi, or Mesh settings.
