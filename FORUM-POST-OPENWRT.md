@@ -54,6 +54,8 @@ This allows 6 GHz to be dedicated to node-to-node backhaul while phones and comp
 
 Two physical XR1710G units passed read-only log acceptance:
 
+The nodes were placed on different floors, approximately 5 meters apart, with a wooden staircase and a concrete floor slab between them.
+
 - 6 GHz Mesh state: `ESTAB`
 - US regulatory domain, channel 37, EHT320
 - `tx failed=0` on both nodes
