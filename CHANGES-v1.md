@@ -12,7 +12,6 @@
 - iStore：安装、升级、自更新和APK事务先模拟，依赖失败时零修改退出。
 - Docker：预装OpenWrt上游Moby/containerd/runc/compose/Dockerman；默认关闭，统一使用 `/overlay/docker/`。
 - 网络角色：WAN检测前拉起物理口；主路由激活恢复dnsmasq自启动；角色工具不自动切网或重启。
-- NPU标签：将“VLAN/PPPoE加速”纠正为bridge netfilter标签处理，避免与真正硬件Flow Offload混淆。
 - 界面：保留iStoreOS风格、iStore/QuickStart/Argon、OpenClash和中英文界面。
 
 实机验收：两台XR1710G在约5米、木质楼梯和水泥楼板间的客厅摆位，以XZ/channel37/EHT320完成约10分钟双向满载；20次均超过400Mbps，中位数约715/720Mbps，空闲双向600 Ping均0%丢包，无Mesh断链、设备重启或关键驱动错误。
@@ -27,7 +26,6 @@
 - iStore: install, upgrade, self-update, and direct APK transactions are simulated before any package database mutation.
 - Docker: upstream OpenWrt Moby/containerd/runc/compose/Dockerman are preinstalled but disabled by default and share `/overlay/docker/`.
 - Network roles: WAN carrier checks first bring up the physical interface; main-role activation restores dnsmasq autostart; role tools do not switch the network or reboot automatically.
-- NPU labels: misleading VLAN/PPPoE “acceleration” labels now identify bridge-netfilter tag handling and are separated from real hardware Flow Offload.
 - UI: iStoreOS-style navigation, iStore/QuickStart/Argon, OpenClash, and Chinese/English UI remain included.
 
 Hardware acceptance: two XR1710G units approximately 5 metres apart across a wooden staircase and concrete floor completed about ten minutes of bidirectional XZ/channel 37/EHT320 load. All 20 runs exceeded 400Mbps, medians were about 715/720Mbps, two post-load 600-packet idle Ping tests had 0% loss, and no Mesh disconnect, reboot, or critical driver error occurred.

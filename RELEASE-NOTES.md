@@ -13,7 +13,6 @@ Community-built iStoreOS/OpenWrt firmware for Gemtek XR1710G (Airoha AN7581 + Me
 - Upstream OpenWrt Docker stack preinstalled but disabled by default; iStore and Dockerman share `/overlay/docker/`.
 - WAN physical-interface and dnsmasq role-activation fixes.
 - Opt-in XZ composite laboratory profile with shared-PHY and no-AFC warnings.
-- Corrected bridge VLAN/PPPoE netfilter labels; these are not NPU acceleration switches.
 
 ## Hardware validation
 

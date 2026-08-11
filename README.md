@@ -1,4 +1,6 @@
-# XR1710G iStoreOS / OpenWrt Wi-Fi 7 社区固件
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 社区固件
+
+**语言 / Languages：** [中文（本页）](README.md) | [English](README-EN.md) | [双语刷机指南 / Bilingual Flashing Guide](FLASHING-GUIDE.md)
 
 **Gemtek XR1710G、Airoha AN7581、MediaTek MT7996、OpenWrt、iStoreOS、Wi-Fi 7、6GHz 802.11s Mesh。**
 
@@ -16,7 +18,6 @@
 - Docker 关闭时，Dockerman 显示明确说明和启用入口，不再只显示 socket 错误。
 - WAN 检测前先拉起物理口；角色工具恢复 dnsmasq 自启动，避免 PPPoE 上线但 LAN 客户端拿不到地址。
 - 新增共享 PHY 的 XZ 组合实验档和中英文合规警告。标准 US/AU 不变，XZ 默认关闭。
-- 修正 NPU 页面两个误导标签：它们是 bridge netfilter 的 VLAN/PPPoE 标签处理，不是真正的 NPU 加速。普通主路由和节点建议保持关闭；真正的硬件流量加速保持开启。
 
 完整来源和许可证边界见 [ATTRIBUTION.md](ATTRIBUTION.md)，详细变更见 [CHANGES-v1.md](CHANGES-v1.md)。
 
@@ -141,4 +142,4 @@ docker run --name xr1710g-istoreos-build-final \
 
 ## 反馈问题
 
-请注明设备批次、主路由/节点角色、监管域、6GHz信道和带宽、摆放距离，并提交脱敏后的 `xr1710g-mesh-diag`、`dmesg`、`iw dev` 和 `ubus call network.wireless status` 摘要。不要上传Wi-Fi/PPPoE/root密码、Token、MAC、公网地址、完整 `/etc/config` 或overlay备份。
+请注明设备批次、主路由/节点角色、监管域、6GHz信道和带宽、摆放距离，并提交 `xr1710g-mesh-diag`、`dmesg`、`iw dev` 和 `ubus call network.wireless status` 的相关摘要。
