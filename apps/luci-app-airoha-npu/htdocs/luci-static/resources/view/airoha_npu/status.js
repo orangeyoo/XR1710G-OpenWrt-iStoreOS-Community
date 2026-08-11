@@ -10,13 +10,19 @@ var callTokenInfo = rpc.declare({ object: 'luci.airoha_npu', method: 'getTokenIn
 var callFrameEngine = rpc.declare({ object: 'luci.airoha_npu', method: 'getFrameEngine' });
 var callSetGovernor = rpc.declare({ object: 'luci.airoha_npu', method: 'setGovernor', params: ['governor'] });
 var callSetMaxFreq = rpc.declare({ object: 'luci.airoha_npu', method: 'setMaxFreq', params: ['freq'] });
-var callSetOverclock = rpc.declare({ object: 'luci.airoha_npu', method: 'setOverclock', params: ['freq_mhz'] });
 var callGetVlanOffload = rpc.declare({ object: 'luci.airoha_npu', method: 'getVlanOffload' });
 var callSetVlanOffload = rpc.declare({ object: 'luci.airoha_npu', method: 'setVlanOffload', params: ['enabled'] });
 var callGetPppoeOffload = rpc.declare({ object: 'luci.airoha_npu', method: 'getPppoeOffload' });
 var callSetPppoeOffload = rpc.declare({ object: 'luci.airoha_npu', method: 'setPppoeOffload', params: ['enabled'] });
 var callGetFlowOffload = rpc.declare({ object: 'luci.airoha_npu', method: 'getFlowOffload' });
 var callSetFlowOffload = rpc.declare({ object: 'luci.airoha_npu', method: 'setFlowOffload', params: ['enabled'] });
+var callSnapshot = rpc.declare({ object: 'luci.airoha_npu', method: 'getSnapshot' });
+
+function snapshotData(s) {
+	s = s || {};
+	return [s.status || {}, s.ppe || {}, s.token || {}, s.frame || {},
+		s.vlan || { enabled: 0 }, s.pppoe || { enabled: 0 }, s.flow || { enabled: 0 }];
+}
 
 /* ── Theme-adaptive CSS ── */
 var themeCSS = '\
@@ -176,7 +182,7 @@ function updateBandChip(band, stats) {
 
 /* ── Frame Engine Diagram (with WiFi bands, NPU, PPE flows) ── */
 function renderFeDiagram(fe, ti, st) {
-	if (!fe || fe.error) return E('div', { 'class': 'soc-muted' }, 'devmem not available on this build');
+	if (!fe || fe.error) return E('div', { 'class': 'soc-muted' }, _('Low-level frame-engine counters are disabled for management-plane safety.'));
 	ti = ti || {}; st = st || {};
 
 	var ports = Array.isArray(fe.pse_ports) ? fe.pse_ports : [];
@@ -380,24 +386,6 @@ function renderMaxFreqSelect(avail, cur) {
 	}}, fs.map(function(f){return E('option',{'value':f,'selected':parseInt(f)===parseInt(cur)?'':null},(parseInt(f)/1000).toFixed(0)+' MHz');}));
 }
 
-function renderOcControls() {
-	var inp = E('input',{'id':'oc-freq-input','type':'number','min':'500','max':'1600','step':'50','value':'1400','class':'cbi-input-text','style':'width:100px'});
-	var btn = E('button',{'class':'cbi-button cbi-button-action','style':'margin-left:8px','click':function(){
-		var f=parseInt(document.getElementById('oc-freq-input').value);
-		if(isNaN(f)||f<500||f>1600){ui.addNotification(null,E('p',{},_('Must be 500-1600 MHz')),'error');return;}
-		if(f>1400&&!confirm('Frequencies above 1400 MHz may be unstable. Continue?')) return;
-		btn.disabled=true;btn.textContent=_('Applying...');
-		callSetOverclock(f).then(function(r){btn.disabled=false;btn.textContent=_('Apply');
-			if(r&&r.error) ui.addNotification(null,E('p',{},_('Failed: ')+r.error),'error');
-			else if(r&&r.result==='ok') ui.addNotification(null,E('p',{},_('CPU set to ')+r.actual_mhz+' MHz'),'info');
-		}).catch(function(e){btn.disabled=false;btn.textContent=_('Apply');});
-	}},_('Apply'));
-	return E('div',{'style':'display:flex;align-items:center;gap:8px;flex-wrap:wrap'},[
-		inp, E('span',{'class':'soc-muted'},'MHz'), btn,
-		E('span',{'class':'soc-muted','style':'font-size:85%;margin-left:8px'},_('Direct PLL. Stock max 1200 MHz. Stable up to 1500 MHz.'))
-	]);
-}
-
 function renderOffloadBadge(enabled, id) {
 	return E('span', {
 		'id': id,
@@ -440,7 +428,7 @@ function renderPpeRows(entries) {
 /* ── Main View ── */
 return view.extend({
 	load: function() {
-		return Promise.all([ callNpuStatus(), callPpeEntries(), callTokenInfo(), callFrameEngine(), callGetVlanOffload(), callGetPppoeOffload(), callGetFlowOffload() ]);
+		return callSnapshot().then(snapshotData).catch(function() { return snapshotData({}); });
 	},
 
 	render: function(data) {
@@ -475,21 +463,8 @@ return view.extend({
 							renderMaxFreqSelect(st.cpu_avail_freqs,st.cpu_max_freq)
 						])
 					])) ]),
-					E('tr',{'class':'tr'},[ E('td',{'class':'td','width':'25%'},E('strong',{},_('Overclock'))), E('td',{'class':'td'}, E('div',{'style':'display:flex;align-items:center;gap:8px;flex-wrap:wrap'},[
-						E('input',{'id':'oc-freq-input','type':'number','min':'500','max':'1600','step':'50','value':'1400','class':'cbi-input-text','style':'width:80px'}),
-						E('span',{'style':'font-size:85%;color:#666'},'MHz'),
-						E('button',{'class':'cbi-button cbi-button-action','click':function(){
-							var f=parseInt(document.getElementById('oc-freq-input').value);
-							if(isNaN(f)||f<500||f>1600){ui.addNotification(null,E('p',{},_('Must be 500-1600 MHz')),'error');return;}
-							if(f>1400&&!confirm('Frequencies above 1400 MHz may be unstable. Continue?')) return;
-							var btn=this;btn.disabled=true;btn.textContent=_('Applying...');
-							callSetOverclock(f).then(function(r){btn.disabled=false;btn.textContent=_('Apply');
-								if(r&&r.error) ui.addNotification(null,E('p',{},_('Failed: ')+r.error),'error');
-								else if(r&&r.result==='ok') ui.addNotification(null,E('p',{},_('CPU set to ')+r.actual_mhz+' MHz'),'info');
-							}).catch(function(e){btn.disabled=false;btn.textContent=_('Apply');});
-						}},_('Apply')),
-						E('span',{'style':'font-size:85%;color:#666'},_('Overclock governor locked to performance. Stock max: 1200 MHz. Recommended max 1500 MHz.'))
-					])) ])
+					E('tr',{'class':'tr'},[ E('td',{'class':'td','width':'25%'},E('strong',{},_('Safety'))), E('td',{'class':'td'},
+						E('span',{'class':'soc-muted'},_('Direct PLL access is disabled in LuCI. Kernel cpufreq controls remain available.'))) ])
 				])
 			]),
 
@@ -539,7 +514,7 @@ return view.extend({
 		]);
 
 		poll.add(L.bind(function() {
-			return Promise.all([ callNpuStatus(), callPpeEntries(), callTokenInfo(), callFrameEngine(), callGetVlanOffload(), callGetPppoeOffload(), callGetFlowOffload() ]).then(L.bind(function(d) {
+			return callSnapshot().then(snapshotData).then(L.bind(function(d) {
 				injectCSS();
 				var st=d[0]||{}, ppe=d[1]||{}, ti=d[2]||{}, fe=d[3]||{};
 				var vo=d[4]||{enabled:0}, ppo=d[5]||{enabled:0}, flo=d[6]||{enabled:0};
@@ -566,7 +541,7 @@ return view.extend({
 
 				var tb=document.getElementById('ppe-entries-table');
 				if(tb){while(tb.rows.length>1)tb.deleteRow(1);renderPpeRows(entries).forEach(function(r){tb.appendChild(r);});}
-			},this));
+			},this)).catch(function() { return null; });
 		},this), 5);
 
 		return view;

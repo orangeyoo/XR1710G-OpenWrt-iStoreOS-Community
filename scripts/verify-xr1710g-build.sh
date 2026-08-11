@@ -37,6 +37,16 @@ require_config 'CONFIG_PACKAGE_usteer=y'
 require_config 'CONFIG_PACKAGE_luci-app-airoha-npu=y'
 require_config 'CONFIG_PACKAGE_luci-app-airoha-flowsense=y'
 require_config 'CONFIG_PACKAGE_luci-app-airoha-fancontrol=y'
+require_config 'CONFIG_PACKAGE_xr1710g-status-core=y'
+require_config 'CONFIG_PACKAGE_luci-app-dockerman=y'
+require_config 'CONFIG_PACKAGE_dockerd=y'
+require_config 'CONFIG_PACKAGE_docker=y'
+require_config 'CONFIG_PACKAGE_docker-compose=y'
+require_config 'CONFIG_PACKAGE_containerd=y'
+require_config 'CONFIG_PACKAGE_runc=y'
+require_config 'CONFIG_PACKAGE_kmod-veth=y'
+require_config 'CONFIG_PACKAGE_kmod-br-netfilter=y'
+require_config 'CONFIG_PACKAGE_kmod-nf-ipvs=y'
 require_config 'CONFIG_PACKAGE_wireless-regdb=y'
 require_config 'CONFIG_PACKAGE_iw-full=y'
 require_config 'CONFIG_PACKAGE_adguardhome=y'
@@ -81,6 +91,16 @@ require_manifest_pkg usteer
 require_manifest_pkg luci-app-airoha-npu
 require_manifest_pkg luci-app-airoha-flowsense
 require_manifest_pkg luci-app-airoha-fancontrol
+require_manifest_pkg xr1710g-status-core
+require_manifest_pkg luci-app-dockerman
+require_manifest_pkg dockerd
+require_manifest_pkg docker
+require_manifest_pkg docker-compose
+require_manifest_pkg containerd
+require_manifest_pkg runc
+require_manifest_pkg kmod-veth
+require_manifest_pkg kmod-br-netfilter
+require_manifest_pkg kmod-nf-ipvs
 require_manifest_pkg wireless-regdb
 require_manifest_pkg iw-full
 require_manifest_pkg adguardhome
@@ -88,6 +108,67 @@ require_manifest_pkg luci-app-adguardhome
 require_manifest_pkg kmod-mt7996e
 require_manifest_pkg kmod-mt7996-firmware
 require_manifest_pkg airoha-en7581-mt7996-npu-firmware
+
+# Regulatory safety gate. XR1710G's three bands share one PHY, so XZ must be a
+# complete composite profile: the pinned AU 2.4/5 GHz rules plus the isolated
+# no-AFC 6 GHz 36 dBm rule. Ordinary AU/US remain unchanged, XZ stays off by
+# default, and the UI must explain the shared-PHY behavior in both languages.
+regdb_patch_dir="$TOPDIR/package/firmware/wireless-regdb/patches"
+regdb_lab_patch="$regdb_patch_dir/530-us-6ghz-lab-indoor-sp-override.patch"
+regdb_lpi_patch="$regdb_patch_dir/520-w1700k-us-power-limits.patch"
+[ -f "$regdb_lab_patch" ] || fail "XZ 6 GHz laboratory profile is missing"
+grep -Fq 'country XZ: DFS-ETSI' "$regdb_lab_patch" ||
+	fail "36 dBm laboratory rule is not isolated under user-assigned XZ"
+grep -Fq 'This profile has no AFC implementation' "$regdb_lab_patch" ||
+	fail "XZ laboratory rule lacks its no-AFC source warning"
+[ -f "$regdb_lpi_patch" ] || fail "US indoor regulatory patch is missing"
+grep -Fq '(5925 - 7125 @ 320), (29), NO-OUTDOOR' "$regdb_lpi_patch" ||
+	fail "US indoor regulatory patch has an unexpected power ceiling"
+[ "$(grep -R -Fl '(5925 - 7125 @ 320), (36), NO-OUTDOOR' "$regdb_patch_dir" | wc -l)" -eq 1 ] ||
+	fail "36 dBm rule must occur exactly once in the isolated XZ profile"
+if grep -Fq 'country US:' "$regdb_lab_patch" || grep -Fq 'country AU:' "$regdb_lab_patch"; then
+	fail "laboratory profile must not override a real country domain"
+fi
+for xz_au_rule in \
+	'(2400 - 2483.5 @ 40), (4000 mW)' \
+	'(5150 - 5250 @ 80), (200 mW), NO-OUTDOOR, AUTO-BW' \
+	'(5250 - 5350 @ 80), (100 mW), NO-OUTDOOR, AUTO-BW, DFS' \
+	'(5470 - 5600 @ 80), (500 mW), DFS' \
+	'(5650 - 5730 @ 80), (500 mW), DFS' \
+	'(5730 - 5850 @ 80), (4000 mW), AUTO-BW' \
+	'(5850 - 5875 @ 20), (25 mW), AUTO-BW'; do
+	grep -Fq "$xz_au_rule" "$regdb_lab_patch" ||
+		fail "XZ composite profile lacks pinned AU 2.4/5 GHz rule: $xz_au_rule"
+done
+[ "$(awk '/^\+\t\(/ { n++ } END { print n + 0 }' "$regdb_lab_patch")" -eq 8 ] ||
+	fail "XZ composite profile contains an unexpected number of radio rules"
+
+luci_wireless_js="$TOPDIR/feeds/luci/modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js"
+luci_zh_hans_po="$TOPDIR/feeds/luci/modules/luci-base/po/zh_Hans/base.po"
+[ -f "$luci_wireless_js" ] || fail "LuCI wireless configuration view is missing"
+grep -Fq "CBIWifiCountryValue, 'country', _('Country Code'), countryHelp" \
+	"$luci_wireless_js" || fail "shared-PHY country selector guidance is missing"
+grep -Fq "this.xr1710gLab6g" "$luci_wireless_js" ||
+	fail "XZ laboratory choice is not limited to the 6 GHz radio"
+grep -Fq "this.value('XZ', _('XZ - XR1710G composite laboratory profile (AU 2.4/5 GHz + 6 GHz 36 dBm, no AFC)'))" \
+	"$luci_wireless_js" || fail "explicit XZ laboratory choice is missing"
+grep -Fq 'all three bands through one shared PHY' "$luci_wireless_js" ||
+	fail "English shared-PHY regulatory explanation is missing"
+grep -Fq "uci.set('wireless', radio['.name'], 'country', 'XZ')" "$luci_wireless_js" ||
+	fail "LuCI does not persist XZ across all shared-PHY radio sections"
+grep -Fq 'XZ is not a country regulatory domain' "$luci_wireless_js" ||
+	fail "English XZ laboratory warning is missing"
+[ -f "$luci_zh_hans_po" ] || fail "LuCI Simplified Chinese catalog is missing"
+grep -Fq 'msgstr "XZ - XR1710G 组合实验配置（AU 2.4/5 GHz + 6 GHz 36 dBm，无 AFC）"' "$luci_zh_hans_po" ||
+	fail "Simplified Chinese XZ laboratory label is missing"
+grep -Fq '三个频段共用同一个 PHY' "$luci_zh_hans_po" ||
+	fail "Simplified Chinese shared-PHY explanation is missing"
+grep -Fq 'msgstr "警告：XZ 不是国家监管域' "$luci_zh_hans_po" ||
+	fail "Simplified Chinese XZ laboratory warning is missing"
+if grep -RIEq "set wireless\.[^[:space:]]+\.country=['\"]?XZ|option country ['\"]?XZ" \
+	"$TOPDIR/files"; then
+	fail "XZ laboratory profile is enabled by default"
+fi
 
 # v8 selectively backports iStoreOS' reverse-proxy stack onto this port's
 # newer uhttpd.  Verify the exact source baseline, content-addressed patch
@@ -103,13 +184,13 @@ grep -qx 'PKG_SOURCE_VERSION:=7b1bec45826bd78c8afc993435bdc0f1df2fe399' \
 grep -qx 'PKG_RELEASE:=2' "$uhttpd_makefile" ||
 	fail "proxy-enabled uhttpd package release is not selected"
 [ "$(sha256sum "$uhttpd_patch_dir/501-1-feat-add-raw-proxy.patch" | cut -d' ' -f1)" = \
-	'b87ac4cea290fd0cff99b1e7092f0a5847ac94a678ca590691d35e884d65fb1e' ] ||
+	'174a2521df1d25b40eb72ef42660ca118a7f7801d0be00d154990277c023b7b5' ] ||
 	fail "unexpected iStoreOS raw-proxy patch"
 [ "$(sha256sum "$uhttpd_patch_dir/501-2-fix-force-backend-close-for-proxied-http.patch" | cut -d' ' -f1)" = \
-	'e8b84a06e0d40de9a0c0a3ad642b2f40ce0fd7f9d3260934eb29ba346d875753' ] ||
+	'3d73af37c533240bb38b1b1cdf70b966845c8d33c1ef2ce6166ad341795c437f' ] ||
 	fail "unexpected iStoreOS proxy-close patch"
 [ "$(sha256sum "$uhttpd_patch_dir/501-3-feat-forward-original-request-headers-to-backend.patch" | cut -d' ' -f1)" = \
-	'e23262991b6b8cb59d107f16560876a6e542e0bbfbe60e9dddd9c92ca625071c' ] ||
+	'4d31d429d86d6593acdbe37463f8f34d81f3b082c75455a2f49883ba5970fcbd' ] ||
 	fail "unexpected iStoreOS forwarded-header patch"
 
 uhttpd_proxy_source="$(find "$TOPDIR/build_dir/target-aarch64_cortex-a53_musl" \
@@ -220,9 +301,40 @@ trng_enable_line="$(grep -n 'val |= RNG_EN | RNG_OSC_EN;' \
 	fail "prepared Airoha TRNG source lacks the required clock or enable operation"
 [ "$trng_clock_line" -lt "$trng_enable_line" ] ||
 	fail "prepared Airoha TRNG source still enables RNG before its SCU clocks"
-grep -Fqx "$(printf '\t%s' '$(call prepare_rootfs,$(mkfs_cur_target_dir),$(TOPDIR)/files,adguardhome)')" \
+grep -Fqx "$(printf '\t%s' '$(call prepare_rootfs,$(mkfs_cur_target_dir),$(TOPDIR)/files,adguardhome dockerd)')" \
 	"$TOPDIR/include/image.mk" ||
-	fail "image assembly does not mark AdGuard Home as disabled"
+	fail "image assembly does not mark AdGuard Home and Docker as opt-in"
+
+# Docker is the pinned OpenWrt implementation, not a second local engine:
+# Moby dockerd/CLI and containerd/runc come from packages.git, Dockerman comes
+# from LuCI, and iStore controls the same UCI file and init service.  The only
+# package-feed delta allowed here is the reviewed UCI-to-daemon.json log-opts
+# bridge in the OpenWrt service wrapper.
+[ "$(git -C "$TOPDIR/feeds/packages" rev-parse HEAD)" = \
+	'bd08229d5e93b7753a384a49fa0258847988fc53' ] ||
+	fail "unexpected OpenWrt packages feed revision"
+[ "$(git -C "$TOPDIR/feeds/luci" rev-parse HEAD)" = \
+	'fb6b224af5c4456c5d863e47f6647645384b1677' ] ||
+	fail "unexpected OpenWrt LuCI feed revision"
+[ "$(git -C "$TOPDIR/feeds/istore" rev-parse HEAD)" = \
+	'7c5c69796fd9798610a56a80e1895aa9033e1e6c' ] ||
+	fail "unexpected iStore feed revision"
+dockerd_makefile="$TOPDIR/feeds/packages/utils/dockerd/Makefile"
+dockerd_init_source="$TOPDIR/feeds/packages/utils/dockerd/files/dockerd.init"
+[ "$(sha256sum "$GITHUB_WORKSPACE/patches/packages/0201-dockerd-support-uci-log-options.patch" |
+	cut -d' ' -f1)" = \
+	'f2851e370a83380903c1933b59978ac90a1cf8c08b544144a3c8bc6a281654bd' ] ||
+	fail "unexpected OpenWrt dockerd wrapper patch content"
+grep -qx 'PKG_VERSION:=29.6.1' "$dockerd_makefile" ||
+	fail "unexpected upstream OpenWrt dockerd version"
+grep -qx 'PKG_GIT_REF:=docker-v$(PKG_VERSION)' "$dockerd_makefile" ||
+	fail "dockerd no longer builds the upstream Moby release"
+grep -Fq 'config_list_foreach globals log_opts json_add_log_option' \
+	"$dockerd_init_source" || fail "OpenWrt dockerd wrapper lacks bounded log options"
+if git -C "$TOPDIR/feeds/packages" diff --name-only -- utils/dockerd |
+	grep -Fvx 'utils/dockerd/files/dockerd.init' | grep -q .; then
+	fail "Docker engine package contains a non-wrapper local modification"
+fi
 
 mt76_manifest_line="$(grep -hE '^kmod-mt7996e[[:space:]]+-[[:space:]]+' \
 	"$TARGET_DIR"/*.manifest | head -n1)"
@@ -343,6 +455,25 @@ grep -qx 'etc/init.d/xr1710g-bootlog' "$VERIFY_TMP/recovery.files" ||
 	fail "recovery ramdisk does not contain the persistent boot logger"
 grep -qx 'etc/init.d/adguardhome' "$VERIFY_TMP/recovery.files" ||
 	fail "recovery ramdisk does not contain the patched AdGuard Home service"
+for docker_file in \
+	usr/bin/dockerd \
+	usr/bin/docker \
+	usr/bin/containerd \
+	usr/sbin/runc \
+	usr/bin/docker-compose \
+	etc/init.d/dockerd \
+	etc/config/dockerd \
+	usr/libexec/istore/docker \
+	usr/share/rpcd/ucode/docker_rpc.uc \
+	www/luci-static/resources/view/dockerman/overview.js \
+	usr/sbin/xr1710g-wan-carrier \
+	lib/upgrade/keep.d/xr1710g-docker; do
+	grep -qx "$docker_file" "$VERIFY_TMP/recovery.files" ||
+		fail "recovery ramdisk lacks upstream Docker integration: $docker_file"
+done
+if grep -Eq '^etc/rc.d/[SK][0-9][0-9]dockerd$' "$VERIFY_TMP/recovery.files"; then
+	fail "recovery ramdisk starts Docker before the owner enables it"
+fi
 grep -qx 'usr/sbin/uhttpd' "$VERIFY_TMP/recovery.files" ||
 	fail "recovery ramdisk does not contain uhttpd"
 grep -qx 'etc/uci-defaults/adguardhome' "$VERIFY_TMP/recovery.files" ||
@@ -354,6 +485,20 @@ grep -qx 'usr/libexec/rpcd/luci.airoha_npu' "$VERIFY_TMP/recovery.files" ||
 	fail "recovery ramdisk does not contain the Airoha NPU RPC backend"
 grep -qx 'usr/libexec/rpcd/luci.airoha_flowsense' "$VERIFY_TMP/recovery.files" ||
 	fail "recovery ramdisk does not contain the Airoha FlowSense RPC backend"
+grep -qx 'usr/libexec/xr1710g-status-common' "$VERIFY_TMP/recovery.files" ||
+	fail "recovery ramdisk does not contain the shared XR1710G status core"
+grep -qx 'www/luci-static/resources/view/airoha_npu/status.js' "$VERIFY_TMP/recovery.files" ||
+	fail "recovery ramdisk does not contain the safe Airoha SoC frontend"
+grep -qx 'www/luci-static/resources/view/airoha_flowsense/status.js' "$VERIFY_TMP/recovery.files" ||
+	fail "recovery ramdisk does not contain the safe Airoha FlowSense frontend"
+grep -qx 'www/luci-static/quickstart/index.js' "$VERIFY_TMP/recovery.files" ||
+	fail "recovery ramdisk does not contain the QuickStart frontend"
+grep -qx 'usr/lib/lua/luci/view/quickstart/main.htm' "$VERIFY_TMP/recovery.files" ||
+	fail "recovery ramdisk does not contain the QuickStart template"
+grep -qx 'www/luci-static/resources/view/fan/status.js' "$VERIFY_TMP/recovery.files" ||
+	fail "recovery ramdisk does not contain the resilient fan status frontend"
+grep -qx 'www/luci-static/resources/view/fan/settings.js' "$VERIFY_TMP/recovery.files" ||
+	fail "recovery ramdisk does not contain the resilient fan settings frontend"
 grep -qx 'usr/libexec/rpcd/luci.fan' "$VERIFY_TMP/recovery.files" ||
 	fail "recovery ramdisk does not contain the Airoha fan RPC backend"
 grep -qx 'etc/init.d/npu-jitter' "$VERIFY_TMP/recovery.files" ||
@@ -390,15 +535,34 @@ for installed in \
 	'squashfs-root/etc/uci-defaults/41_uhttpd_proxy_linkease' \
 	'squashfs-root/etc/uci-defaults/zz-xr1710g-services.sh' \
 	'squashfs-root/usr/sbin/xr1710g-role' \
+	'squashfs-root/usr/sbin/xr1710g-wan-carrier' \
 	'squashfs-root/usr/sbin/xr1710g-wireless-defaults' \
 	'squashfs-root/etc/init.d/xr1710g-bootlog' \
 	'squashfs-root/etc/init.d/adguardhome' \
+	'squashfs-root/usr/bin/dockerd' \
+	'squashfs-root/usr/bin/docker' \
+	'squashfs-root/usr/bin/containerd' \
+	'squashfs-root/usr/sbin/runc' \
+	'squashfs-root/usr/bin/docker-compose' \
+	'squashfs-root/etc/init.d/dockerd' \
+	'squashfs-root/etc/config/dockerd' \
+	'squashfs-root/usr/libexec/istore/docker' \
+	'squashfs-root/usr/share/rpcd/ucode/docker_rpc.uc' \
+	'squashfs-root/www/luci-static/resources/view/dockerman/overview.js' \
+	'squashfs-root/lib/upgrade/keep.d/xr1710g-docker' \
 	'squashfs-root/usr/sbin/uhttpd' \
 	'squashfs-root/etc/uci-defaults/adguardhome' \
 	'squashfs-root/lib/preinit/00_preinit.conf' \
 	'squashfs-root/etc/board.d/99-lan-ip' \
 	'squashfs-root/usr/libexec/rpcd/luci.airoha_npu' \
-	'squashfs-root/usr/libexec/rpcd/luci.airoha_flowsense'; do
+	'squashfs-root/usr/libexec/rpcd/luci.airoha_flowsense' \
+	'squashfs-root/usr/libexec/xr1710g-status-common' \
+	'squashfs-root/www/luci-static/resources/view/airoha_npu/status.js' \
+	'squashfs-root/www/luci-static/resources/view/airoha_flowsense/status.js' \
+	'squashfs-root/www/luci-static/quickstart/index.js' \
+	'squashfs-root/usr/lib/lua/luci/view/quickstart/main.htm' \
+	'squashfs-root/www/luci-static/resources/view/fan/status.js' \
+	'squashfs-root/www/luci-static/resources/view/fan/settings.js'; do
 	grep -Fq " $installed" "$VERIFY_TMP/sysupgrade.files" ||
 		fail "sysupgrade rootfs does not contain ${installed#squashfs-root/}"
 done
@@ -409,6 +573,10 @@ fi
 if grep -Eq ' squashfs-root/etc/rc.d/[SK][0-9][0-9]adguardhome$' \
 	"$VERIFY_TMP/sysupgrade.files"; then
 	fail "sysupgrade rootfs enables AdGuard Home by default"
+fi
+if grep -Eq ' squashfs-root/etc/rc.d/[SK][0-9][0-9]dockerd$' \
+	"$VERIFY_TMP/sysupgrade.files"; then
+	fail "sysupgrade rootfs starts Docker before the owner enables it"
 fi
 
 mkdir "$VERIFY_TMP/core-root"
@@ -424,9 +592,17 @@ mkdir "$VERIFY_TMP/core-root"
 		'etc/uci-defaults/41_uhttpd_proxy_linkease' \
 		'etc/uci-defaults/zz-xr1710g-services.sh' \
 		'usr/sbin/xr1710g-role' \
+		'usr/sbin/xr1710g-wan-carrier' \
 		'usr/sbin/xr1710g-wireless-defaults' \
 		'etc/init.d/xr1710g-bootlog' \
 		'etc/init.d/adguardhome' \
+		'etc/init.d/dockerd' \
+		'etc/config/dockerd' \
+		'usr/libexec/istore/docker' \
+		'www/luci-static/resources/view/dockerman/overview.js' \
+		'lib/upgrade/keep.d/xr1710g-docker' \
+		'lib/upgrade/platform.sh' \
+		'lib/firmware/regulatory.db' \
 		'usr/sbin/uhttpd' \
 		'etc/uci-defaults/adguardhome' \
 		'lib/preinit/00_preinit.conf' \
@@ -434,6 +610,14 @@ mkdir "$VERIFY_TMP/core-root"
 		'bin/is-opkg' \
 		'usr/libexec/rpcd/luci.airoha_npu' \
 		'usr/libexec/rpcd/luci.airoha_flowsense' \
+		'usr/libexec/xr1710g-status-common' \
+		'www/luci-static/resources/view/airoha_npu/status.js' \
+		'www/luci-static/resources/view/airoha_flowsense/status.js' \
+		'www/luci-static/quickstart/index.js' \
+		'usr/lib/lua/luci/view/quickstart/main.htm' \
+		'www/luci-static/resources/view/fan/status.js' \
+		'www/luci-static/resources/view/fan/settings.js' \
+		'www/luci-static/resources/view/network/wireless.js' \
 		'usr/libexec/rpcd/luci.fan' \
 		'etc/init.d/npu-jitter' \
 		< "$VERIFY_TMP/recovery.cpio" 2>/dev/null
@@ -449,9 +633,17 @@ unsquashfs -d "$VERIFY_TMP/permanent-root" "$VERIFY_TMP/sysupgrade.rootfs" \
 	etc/uci-defaults/41_uhttpd_proxy_linkease \
 	etc/uci-defaults/zz-xr1710g-services.sh \
 	usr/sbin/xr1710g-role \
+	usr/sbin/xr1710g-wan-carrier \
 	usr/sbin/xr1710g-wireless-defaults \
 	etc/init.d/xr1710g-bootlog \
 	etc/init.d/adguardhome \
+	etc/init.d/dockerd \
+	etc/config/dockerd \
+	usr/libexec/istore/docker \
+	www/luci-static/resources/view/dockerman/overview.js \
+	lib/upgrade/keep.d/xr1710g-docker \
+	lib/upgrade/platform.sh \
+	lib/firmware/regulatory.db \
 	usr/sbin/uhttpd \
 	etc/uci-defaults/adguardhome \
 	lib/preinit/00_preinit.conf \
@@ -459,6 +651,14 @@ unsquashfs -d "$VERIFY_TMP/permanent-root" "$VERIFY_TMP/sysupgrade.rootfs" \
 	bin/is-opkg \
 	usr/libexec/rpcd/luci.airoha_npu \
 	usr/libexec/rpcd/luci.airoha_flowsense \
+	usr/libexec/xr1710g-status-common \
+	www/luci-static/resources/view/airoha_npu/status.js \
+	www/luci-static/resources/view/airoha_flowsense/status.js \
+	www/luci-static/quickstart/index.js \
+	usr/lib/lua/luci/view/quickstart/main.htm \
+	www/luci-static/resources/view/fan/status.js \
+	www/luci-static/resources/view/fan/settings.js \
+	www/luci-static/resources/view/network/wireless.js \
 	usr/libexec/rpcd/luci.fan \
 	etc/init.d/npu-jitter >/dev/null 2>&1 ||
 	fail "cannot extract files required for permanent-rootfs validation"
@@ -514,9 +714,12 @@ for critical in \
 	etc/uci-defaults/41_uhttpd_proxy_linkease \
 	etc/uci-defaults/zz-xr1710g-services.sh \
 	usr/sbin/xr1710g-role \
+	usr/sbin/xr1710g-wan-carrier \
 	usr/sbin/xr1710g-wireless-defaults \
 	etc/init.d/xr1710g-bootlog \
 	etc/init.d/adguardhome \
+	lib/upgrade/platform.sh \
+	lib/firmware/regulatory.db \
 	usr/sbin/uhttpd \
 	etc/uci-defaults/adguardhome \
 	lib/preinit/00_preinit.conf \
@@ -524,10 +727,42 @@ for critical in \
 	bin/is-opkg \
 	usr/libexec/rpcd/luci.airoha_npu \
 	usr/libexec/rpcd/luci.airoha_flowsense \
+	usr/libexec/xr1710g-status-common \
+	www/luci-static/resources/view/airoha_npu/status.js \
+	www/luci-static/resources/view/airoha_flowsense/status.js \
+	www/luci-static/quickstart/index.js \
+	usr/lib/lua/luci/view/quickstart/main.htm \
+	www/luci-static/resources/view/fan/status.js \
+	www/luci-static/resources/view/fan/settings.js \
+	www/luci-static/resources/view/network/wireless.js \
+	www/luci-static/resources/view/dockerman/overview.js \
 	usr/libexec/rpcd/luci.fan \
 	etc/init.d/npu-jitter; do
 	cmp "$VERIFY_TMP/core-root/$critical" "$VERIFY_TMP/permanent-root/$critical" ||
 		fail "recovery and permanent rootfs differ at /$critical"
+done
+
+# Validate the actual contents carried by both flashable images. XZ is an
+# explicit composite profile, while standard US remains the normal default.
+expected_regdb="$TOPDIR/build_dir/target-aarch64_cortex-a53_musl/wireless-regdb-2026.05.30/regulatory.db"
+[ -f "$expected_regdb" ] || fail "compiled wireless regulatory database is missing"
+for image_root in "$VERIFY_TMP/core-root" "$VERIFY_TMP/permanent-root"; do
+	image_regdb="$image_root/lib/firmware/regulatory.db"
+	image_wireless_js="$image_root/www/luci-static/resources/view/network/wireless.js"
+	cmp "$expected_regdb" "$image_regdb" ||
+		fail "image regulatory database differs from the reviewed XZ build"
+	grep -Fq 'XR1710G composite laboratory profile (AU 2.4/5 GHz + 6 GHz 36 dBm, no AFC)' "$image_wireless_js" ||
+		fail "image LuCI lacks the explicit XZ laboratory selector"
+	grep -Fq 'all three bands through one shared PHY' "$image_wireless_js" ||
+		fail "image LuCI lacks the shared-PHY regulatory explanation"
+	grep -Eq "uci\.set\('wireless',[[:space:]]*radio\['\.name'\],[[:space:]]*'country',[[:space:]]*'XZ'\)" "$image_wireless_js" ||
+		fail "image LuCI lacks deterministic shared-PHY XZ persistence"
+	grep -Fq 'XZ is not a country regulatory domain' "$image_wireless_js" ||
+		fail "image LuCI lacks the XZ no-AFC warning"
+	if grep -RIEq "set wireless\.[^[:space:]]+\.country=['\"]?XZ|option country ['\"]?XZ" \
+		"$image_root/etc" "$image_root/usr/sbin/xr1710g-wireless-defaults"; then
+		fail "image enables XZ laboratory mode without owner action"
+	fi
 done
 
 # LinkEase Full remains optional, but its package expects the base system to
@@ -591,11 +826,57 @@ if grep -Eq '/releases/SNAPSHOT|/(istore|linkease|openclash|kenzok8|sirpdboy|wuk
 fi
 
 is_opkg="$VERIFY_TMP/core-root/bin/is-opkg"
-grep -Fq -- '--repositories-file /dev/null "$@"' "$is_opkg" ||
-	fail "iStore APK wrapper does not isolate its private repositories"
+grep -Fq -- '--repositories-file ${SYSTEM_REPOSITORIES} "$@"' "$is_opkg" ||
+	fail "iStore APK wrapper does not use the reviewed system repository whitelist"
+grep -Fq 'SYSTEM_REPOSITORIES=/etc/apk/repositories.d/distfeeds.list' "$is_opkg" ||
+	fail "iStore APK wrapper has no fixed system repository whitelist"
+grep -Fq 'apk_wrap add --simulate "$@"' "$is_opkg" ||
+	fail "iStore APK installs have no dependency preflight"
+grep -Fq 'apk_wrap upgrade --simulate "$@"' "$is_opkg" ||
+	fail "iStore APK upgrades have no dependency preflight"
+grep -Fq 'apk_wrap "$action" --simulate "$@"' "$is_opkg" ||
+	fail "iStore direct APK transactions have no dependency preflight"
+grep -Fq 'Preflight dependency resolution failed; no packages were changed.' "$is_opkg" ||
+	fail "iStore APK dependency failures are not fail-closed"
+
+for image_root in "$VERIFY_TMP/core-root" "$VERIFY_TMP/permanent-root"; do
+	quickstart_js="$image_root/www/luci-static/quickstart/index.js"
+	[ "$(grep -Fo '.linkState!=="UP"' "$quickstart_js" | wc -l)" -eq 5 ] ||
+		fail "QuickStart does not treat non-UP physical link states as disconnected"
+	if grep -Fq '.linkState=="DOWN"' "$quickstart_js"; then
+		fail "QuickStart still misclassifies LOWERLAYERDOWN as connected"
+	fi
+	grep -Fq 'index.js?v=xr-linkstate1' \
+		"$image_root/usr/lib/lua/luci/view/quickstart/main.htm" ||
+		fail "QuickStart link-state fix has no browser cache bust"
+done
+
+for image_root in "$VERIFY_TMP/core-root" "$VERIFY_TMP/permanent-root"; do
+	grep -Fq 'callFanStatus().catch(function() { return {}; })' \
+		"$image_root/www/luci-static/resources/view/fan/status.js" ||
+		fail "fan status page does not degrade safely after an RPC failure"
+	grep -Fq 'catch(function() { return null; })' \
+		"$image_root/www/luci-static/resources/view/fan/status.js" ||
+		fail "fan status polling can still reject the whole LuCI page"
+	grep -Fq 'callGetAllCurves().catch(function() { return {}; })' \
+		"$image_root/www/luci-static/resources/view/fan/settings.js" ||
+		fail "fan settings page does not degrade safely after an RPC failure"
+done
 
 firstboot="$VERIFY_TMP/core-root/etc/uci-defaults/99-custom.sh"
 wireless_defaults="$VERIFY_TMP/core-root/usr/sbin/xr1710g-wireless-defaults"
+platform_upgrade="$VERIFY_TMP/core-root/lib/upgrade/platform.sh"
+grep -Fq 'XR1710G UBI 2.0 boundaries are not active; refusing normal sysupgrade.' \
+	"$platform_upgrade" ||
+	fail "permanent image lacks the fail-closed XR1710G layout guard"
+for boundary in \
+	'vendor 00600000' \
+	'chainloader 00100000' \
+	'ubi 1b700000' \
+	'reserved_bmt 04200000'; do
+	grep -Fq "xr_mtd_size_is $boundary" "$platform_upgrade" ||
+		fail "permanent platform guard lacks boundary: $boundary"
+done
 grep -Fq "touch /etc/crontabs/root" "$firstboot" ||
 	fail "first-boot defaults do not repair a missing root crontab"
 grep -Fq "chmod 0600 /etc/crontabs/root" "$firstboot" ||
@@ -677,6 +958,45 @@ grep -Fq '[ ! -s "$agh_config" ]' "$service_policy" ||
 grep -Fq '/etc/init.d/xr1710g-bootlog enable' "$service_policy" ||
 	fail "XR1710G service policy does not enable the boot logger"
 
+dockerd_config="$VERIFY_TMP/core-root/etc/config/dockerd"
+dockerd_init="$VERIFY_TMP/core-root/etc/init.d/dockerd"
+dockerman_overview="$VERIFY_TMP/core-root/www/luci-static/resources/view/dockerman/overview.js"
+istore_docker="$VERIFY_TMP/core-root/usr/libexec/istore/docker"
+docker_keep="$VERIFY_TMP/core-root/lib/upgrade/keep.d/xr1710g-docker"
+grep -Fq "option data_root '/overlay/docker/'" "$dockerd_config" ||
+	fail "Docker data root does not use the full writable UBIFS overlay"
+grep -Fq "option log_driver 'local'" "$dockerd_config" ||
+	fail "Docker does not use its bounded upstream local log driver"
+grep -Fq "list log_opts 'max-size=5m'" "$dockerd_config" ||
+	fail "Docker max-size policy is missing"
+grep -Fq "list log_opts 'max-file=3'" "$dockerd_config" ||
+	fail "Docker max-file policy is missing"
+grep -Fq 'config_list_foreach globals log_opts json_add_log_option' "$dockerd_init" ||
+	fail "installed OpenWrt dockerd wrapper cannot emit log-opts"
+grep -Fq "handleEnableAndStart(ev)" "$dockerman_overview" ||
+	fail "Dockerman stopped-state page lacks the enable-and-start action"
+grep -Fq "Docker is installed but disabled by default" "$dockerman_overview" ||
+	fail "Dockerman stopped-state page lacks an owner-facing explanation"
+# LuCI may minify this file in the final image.  Normalize insignificant
+# whitespace and require the stopped-daemon return to precede the request
+# fan-out, so this verifies control flow in both source and minified output.
+if ! tr -d '[:space:]' < "$dockerman_overview" |
+	grep -Fq 'return[null,info,[],[],[],[],[]];returnPromise.all(['; then
+	fail "Dockerman still fans out requests while the local daemon is stopped"
+fi
+grep -Fq 'uci -q get dockerd.globals.data_root' "$istore_docker" ||
+	fail "iStore does not read the shared OpenWrt Docker data root"
+grep -Fq 'uci set dockerd.globals.data_root="$dest"' "$istore_docker" ||
+	fail "iStore cannot migrate the shared OpenWrt Docker data root"
+grep -Fq '/etc/init.d/dockerd restart' "$istore_docker" ||
+	fail "iStore does not control the shared OpenWrt dockerd service"
+grep -Fqx '/etc/rc.d/S99dockerd' "$docker_keep" ||
+	fail "an owner-enabled Docker service would not survive sysupgrade"
+if grep -Eq '(^|[[:space:]])(enable|start|restart)([[:space:]]|$)' "$service_policy" |
+	grep -q dockerd; then
+	fail "first-boot policy starts Docker without owner action"
+fi
+
 adguard_defaults="$VERIFY_TMP/core-root/etc/uci-defaults/adguardhome"
 adguard_init="$VERIFY_TMP/core-root/etc/init.d/adguardhome"
 grep -Fq 'must never expose the setup service on a clean router' "$adguard_defaults" ||
@@ -685,6 +1005,7 @@ grep -Fq '[ -s "$config_file" ] || return 0' "$adguard_init" ||
 	fail "AdGuard Home interface trigger can still restart an unconfigured service"
 
 role_tool="$VERIFY_TMP/core-root/usr/sbin/xr1710g-role"
+wan_carrier_tool="$VERIFY_TMP/core-root/usr/sbin/xr1710g-wan-carrier"
 if grep -Eq '^board_name\(\)[[:space:]]*\{' "$role_tool"; then
 	fail "XR1710G role tool shadows the optional board_name command"
 fi
@@ -699,6 +1020,10 @@ grep -Fq "set network.wan.proto='pppoe'" "$role_tool" ||
 if grep -Fq "set network.lan.proto='pppoe'" "$role_tool"; then
 	fail "XR1710G role tool can assign PPPoE to LAN"
 fi
+grep -Fq 'ip link set dev "$wan_device" up' "$wan_carrier_tool" ||
+	fail "WAN carrier helper does not raise the physical device before checking carrier"
+grep -Fq 'cat "/sys/class/net/$wan_device/carrier"' "$wan_carrier_tool" ||
+	fail "WAN carrier helper does not read the selected physical device"
 grep -Fq "set network.lan.ip6assign='64'" "$role_tool" ||
 	fail "XR1710G role tool does not enable delegated IPv6 on a main-router LAN"
 grep -Fq "set dhcp.lan.ra='disabled'" "$role_tool" ||
@@ -723,7 +1048,8 @@ grep -Fq "grep -q ' /overlay ' /proc/mounts" "$bootlog" ||
 	fail "XR1710G boot logger does not avoid RAM-only Recovery sessions"
 
 for executable in "$service_policy" "$adguard_defaults" "$adguard_init" \
-	"$role_tool" "$wireless_defaults" "$bootlog"; do
+	"$dockerd_init" "$istore_docker" \
+	"$role_tool" "$wan_carrier_tool" "$wireless_defaults" "$bootlog"; do
 	[ -x "$executable" ] || fail "$(basename "$executable") is not executable"
 	if LC_ALL=C grep -q "$(printf '\r')" "$executable"; then
 		fail "$(basename "$executable") contains CRLF line endings"
@@ -771,10 +1097,11 @@ for forbidden in \
 		fail "release rootfs contains forbidden private or experimental marker: $forbidden"
 	fi
 done
-if grep -IrEq --exclude='verify-xr1710g-build.sh' \
-	'(ssid|mesh_id)[[:space:]='"'"']+leon(_5G)?(['"'"']|$)|Lhc[[:alnum:]]{5,}|syl_[[:alnum:]_]{6,}|192\.168\.50\.2([^0-9]|$)' \
+if grep -IrIEq --exclude='verify-xr1710g-build.sh' \
+	--exclude='*.crt' --exclude='*.pem' --exclude='*.der' \
+	'(ssid|mesh_id|key|password|passwd|secret|username|user)[^[:cntrl:]]{0,80}(leon(_5G)?|Lhc[[:alnum:]]{5,}|syl_[[:alnum:]_]{6,})' \
 	"$VERIFY_TMP/recovery-all" "$VERIFY_TMP/permanent-all"; then
-	fail "release rootfs contains a private SSID or deployment address"
+	fail "release rootfs contains a private SSID or credential"
 fi
 
 for backend in \

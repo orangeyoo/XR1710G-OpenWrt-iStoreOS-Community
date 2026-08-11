@@ -116,7 +116,7 @@ return view.extend({
 	load: function() {
 		return Promise.all([
 			uci.load('fan'),
-			callGetAllCurves()
+			callGetAllCurves().catch(function() { return {}; })
 		]);
 	},
 

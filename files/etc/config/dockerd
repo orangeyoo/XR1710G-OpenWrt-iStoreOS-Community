@@ -1,0 +1,19 @@
+# XR1710G uses the ordinary OpenWrt dockerd service and UCI schema.  iStore,
+# QuickStart and luci-app-dockerman all read this same file and control the
+# same /etc/init.d/dockerd instance.
+
+config globals 'globals'
+	# Put Docker directly on the writable UBIFS overlay instead of nesting
+	# its storage driver below the overlayfs view exposed at /opt.
+	option data_root '/overlay/docker/'
+	option log_driver 'local'
+	list log_opts 'max-size=5m'
+	list log_opts 'max-file=3'
+	option log_level 'warn'
+	option iptables '1'
+
+config proxies 'proxies'
+
+config firewall 'firewall'
+	option device 'docker0'
+	list blocked_interfaces 'wan'

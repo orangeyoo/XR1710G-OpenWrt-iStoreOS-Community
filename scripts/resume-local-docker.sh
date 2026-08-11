@@ -3,6 +3,10 @@ set -euo pipefail
 
 export FORCE_UNSAFE_CONFIGURE=1
 export GITHUB_WORKSPACE=/builder
+# WSL may append Windows application paths containing spaces or parentheses.
+# OpenWrt embeds PATH in unquoted Go build recipes, so keep this build hermetic
+# and Linux-only. Host and cross-tool paths are prepended by OpenWrt itself.
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 cd /work/openwrt
 # Target output survives in the persistent compiler volume. Remove only prior
@@ -26,13 +30,21 @@ rm -f \
 	package/network/services/uhttpd/patches/501-2-fix-force-backend-close-for-proxied-http.patch \
 	package/network/services/uhttpd/patches/501-3-feat-forward-original-request-headers-to-backend.patch
 git restore --source=HEAD --worktree --staged \
+	package/firmware/wireless-regdb \
 	package/kernel/mt76 \
 	package/network/services/hostapd \
 	package/network/services/uhttpd \
 	include/image.mk \
 	target/linux/airoha/Makefile \
+	target/linux/airoha/an7581/base-files/lib/upgrade/platform.sh \
 	target/linux/airoha/image/an7581.mk \
 	target/linux/airoha/patches-6.18
+git -C feeds/packages restore --source=HEAD --worktree --staged -- utils/dockerd
+git -C feeds/luci restore --source=HEAD --worktree --staged -- \
+	applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js \
+	applications/luci-app-dockerman/po/zh_Hans/dockerman.po \
+	modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js \
+	modules/luci-base/po/zh_Hans/base.po
 cp /builder/feeds.d/openwrt feeds.conf
 cp -a /builder/files/. files/
 cp -a /builder/apps/. package/
@@ -42,6 +54,7 @@ chmod 0755 files/etc/uci-defaults/zz-xr1710g-services.sh
 chmod 0755 files/etc/init.d/xr1710g-bootlog
 chmod 0755 files/usr/sbin/xr1710g-mesh-diag
 chmod 0755 files/usr/sbin/xr1710g-role
+chmod 0755 files/usr/sbin/xr1710g-wan-carrier
 chmod 0755 files/usr/sbin/xr1710g-wireless-defaults
 chmod 0755 files/etc/openclash/core/clash_meta
 chmod 0600 files/etc/crontabs/root
@@ -50,6 +63,9 @@ sh /builder/scripts/test-xr1710g-tools.sh /builder
 
 ./scripts/feeds update -a
 /builder/scripts/prepare-istore-feed.sh
+XR_ISTORE_FIXTURE="$PWD/feeds/istore/luci/luci-app-store/root/bin/is-opkg" \
+XR_QUICKSTART_FIXTURE="$PWD/feeds/linkease_nas_luci/luci/luci-app-quickstart/htdocs/luci-static/quickstart/index.js" \
+  /builder/scripts/test-status-and-istore-safety.sh /builder
 ./scripts/feeds install -a
 
 cp /builder/configs/openwrt.config .config
@@ -72,6 +88,14 @@ grep -qx 'CONFIG_PACKAGE_luci-theme-argon=y' .config
 grep -qx 'CONFIG_PACKAGE_luci-app-argon-config=y' .config
 grep -qx 'CONFIG_PACKAGE_luci-app-openclash=y' .config
 grep -qx 'CONFIG_PACKAGE_usteer=y' .config
+grep -qx 'CONFIG_PACKAGE_luci-app-dockerman=y' .config
+grep -qx 'CONFIG_PACKAGE_dockerd=y' .config
+grep -qx 'CONFIG_PACKAGE_docker=y' .config
+grep -qx 'CONFIG_PACKAGE_docker-compose=y' .config
+grep -qx 'CONFIG_PACKAGE_containerd=y' .config
+grep -qx 'CONFIG_PACKAGE_runc=y' .config
+grep -qx 'CONFIG_PACKAGE_kmod-veth=y' .config
+grep -qx 'CONFIG_PACKAGE_kmod-nf-ipvs=y' .config
 
 # Force the pinned source and both reviewed patches through a clean mt76
 # prepare/compile cycle.  This prevents an older rootfs package from surviving
@@ -80,6 +104,13 @@ make package/kernel/mt76/clean
 # Force both changed source sets through preparation again: otherwise an
 # incremental volume can retain the old AdGuard files or pre-921 kernel tree.
 make package/feeds/packages/adguardhome/clean
+# The Docker engine remains the pinned OpenWrt package. Rebuild its package so
+# the reviewed UCI wrapper patch and XR1710G default config cannot be hidden by
+# an older incremental APK.
+make package/feeds/packages/dockerd/clean
+# Rebuild Dockerman so the stopped-daemon page and its translations cannot be
+# hidden by an incremental APK produced before this owner-facing fix.
+make package/feeds/luci/luci-app-dockerman/clean
 # The v8 image retains the configured preinit address as its generated default
 # LAN address.  base-files emits both /lib/preinit/00_preinit.conf and
 # /etc/board.d/99-lan-ip, so force it through a clean build rather than
@@ -98,6 +129,6 @@ make package/network/services/uhttpd/clean
 make target/linux/clean
 make -j16
 bash /builder/scripts/rebuild-initramfs-recovery.sh "$PWD"
-sh /builder/scripts/verify-xr1710g-build.sh "$PWD" | tee /work/verify.txt
+sh /builder/scripts/verify-xr1710g-build.sh "$PWD" 2>&1 | tee /work/verify.txt
 
 sh /builder/scripts/package-release.sh "$PWD" /work/dist

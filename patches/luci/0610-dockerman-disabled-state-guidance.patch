@@ -1,0 +1,105 @@
+diff --git a/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js b/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+index d2415353f..ef97763fb 100644
+--- a/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
++++ b/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+@@ -52,16 +52,25 @@ return dm2.dv.extend({
+ 	load() {
+ 		// const now = Math.floor(Date.now() / 1000);
+ 
+-		return Promise.all([
+-			dm2.docker_version(),
+-			dm2.docker_info(),
+-			// dm2.docker_df(), // takes > 20 seconds on large docker environments
+-			dm2.container_list().then(r => r.body || []),
+-			dm2.image_list().then(r => r.body || []),
+-			dm2.network_list().then(r => r.body || []),
+-			dm2.volume_list().then(r => r.body || []),
+-			dm2.callMountPoints(),
+-		]);
++		/* Probe the daemon once before issuing all overview requests. A local
++		 * daemon is intentionally allowed to be installed but disabled. In that
++		 * state, avoid six identical socket failures and render an actionable
++		 * stopped-state page below. */
++		return dm2.docker_info().then(info => {
++			if (info?.code !== 200)
++				return [ null, info, [], [], [], [], [] ];
++
++			return Promise.all([
++				dm2.docker_version(),
++				Promise.resolve(info),
++				// dm2.docker_df(), // takes > 20 seconds on large docker environments
++				dm2.container_list().then(r => r.body || []),
++				dm2.image_list().then(r => r.body || []),
++				dm2.network_list().then(r => r.body || []),
++				dm2.volume_list().then(r => r.body || []),
++				dm2.callMountPoints(),
++			]);
++		});
+ 	},
+ 
+ 	handleAction(name, action, ev) {
+@@ -76,6 +85,32 @@ return dm2.dv.extend({
+ 		});
+ 	},
+ 
++	handleEnableAndStart(ev) {
++		const button = ev?.currentTarget;
++		if (button)
++			button.disabled = true;
++
++		return dm2.callRcInit('dockerd', 'enable').then(function(ret) {
++			if (ret)
++				throw _('Enabling the Docker service failed');
++			return dm2.callRcInit('dockerd', 'start');
++		}).then(function(ret) {
++			if (ret)
++				throw _('Starting the Docker service failed');
++
++			L.ui.addTimeLimitedNotification(null,
++				E('p', _('Docker is starting. This page will refresh automatically.')),
++				5000, 'info');
++			window.setTimeout(() => window.location.reload(), 3000);
++		}).catch(function(e) {
++			if (button)
++				button.disabled = false;
++			L.ui.addTimeLimitedNotification(null,
++				E('p', _('Failed to enable and start Docker: %s').format(e)),
++				7000, 'warning');
++		});
++	},
++
+ 	render([version_response,
+ 			info_response,
+ 			// df_response,
+@@ -94,8 +129,30 @@ return dm2.dv.extend({
+ 		if (!docker_ep || docker_ep.length === 0 || docker_ep.map(e => e.includes('.sock')).filter(Boolean).length == 1)
+ 			isLocal = true;
+ 
++		const unavailableContainer = E('div', { 'class': 'cbi-map' }, [
++			E('h2', { 'class': 'section-title' }, [_('Docker - Overview')])
++		]);
++
+ 		if (info_response?.code !== 200) {
+-			return E('div', {}, [ info_response?.body?.message ]);
++			if (isLocal) {
++				unavailableContainer.appendChild(E('div', {
++					'class': 'cbi-section',
++					'style': 'padding: 1.25em;'
++				}, [
++					E('h3', {}, [_('Docker is not running')]),
++					E('p', {}, [_('Docker is installed but disabled by default to conserve memory and storage writes. No Docker resources are used until you enable it.')]),
++					E('p', {}, [_('Click the button below to enable Docker at boot and start the upstream OpenWrt Docker service now. iStore and Dockerman will use the same service and data directory.')]),
++					E('button', {
++						'class': 'btn cbi-button cbi-button-action important',
++						'click': (ev) => this.handleEnableAndStart(ev)
++					}, [_('Enable and start Docker')])
++				]));
++			} else {
++				unavailableContainer.appendChild(E('div', {
++					'class': 'alert-message warning'
++				}, [ info_response?.body?.message || _('Unable to connect to the configured Docker host.') ]));
++			}
++			return unavailableContainer;
+ 		}
+ 
+ 		this.parseHeaders(version_response.headers, version_headers);

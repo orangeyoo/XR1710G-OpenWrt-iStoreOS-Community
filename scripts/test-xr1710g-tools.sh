@@ -3,19 +3,116 @@ set -eu
 
 BUILDER="${1:-/builder}"
 ROLE_SRC="$BUILDER/files/usr/sbin/xr1710g-role"
+WAN_CARRIER_SRC="$BUILDER/files/usr/sbin/xr1710g-wan-carrier"
 BOOTLOG_SRC="$BUILDER/files/etc/init.d/xr1710g-bootlog"
 POLICY_SRC="$BUILDER/files/etc/uci-defaults/zz-xr1710g-services.sh"
 WIRELESS_SRC="$BUILDER/files/usr/sbin/xr1710g-wireless-defaults"
+TRANSITION_PATCH="$BUILDER/patches/openwrt/0100-xr1710g-guard-transition-sysupgrade.patch"
+DOCKER_CONFIG="$BUILDER/files/etc/config/dockerd"
+DOCKER_KEEP="$BUILDER/files/lib/upgrade/keep.d/xr1710g-docker"
+DOCKER_PATCH="$BUILDER/patches/packages/0201-dockerd-support-uci-log-options.patch"
+DOCKERMAN_PATCH="$BUILDER/patches/luci/0610-dockerman-disabled-state-guidance.patch"
+VERIFY_SCRIPT="$BUILDER/scripts/verify-xr1710g-build.sh"
+RECOVERY_SCRIPT="$BUILDER/scripts/rebuild-initramfs-recovery.sh"
+REGULATORY_DIY="$BUILDER/diy-part2.d/openwrt.sh"
+REGULATORY_VERIFY="$BUILDER/scripts/verify-xr1710g-build.sh"
+REGULATORY_LUCI_PATCH="$BUILDER/patches/luci/0600-xr1710g-per-radio-regulatory-guidance.patch"
+REGULATORY_XZ_PATCH="$BUILDER/patches/regulatory/0530-xr1710g-6ghz-lab-xz.patch"
+REGULATORY_LAB_DOC="$BUILDER/docs/experimental-regulatory/530-us-6ghz-lab-indoor-sp-override.patch.disabled"
+REGULATORY_LAB_README="$BUILDER/docs/experimental-regulatory/README.md"
 
 fail() {
 	echo "TOOL TEST FAILED: $*" >&2
 	exit 1
 }
 
-for script in "$ROLE_SRC" "$BOOTLOG_SRC" "$POLICY_SRC" "$WIRELESS_SRC"; do
+for script in "$ROLE_SRC" "$WAN_CARRIER_SRC" "$BOOTLOG_SRC" "$POLICY_SRC" "$WIRELESS_SRC"; do
 	[ -f "$script" ] || fail "missing $script"
 	sh -n "$script" || fail "syntax error in $script"
 done
+
+for docker_file in "$DOCKER_CONFIG" "$DOCKER_KEEP" "$DOCKER_PATCH" "$DOCKERMAN_PATCH"; do
+	[ -f "$docker_file" ] || fail "missing $docker_file"
+done
+[ -f "$VERIFY_SCRIPT" ] || fail "missing $VERIFY_SCRIPT"
+[ -f "$RECOVERY_SCRIPT" ] || fail "missing $RECOVERY_SCRIPT"
+for regulatory_file in \
+	"$REGULATORY_DIY" \
+	"$REGULATORY_VERIFY" \
+	"$REGULATORY_LUCI_PATCH" \
+	"$REGULATORY_XZ_PATCH" \
+	"$REGULATORY_LAB_DOC" \
+	"$REGULATORY_LAB_README"; do
+	[ -f "$regulatory_file" ] || fail "missing $regulatory_file"
+done
+grep -Fq 'cp "$regdb_xz_patch" "$regdb_lab_patch"' "$REGULATORY_DIY" ||
+	fail 'DIY step does not install the isolated XZ laboratory profile'
+grep -Fq 'This is not a real AFC implementation.' "$REGULATORY_LAB_DOC" ||
+	fail 'disabled laboratory patch lacks its no-AFC warning'
+grep -Fq '`XZ` 默认关闭且绝不自动启用' "$REGULATORY_LAB_README" ||
+	fail 'laboratory documentation does not state the opt-in default'
+grep -Fq 'country XZ: DFS-ETSI' "$REGULATORY_XZ_PATCH" ||
+	fail 'laboratory rule is not isolated under XZ'
+grep -Fq '(2400 - 2483.5 @ 40), (4000 mW)' "$REGULATORY_XZ_PATCH" ||
+	fail 'XZ composite profile lacks the AU 2.4 GHz rule'
+grep -Fq '(5730 - 5850 @ 80), (4000 mW), AUTO-BW' "$REGULATORY_XZ_PATCH" ||
+	fail 'XZ composite profile lacks the AU 5 GHz high-power rule'
+grep -Fq 'XR1710G composite laboratory profile (AU 2.4/5 GHz + 6 GHz 36 dBm, no AFC)' "$REGULATORY_LUCI_PATCH" ||
+	fail 'LuCI patch lacks the explicit laboratory selector'
+grep -Fq 'all three bands through one shared PHY' "$REGULATORY_LUCI_PATCH" ||
+	fail 'LuCI patch lacks the shared-PHY explanation'
+grep -Fq "uci.set('wireless', radio['.name'], 'country', 'XZ')" "$REGULATORY_LUCI_PATCH" ||
+	fail 'LuCI patch does not persist XZ across all shared-PHY radio sections'
+grep -Fq 'XZ laboratory profile is enabled by default' "$REGULATORY_VERIFY" ||
+	fail 'image verifier does not prevent automatic XZ activation'
+grep -Fq 'usr/sbin/runc \' "$VERIFY_SCRIPT" ||
+	fail 'image verifier does not follow the upstream OpenWrt runc path'
+if grep -Fq 'usr/bin/runc' "$VERIFY_SCRIPT"; then
+	fail 'image verifier still expects the non-upstream runc path'
+fi
+grep -Fq 'uci -q get dockerd.globals.data_root' "$VERIFY_SCRIPT" ||
+	fail 'image verifier does not follow the pinned iStore Docker helper'
+grep -Fq -- "-name 'S??dockerd'" "$RECOVERY_SCRIPT" ||
+	fail 'recovery rebuild does not remove dockerd autostart'
+grep -Fq -- "-name 'K??dockerd'" "$RECOVERY_SCRIPT" ||
+	fail 'recovery rebuild does not leave dockerd fully disabled'
+grep -Fq "option data_root '/overlay/docker/'" "$DOCKER_CONFIG" ||
+	fail 'Docker does not use the full writable UBIFS overlay'
+grep -Fq "option log_driver 'local'" "$DOCKER_CONFIG" ||
+	fail 'Docker does not use the bounded local log driver'
+grep -Fq "list log_opts 'max-size=5m'" "$DOCKER_CONFIG" ||
+	fail 'Docker max-size policy is missing'
+grep -Fq "list log_opts 'max-file=3'" "$DOCKER_CONFIG" ||
+	fail 'Docker max-file policy is missing'
+grep -Fqx '/etc/rc.d/S99dockerd' "$DOCKER_KEEP" ||
+	fail 'Docker enabled state is not preserved across sysupgrade'
+grep -Fq 'config_list_foreach globals log_opts json_add_log_option' "$DOCKER_PATCH" ||
+	fail 'OpenWrt dockerd UCI log-options patch is incomplete'
+[ "$(sha256sum "$DOCKER_PATCH" | cut -d' ' -f1)" = \
+	'f2851e370a83380903c1933b59978ac90a1cf8c08b544144a3c8bc6a281654bd' ] ||
+	fail 'OpenWrt dockerd UCI log-options patch hash changed'
+grep -Fq "handleEnableAndStart(ev)" "$DOCKERMAN_PATCH" ||
+	fail 'Dockerman stopped-state patch lacks its enable-and-start action'
+grep -Fq "Docker is installed but disabled by default" "$DOCKERMAN_PATCH" ||
+	fail 'Dockerman stopped-state patch lacks owner guidance'
+grep -Fq "ip link set dev \"\$wan_device\" up" "$WAN_CARRIER_SRC" ||
+	fail 'WAN carrier helper does not administratively raise the physical device'
+grep -Fq 'carrier=0' "$WAN_CARRIER_SRC" ||
+	fail 'WAN carrier helper does not report a no-carrier result'
+
+[ -f "$TRANSITION_PATCH" ] || fail "missing $TRANSITION_PATCH"
+grep -Fq 'XR1710G UBI 2.0 boundaries are not active; refusing normal sysupgrade.' \
+	"$TRANSITION_PATCH" || fail 'transition patch lacks the fail-closed platform guard'
+for boundary in \
+	'vendor 00600000' \
+	'chainloader 00100000' \
+	'ubi 1b700000' \
+	'reserved_bmt 04200000'; do
+	grep -Fq "xr_mtd_size_is $boundary" "$TRANSITION_PATCH" ||
+		fail "transition platform guard lacks boundary: $boundary"
+done
+grep -Fq 'DEVICE_COMPAT_VERSION := 1.0' "$TRANSITION_PATCH" ||
+	fail 'layout-aware image metadata is not stable at compatibility 1.0'
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT INT TERM

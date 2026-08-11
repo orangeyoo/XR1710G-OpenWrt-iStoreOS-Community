@@ -32,6 +32,14 @@ var callGetConflictAlerts= rpc.declare({ object: 'luci.airoha_flowsense', method
 var callGetWifiStats     = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getWifiStats' });
 var callGetBridgeStats   = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getBridgeStats' });
 var callGetEthStats      = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getEthStats' });
+var callSnapshot         = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getSnapshot' });
+
+function snapshotData(s) {
+	s = s || {};
+	return [s.status||{}, s.ppe||{}, s.token||{}, s.frame||{}, s.vlan||{},
+		s.tx||{}, s.mode||{}, s.bypass||{}, s.wan||{}, s.jitter||{},
+		s.alerts||{}, s.wifi||{}, s.bridge||{}, s.flow||{}, s.pppoe||{}, s.eth||{}];
+}
 
 /* ── Theme-adaptive CSS ── */
 var themeCSS = '\
@@ -1378,24 +1386,7 @@ function updateCompassCards(cs, bypass, jitter, wan, wifi, bridge, mode) {
 /* ── Main View ── */
 return view.extend({
 	load: function() {
-		return Promise.all([
-			callNpuStatus(),        // d[0]
-			callPpeEntries(),       // d[1]
-			callTokenInfo(),        // d[2]
-			callFrameEngine(),      // d[3]
-			callGetVlanOffload(),   // d[4]
-			callTxStats(),          // d[5]
-			callGetDeviceMode(),    // d[6]
-			callGetNpuBypass(),     // d[7]
-			callGetWanHealth(),     // d[8]
-			callGetJitterResult(),  // d[9]
-			callGetConflictAlerts(),// d[10]
-			callGetWifiStats(),     // d[11]
-			callGetBridgeStats(),   // d[12]
-			callGetFlowOffload(),   // d[13]
-			callGetPppoeOffload(),  // d[14]
-			callGetEthStats()       // d[15]
-		]);
+		return callSnapshot().then(snapshotData).catch(function() { return snapshotData({}); });
 	},
 
 	render: function(data) {
@@ -1456,15 +1447,7 @@ return view.extend({
 		]);
 
 		poll.add(L.bind(function() {
-			return Promise.all([
-				callNpuStatus(), callPpeEntries(), callTokenInfo(), callFrameEngine(),
-				callGetVlanOffload(), callTxStats(),
-				callGetDeviceMode(), callGetNpuBypass(),
-				callGetWanHealth(), callGetJitterResult(), callGetConflictAlerts(),
-				callGetWifiStats(), callGetBridgeStats(),
-				callGetFlowOffload(), callGetPppoeOffload(),
-				callGetEthStats()
-			]).then(L.bind(function(d) {
+			return callSnapshot().then(snapshotData).then(L.bind(function(d) {
 				injectCSS();
 				var st=d[0]||{}, ppe=d[1]||{}, ti=d[2]||{}, fe=d[3]||{};
 				var vo=d[4]||{}, txs=d[5]||{}, dm=d[6]||{};
@@ -1528,7 +1511,7 @@ return view.extend({
 				// PPE terminal
 				var tb = document.getElementById('ppe-terminal-body');
 				if (tb) tb.innerHTML = buildPpeTerminalBody(ppe);
-			},this));
+			},this)).catch(function() { return null; });
 		},this), 5);
 
 		return view;

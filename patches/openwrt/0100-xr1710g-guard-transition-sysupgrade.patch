@@ -1,0 +1,52 @@
+diff --git a/target/linux/airoha/an7581/base-files/lib/upgrade/platform.sh b/target/linux/airoha/an7581/base-files/lib/upgrade/platform.sh
+index ae2b4d9ae8..8d4f968890 100644
+--- a/target/linux/airoha/an7581/base-files/lib/upgrade/platform.sh
++++ b/target/linux/airoha/an7581/base-files/lib/upgrade/platform.sh
+@@ -15,6 +15,27 @@ platform_check_image() {
+ 	[ "$#" -gt 1 ] && return 1
+ 
+ 	case "$board" in
++	econet,xr1710g-ubi)
++		# Clean UBI installation does not persist OpenWrt's generic
++		# compat_version marker. Decide upgrade safety from the real flash
++		# layout instead. Old BMT/BBT layouts are never written.
++		xr_mtd_size_is() {
++			awk -v label="$1" -v expected="$2" '
++				$4 == "\"" label "\"" && tolower($2) == expected { found = 1 }
++				END { exit(found ? 0 : 1) }
++			' /proc/mtd 2>/dev/null
++		}
++		if ! xr_mtd_size_is vendor 00600000 || \
++		   ! xr_mtd_size_is chainloader 00100000 || \
++		   ! xr_mtd_size_is ubi 1b700000 || \
++		   ! xr_mtd_size_is reserved_bmt 04200000; then
++			echo "XR1710G UBI 2.0 boundaries are not active; refusing normal sysupgrade." >&2
++			echo "Install the corrected chainloader/U-Boot and recreate UBI through recovery first." >&2
++			return 1
++		fi
++		fit_check_image "$1"
++		return $?
++		;;
+ 	nokia,xg-040g-md)
+ 		nand_do_platform_check "$board" "$1"
+ 		return $?
+diff --git a/target/linux/airoha/image/an7581.mk b/target/linux/airoha/image/an7581.mk
+index c0ed58ce39..4fda84d3e5 100644
+--- a/target/linux/airoha/image/an7581.mk
++++ b/target/linux/airoha/image/an7581.mk
+@@ -127,11 +127,10 @@ define Device/econet_xr1710g-ubi
+   DEVICE_MODEL := XR1710G
+   DEVICE_VARIANT := UBI
+   DEVICE_DTS := an7581-xr1710g-ubi
+-  DEVICE_COMPAT_VERSION := 2.0
+-  DEVICE_COMPAT_MESSAGE := The XR1710G BMT/BBT boundary has changed. Install \
+-       an XR1710G chainloader/U-Boot using the new layout first, then boot \
+-       recovery/initramfs and fully recreate UBI. A normal sysupgrade that \
+-       preserves configuration is unsafe.
++  # Compatibility is decided from the live MTD boundaries because a clean
++  # UBI install does not persist OpenWrt's generic compat_version marker.
++  # platform_check_image rejects every device that is not actually UBI 2.0.
++  DEVICE_COMPAT_VERSION := 1.0
+   DEVICE_PACKAGES := -airoha-en7581-npu-firmware \
+ 		    -kmod-input-gpio-keys-polled -kmod-leds-pwm \
+ 		    -kmod-pwm-airoha \

@@ -1,0 +1,43 @@
+From: XR1710G Community <noreply@example.invalid>
+Subject: [PATCH] dockerd: support daemon log options in UCI
+
+Keep the OpenWrt dockerd service as the single source of truth while allowing
+small-flash targets to bound the default daemon log driver.  Each log_opts UCI
+list item is a Docker key=value option and is emitted into daemon.json's
+log-opts object.
+
+--- a/utils/dockerd/files/dockerd.init
++++ b/utils/dockerd/files/dockerd.init
+@@ -12,6 +12,21 @@ json_add_array_string() {
+ 	json_add_string "" "${1}"
+ }
+ 
++json_add_log_option() {
++	local option="${1}"
++	local key="${option%%=*}"
++	local value="${option#*=}"
++
++	[ "${key}" != "${option}" ] || {
++		logger -t "dockerd-init" -p warning \
++			"Ignoring invalid log option '${option}' (expected key=value)"
++		return 0
++	}
++	[ -n "${key}" ] || return 0
++
++	json_add_string "${key}" "${value}"
++}
++
+ find_network_device() {
+ 	local device="${1}"
+ 	local device_section=""
+@@ -198,6 +213,10 @@ process_config() {
+ 	json_add_string "log-level" "${log_level}"
+ 	json_add_boolean "iptables" "${iptables}"
+ 	json_add_boolean "ip6tables" "${ip6tables}"
++	config_get log_opts globals log_opts ""
++	[ -z "${log_opts}" ] || json_add_object "log-opts"
++	[ -z "${log_opts}" ] || config_list_foreach globals log_opts json_add_log_option
++	[ -z "${log_opts}" ] || json_close_object
+ 	[ -z "${log_driver}" ] || json_add_string "log-driver" "${log_driver}"
+ 	[ -z "${bip}" ] || json_add_string "bip" "${bip}"
+ 	[ -z "${registry_mirrors}" ] || json_add_array "registry-mirrors"

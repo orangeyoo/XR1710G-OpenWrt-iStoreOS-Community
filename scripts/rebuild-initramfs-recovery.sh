@@ -28,18 +28,20 @@ LINUX_DIR="$(find "$KERNEL_DIR" -mindepth 1 -maxdepth 1 -type d \
 	exit 1
 }
 
-# The ordinary image target receives adguardhome in prepare_rootfs' disabled
-# service list.  The separate recovery ramdisk is generated directly from
-# root-airoha, whose package post-install phase may still have created these
-# links. Remove only AdGuard Home's autostart links before regenerating the
-# RAM image; the init script and LuCI application remain installed so users
-# can explicitly enable them after configuration.
+# The ordinary image target receives adguardhome and dockerd in prepare_rootfs'
+# disabled service list. The separate recovery ramdisk is generated directly
+# from root-airoha, whose package post-install phase may still have created
+# these links. Remove only their generated service links before regenerating
+# the RAM image; the init scripts and LuCI applications remain installed so
+# users can explicitly enable them after configuration.
 find "$ROOT_DIR/etc/rc.d" -maxdepth 1 -type l \
-	\( -name 'S??adguardhome' -o -name 'K??adguardhome' \) -delete
+	\( -name 'S??adguardhome' -o -name 'K??adguardhome' \
+	-o -name 'S??dockerd' -o -name 'K??dockerd' \) -delete
 if find "$ROOT_DIR/etc/rc.d" -maxdepth 1 -type l \
-	\( -name 'S??adguardhome' -o -name 'K??adguardhome' \) -print |
+	\( -name 'S??adguardhome' -o -name 'K??adguardhome' \
+	-o -name 'S??dockerd' -o -name 'K??dockerd' \) -print |
 	grep -q .; then
-	echo "Unable to disable AdGuard Home in the recovery rootfs" >&2
+	echo "Unable to disable optional services in the recovery rootfs" >&2
 	exit 1
 fi
 # Remove only known generated initramfs/recovery outputs. The package and

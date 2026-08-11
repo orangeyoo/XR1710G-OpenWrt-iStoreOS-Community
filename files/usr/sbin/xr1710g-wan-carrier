@@ -1,0 +1,50 @@
+#!/bin/sh
+# Report the physical WAN carrier reliably even when the logical WAN role is
+# disabled. Bringing the netdev administratively up does not start DHCP or
+# PPPoE; it only allows the driver and sysfs to expose the real cable state.
+
+set -eu
+
+timeout="${1:-45}"
+case "$timeout" in
+	''|*[!0-9]*) echo "usage: xr1710g-wan-carrier [timeout-seconds]" >&2; exit 2 ;;
+esac
+[ "$timeout" -le 300 ] || {
+	echo "timeout must not exceed 300 seconds" >&2
+	exit 2
+}
+
+[ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = 'econet,xr1710g-ubi' ] || {
+	echo "this helper only supports econet,xr1710g-ubi" >&2
+	exit 2
+}
+
+wan_device="$(uci -q get network.wan.device 2>/dev/null || true)"
+[ -n "$wan_device" ] || wan_device='wan'
+case "$wan_device" in
+	br-lan|*/*|*' '*|*'..'*)
+		echo "unsafe WAN device: $wan_device" >&2
+		exit 2
+		;;
+esac
+[ -e "/sys/class/net/$wan_device" ] || {
+	echo "WAN device does not exist: $wan_device" >&2
+	exit 2
+}
+
+ip link set dev "$wan_device" up
+
+elapsed=0
+while [ "$elapsed" -le "$timeout" ]; do
+	carrier="$(cat "/sys/class/net/$wan_device/carrier" 2>/dev/null || echo 0)"
+	if [ "$carrier" = 1 ]; then
+		printf 'device=%s carrier=1\n' "$wan_device"
+		exit 0
+	fi
+	[ "$elapsed" -lt "$timeout" ] || break
+	elapsed=$((elapsed + 1))
+	sleep 1
+done
+
+printf 'device=%s carrier=0\n' "$wan_device"
+exit 1

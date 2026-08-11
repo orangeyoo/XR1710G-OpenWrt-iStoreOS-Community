@@ -1,0 +1,11 @@
+    APK_CONF=${IS_ROOT}/etc/apk.conf
+    APK_CONFIG=${APK_CONF} apk --repositories-file /dev/null "$@"
+        apk_wrap "$action" "$@"
+    else
+        opkg_wrap "$action" "$@"
+do_install_in_mirrors() {
+    if $USE_APK; then
+        apk_wrap_mirrors add "$@"
+do_upgrade_in_mirrors() {
+    if $USE_APK; then
+        apk_wrap_mirrors upgrade "$@"

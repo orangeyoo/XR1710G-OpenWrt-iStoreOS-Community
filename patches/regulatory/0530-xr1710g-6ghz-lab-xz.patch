@@ -1,0 +1,38 @@
+Add an explicit user-assigned XZ composite profile for controlled XR1710G
+6 GHz tests.
+
+XR1710G exposes all three bands through one shared PHY, so cfg80211 applies a
+single regulatory domain to 2.4, 5 and 6 GHz. XZ therefore carries the pinned
+AU 2.4/5 GHz rules together with the isolated 6 GHz 36 dBm laboratory rule.
+XZ is not an ISO country domain and this is not an AFC implementation. Keep
+the ordinary US and AU rules unchanged. The UI labels this profile as an
+opt-in composite laboratory profile. Selecting XZ does not grant Standard
+Power authorization. Operators remain responsible for local authorization
+and compliance.
+---
+--- a/db.txt
++++ b/db.txt
+@@ -2201,3 +2201,24 @@ country ZW: DFS-ETSI
+ 	(5250 - 5330 @ 80), (20), DFS, AUTO-BW
+ 	(5490 - 5710 @ 160), (27), DFS
++
++# XR1710G controlled laboratory composite profile. All XR1710G radios share
++# one PHY and therefore one cfg80211 regulatory domain. Keep the pinned AU
++# 2.4/5 GHz rules here so those bands remain available while the owner opts
++# into the 6 GHz laboratory rule. XZ is a user-assigned code, not a country
++# regulatory domain. This profile has no AFC implementation and does not
++# represent Standard Power authorization. Never select it automatically.
++country XZ: DFS-ETSI
++	# AU Item 3 and 7: 2.4 GHz
++	(2400 - 2483.5 @ 40), (4000 mW)
++
++	# AU Items 10, 11, 12(a), 12(b), 9 and 22: 5 GHz
++	(5150 - 5250 @ 80), (200 mW), NO-OUTDOOR, AUTO-BW
++	(5250 - 5350 @ 80), (100 mW), NO-OUTDOOR, AUTO-BW, DFS
++	(5470 - 5600 @ 80), (500 mW), DFS
++	(5650 - 5730 @ 80), (500 mW), DFS
++	(5730 - 5850 @ 80), (4000 mW), AUTO-BW
++	(5850 - 5875 @ 20), (25 mW), AUTO-BW
++
++	# XR1710G 6 GHz controlled laboratory rule; no AFC implementation.
++	(5925 - 7125 @ 320), (36), NO-OUTDOOR

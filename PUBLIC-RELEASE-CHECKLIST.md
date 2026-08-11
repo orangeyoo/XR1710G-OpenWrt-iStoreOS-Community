@@ -1,33 +1,29 @@
-# XR1710G Community First Release 公共发布清单
+# XR1710G v1.1.0 公共发布清单
 
-本清单对应 `iStoreOS-XR1710G-Community First Release`。它是面向 Econet/Gemtek XR1710G
-的社区移植测试版，不是 iStoreOS 官方镜像。
+## Release仅保留
 
-## 发布文件
+- `xr1710g-uboot-yyh2913-260712-flash-slot.bin`
+- `xr1710g-community-v1.1.0-sysupgrade.itb`
+- `SHA256SUMS.txt`
+- `FLASHING-GUIDE.md`
 
-- `*-initramfs-recovery.itb`：临时 Recovery/内存系统。
-- `*-squashfs-sysupgrade.itb`：确认 UBI 2.0 和 U-Boot/chainloader 后写入 NAND 的永久系统。
-- `*.manifest`、`profiles.json`、`sha256sums`：软件包清单、设备 profile 和校验信息。
-- `UBOOT-FLASH-GUIDE.md`：U-Boot 使用边界与刷机顺序；U-Boot 本体不包含在系统镜像内。
+不向普通用户上传initramfs调试镜像、manifest、profiles、内部verify日志、热修包、备份或迁移档案。
 
-## 本次 First Release 验收
+## 发布门禁
 
-- 两台真机：Linux `6.18.38`，XR1710G UBI 2.0，MT7996/mt76 `b2704cf5`。
-- 6 GHz 回程：US / 信道 37 / EHT320 / WPA3-SAE 802.11s，当前 Mesh `ESTAB`。
-- 当前两端 `tx failed=0`；未发现 MT7996 firmware crash、MCU timeout、kernel panic、
-  Call Trace、watchdog 重启、UBI/I/O 错误或 `airtime_link_metric_get`。
-- 节点启动或无线重载时的短暂 SAE 失败、Mesh 重连、PPPoE PADO 超时和已知 TRNG/
-  DSA/`-95` 启动提示已归类为非致命日志，不代表所有环境都不会出现 warning。
+1. 双镜像本地构建 `VERIFY PASSED`，Sysupgrade与待上传文件SHA-256一致。
+2. 楼上节点先完成实机刷写/升级、冷启动、三频、Mesh、Docker默认关闭、Dockerman提示、NPU/FlowSense和关键日志验收。
+3. 主路由不因发布验收而重启或刷机。
+4. 公开源码与系统镜像使用同一 `v1.1.0` 版本和同一提交范围，不暴露内部开发编号。
+5. `FORUM-POST-ENSHAN.md` 与 `FORUM-POST-OPENWRT.md` 只留本地，不提交。
+6. 隐私扫描不得包含密码、Token、MAC、公网地址、私有日志或完整用户配置。
+7. GitHub Release说明必须写明社区非官方、XR1710G专用、UBI 2.0、XZ实验边界和正确U-Boot路径。
 
-## 公开前检查
+## 当前无线证据
 
-1. 发布前运行 `sha256sum -c sha256sums`。
-2. 只发布本目录和公开源码，不发布 `backups/`、运行时配置、诊断原始日志或迁移档案。
-3. 不把家庭网络的 SSID、PPPoE、root 密码、DDNSTO/OpenClash 配置写入 issue、截图或压缩包。
-4. 刷机前确认设备型号为 XR1710G、U-Boot 支持 UBI 2.0，并保留 TTL/Recovery 救援路径。
-5. 首次启动默认管理地址为 `192.168.50.1`；两台设备必须逐台配置，节点应改为不冲突的地址。
+- XZ/channel37/EHT320单跳802.11s，全程ESTAB。
+- 约10分钟、20次双向4并发全部超过400Mbps，中位数约715/720Mbps。
+- 满载后双向各600个空闲Ping均0%丢包。
+- 无新增airtime、MT7996/MCU crash/timeout、Call Trace或设备重启。
 
-## 反馈格式
-
-出现异常时只提交脱敏后的 `xr1710g-mesh-diag` 报告、版本号、监管域、频道/带宽、摆位和
-吞吐结果。不要提交 `/etc/config` 原文件或包含密码/token 的完整 overlay 备份。
+该证据用于回程稳定性，不宣称两端2.5G有线客户端的极限吞吐。

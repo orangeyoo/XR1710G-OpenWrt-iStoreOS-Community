@@ -4,7 +4,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-airoha-flowsense
 PKG_VERSION:=1.1.3
-PKG_RELEASE:=3
+PKG_RELEASE:=5
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=XR1710G Maintainer
 TITLE:=LuCI Airoha XR1710G FlowSense — Offload & PPE Monitor
@@ -13,7 +13,7 @@ LUCI_TITLE:=LuCI Airoha XR1710G FlowSense — Offload & PPE Monitor
 LUCI_DESCRIPTION:=Provides real-time monitoring and control for Airoha PPE hardware offload. \
 	Displays NPU token usage, flow entry count, VLAN/PPPoE acceleration status, \
 	and allows enabling/disabling hardware offload for specific interfaces.
-LUCI_DEPENDS:=+luci-base @TARGET_airoha
+LUCI_DEPENDS:=+luci-base +xr1710g-status-core @TARGET_airoha
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

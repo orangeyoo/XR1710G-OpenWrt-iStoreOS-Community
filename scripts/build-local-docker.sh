@@ -7,6 +7,8 @@ export GITHUB_WORKSPACE=/builder
 # override is set. GitHub Actions builds as an unprivileged user, while this
 # local Docker helper intentionally uses the container's root user.
 export FORCE_UNSAFE_CONFIGURE=1
+# Do not inherit Windows PATH entries into OpenWrt/Go shell recipes.
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 apt-get update -qq
 # shellcheck disable=SC2046
@@ -32,6 +34,7 @@ chmod 0755 files/etc/uci-defaults/zz-xr1710g-services.sh
 chmod 0755 files/etc/init.d/xr1710g-bootlog
 chmod 0755 files/usr/sbin/xr1710g-mesh-diag
 chmod 0755 files/usr/sbin/xr1710g-role
+chmod 0755 files/usr/sbin/xr1710g-wan-carrier
 chmod 0755 files/usr/sbin/xr1710g-wireless-defaults
 chmod 0755 files/etc/openclash/core/clash_meta
 chmod 0600 files/etc/crontabs/root
@@ -40,6 +43,9 @@ sh /builder/scripts/test-xr1710g-tools.sh /builder
 
 ./scripts/feeds update -a
 /builder/scripts/prepare-istore-feed.sh
+XR_ISTORE_FIXTURE="$PWD/feeds/istore/luci/luci-app-store/root/bin/is-opkg" \
+XR_QUICKSTART_FIXTURE="$PWD/feeds/linkease_nas_luci/luci/luci-app-quickstart/htdocs/luci-static/quickstart/index.js" \
+  /builder/scripts/test-status-and-istore-safety.sh /builder
 ./scripts/feeds install -a
 
 cp /builder/configs/openwrt.config .config
@@ -67,6 +73,6 @@ find dl -maxdepth 1 -type f -size -1024c -delete
 make package/network/services/uhttpd/clean
 make -j16
 bash /builder/scripts/rebuild-initramfs-recovery.sh "$PWD"
-sh /builder/scripts/verify-xr1710g-build.sh "$PWD" | tee /work/verify.txt
+sh /builder/scripts/verify-xr1710g-build.sh "$PWD" 2>&1 | tee /work/verify.txt
 
 sh /builder/scripts/package-release.sh "$PWD" /work/dist

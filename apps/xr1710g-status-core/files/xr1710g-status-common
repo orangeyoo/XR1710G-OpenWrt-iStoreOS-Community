@@ -1,0 +1,103 @@
+#!/bin/sh
+
+# Shared safety helpers for XR1710G status RPC backends.
+# Status pages are not allowed to destabilize rpcd merely because one data
+# source is slow, concurrently accessed, unavailable, or returns bad JSON.
+
+xr_json_escape() {
+	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\r/\\r/g; s/\n/\\n/g'
+}
+
+xr_uint() {
+	case "$1" in
+		''|*[!0-9]*) printf '0' ;;
+		*) printf '%s' "$1" ;;
+	esac
+}
+
+xr_json_valid() {
+	jsonfilter -i "$1" -e '@' >/dev/null 2>&1
+}
+
+# Usage: xr_cached_json <key> <ttl-seconds> <producer-function>
+# Only one producer runs per key. Other callers receive the last valid cache
+# rather than piling up rpcd child processes. Invalid producer output is never
+# published as a cache entry.
+xr_cached_json() {
+	local key="$1" ttl="$2" producer="$3"
+	local base="/tmp/xr1710g-status-cache" cache lock tmp now mtime age
+	mkdir -p "$base"
+	cache="$base/$key.json"
+	lock="$base/$key.lock"
+	now=$(date +%s)
+	mtime=$(stat -c %Y "$cache" 2>/dev/null || echo 0)
+	case "$mtime" in ''|*[!0-9]*) mtime=0 ;; esac
+	age=$((now - mtime))
+
+	if [ -s "$cache" ] && [ "$age" -ge 0 ] && [ "$age" -lt "$ttl" ]; then
+		cat "$cache"
+		return 0
+	fi
+
+	# Recover from a producer killed between mkdir and rmdir. A stale lock must
+	# never make a management page permanently unavailable until reboot.
+	if [ -d "$lock" ]; then
+		mtime=$(stat -c %Y "$lock" 2>/dev/null || echo 0)
+		case "$mtime" in ''|*[!0-9]*) mtime=0 ;; esac
+		age=$((now - mtime))
+		[ "$age" -gt 30 ] && rmdir "$lock" 2>/dev/null || true
+	fi
+
+	if mkdir "$lock" 2>/dev/null; then
+		tmp="$base/$key.$$.tmp"
+		if "$producer" >"$tmp" 2>/dev/null && [ -s "$tmp" ] && xr_json_valid "$tmp"; then
+			mv -f "$tmp" "$cache"
+		else
+			rm -f "$tmp"
+		fi
+		rmdir "$lock" 2>/dev/null || true
+	fi
+
+	if [ -s "$cache" ]; then
+		cat "$cache"
+	else
+		printf '{"error":"status temporarily unavailable"}'
+	fi
+}
+
+# Use the cache when available, otherwise still guarantee a JSON object.
+xr_status_component() {
+	local key="$1" ttl="$2" producer="$3" out
+	if out=$(xr_cached_json "$key" "$ttl" "$producer" 2>/dev/null) && [ -n "$out" ]; then
+		printf '%s' "$out"
+	else
+		printf '{"error":"status temporarily unavailable"}'
+	fi
+}
+
+# Physical Ethernet truth is carrier, not operstate. A bridged device may
+# remain administratively UP and retain a stale speed while no cable exists.
+xr_eth_port_json() {
+	local iface="$1" sys="/sys/class/net/$1"
+	local carrier=0 operstate="unknown" speed=0 duplex="unknown"
+	local tx_bytes=0 rx_bytes=0 tx_errors=0 rx_errors=0
+
+	[ -d "$sys" ] || return 1
+	carrier=$(cat "$sys/carrier" 2>/dev/null || echo 0)
+	[ "$carrier" = "1" ] || carrier=0
+	operstate=$(cat "$sys/operstate" 2>/dev/null || echo unknown)
+	if [ "$carrier" = "1" ]; then
+		speed=$(cat "$sys/speed" 2>/dev/null || echo 0)
+		case "$speed" in ''|'-1'|*[!0-9]*) speed=0 ;; esac
+		duplex=$(cat "$sys/duplex" 2>/dev/null || echo unknown)
+	fi
+	tx_bytes=$(xr_uint "$(cat "$sys/statistics/tx_bytes" 2>/dev/null)")
+	rx_bytes=$(xr_uint "$(cat "$sys/statistics/rx_bytes" 2>/dev/null)")
+	tx_errors=$(xr_uint "$(cat "$sys/statistics/tx_errors" 2>/dev/null)")
+	rx_errors=$(xr_uint "$(cat "$sys/statistics/rx_errors" 2>/dev/null)")
+
+	printf '{"iface":"%s","up":%s,"carrier":%d,"operstate":"%s","speed":%d,"duplex":"%s","tx_bytes":%d,"rx_bytes":%d,"tx_errors":%d,"rx_errors":%d}' \
+		"$(xr_json_escape "$iface")" "$([ "$carrier" = 1 ] && echo true || echo false)" "$carrier" \
+		"$(xr_json_escape "$operstate")" "$speed" "$(xr_json_escape "$duplex")" \
+		"$tx_bytes" "$rx_bytes" "$tx_errors" "$rx_errors"
+}

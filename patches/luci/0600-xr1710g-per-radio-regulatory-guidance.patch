@@ -1,0 +1,55 @@
+--- a/modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js
++++ b/modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js
+@@ -672,13 +672,28 @@ var CBIWifiCountryValue = form.Value.extend({
+ 				this.value('', _('driver default'));
+ 
+ 				for (let c of countrylist)
+-					this.value(c.iso3166, `${c.iso3166} - ${c.country}`);
++					if (c.iso3166 != 'XZ')
++						this.value(c.iso3166, `${c.iso3166} - ${c.country}`);
++
++				if (this.xr1710gLab6g)
++					this.value('XZ', _('XZ - XR1710G composite laboratory profile (AU 2.4/5 GHz + 6 GHz 36 dBm, no AFC)'));
+ 			}
+ 
+ 			return form.Value.prototype.load.apply(this, [section_id]);
+ 		}, this));
+ 	},
+ 
++	write: function(section_id, value) {
++		if (this.xr1710gLab6g && value == 'XZ') {
++			for (let radio of uci.sections('wireless', 'wifi-device'))
++				uci.set('wireless', radio['.name'], 'country', 'XZ');
++
++			return;
++		}
++
++		return form.Value.prototype.write.apply(this, [section_id, value]);
++	},
++
+ 	validate: function(section_id, formvalue) {
+ 		if (formvalue != null && formvalue != '' && !/^[A-Z0-9][A-Z0-9]$/.test(formvalue))
+ 			return _('Use ISO/IEC 3166 alpha2 country codes.');
+@@ -1028,8 +1043,21 @@ return view.extend({
+ 					o = ss.taboption('general', CBIWifiTxPowerValue, 'txpower', _('Maximum transmit power'), _('Specifies the maximum transmit power the wireless radio may use. Depending on regulatory requirements and wireless usage, the actual transmit power may be reduced by the driver.'));
+ 					o.wifiNetwork = radioNet;
+ 
+-					o = ss.taboption('general', CBIWifiCountryValue, 'country', _('Country Code'));
++					const radioBand = uci.get('wireless', radioNet.getWifiDeviceName(), 'band');
++					let countryHelp = _('Select the standard country code matching the location where the router is operated. Available channels and actual transmit power remain limited by regulatory rules, the wireless driver, firmware and factory calibration.');
++
++					if (radioBand == '6g')
++						countryHelp += ' ' + _('XR1710G exposes all three bands through one shared PHY, so the kernel ultimately applies one regulatory domain to every radio. XZ is an opt-in composite profile: AU rules for 2.4/5 GHz plus the 6 GHz 36 dBm no-AFC laboratory rule. When XZ is selected here, LuCI writes XZ to all three radio sections so reboot order cannot replace the shared-PHY profile. It is never selected automatically.');
++
++					o = ss.taboption('general', CBIWifiCountryValue, 'country', _('Country Code'), countryHelp);
+ 					o.wifiNetwork = radioNet;
++					o.xr1710gLab6g = (radioBand == '6g');
++
++					if (radioBand == '6g') {
++						o = ss.taboption('general', form.DummyValue, '_xr1710g_6g_lab_warning', _('Shared-PHY regulatory mode'), _('WARNING: XZ is not a country regulatory domain and this firmware does not implement AFC. Choosing XZ on the 6 GHz radio writes XZ to all three radio sections and applies the complete XZ composite profile to the shared PHY: AU 2.4/5 GHz rules plus the experimental 6 GHz rule. It does not grant Standard Power authorization. Use only for controlled laboratory or otherwise authorized testing. You are responsible for compliance with all local laws, rules, channel limits and power limits.'));
++						o.cfgvalue = function() { return _('Standard country mode (XZ composite laboratory profile is opt-in)'); };
++						o.write = function() {};
++					}
+ 
+ 					o = ss.taboption('advanced', form.ListValue, 'cell_density', _('Coverage cell density'), _('Configures data rates based on the coverage cell density. Normal configures basic rates to 6, 12, 24 Mbps if legacy 802.11b rates are not used else to 5.5, 11 Mbps. High configures basic rates to 12, 24 Mbps if legacy 802.11b rates are not used else to the 11 Mbps rate. Very High configures 24 Mbps as the basic rate. Supported rates lower than the minimum basic rate are not offered.'));
+ 					o.value('0', _('Disabled'));

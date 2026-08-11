@@ -2,6 +2,126 @@
 # OpenWrt DIY part2
 # — 在 .config 加载之后、make 之前运行 —
 
+# The baseline carries a lab-only US 6 GHz 36 dBm override. Do not silently
+# change the ordinary US domain. XR1710G uses one shared PHY, so replace the
+# override with a reviewed XZ composite profile: pinned AU rules for 2.4/5 GHz
+# plus the opt-in 6 GHz laboratory rule.
+regdb_patch_dir='package/firmware/wireless-regdb/patches'
+regdb_lab_patch="$regdb_patch_dir/530-us-6ghz-lab-indoor-sp-override.patch"
+regdb_lpi_patch="$regdb_patch_dir/520-w1700k-us-power-limits.patch"
+regdb_xz_patch="$GITHUB_WORKSPACE/patches/regulatory/0530-xr1710g-6ghz-lab-xz.patch"
+[ -f "$regdb_lab_patch" ] || {
+	echo "Missing expected baseline 6 GHz laboratory override" >&2
+	exit 1
+}
+grep -Fq 'This is not a real AFC implementation.' "$regdb_lab_patch" || {
+	echo "Unexpected 6 GHz laboratory override; refusing an unreviewed regulatory change" >&2
+	exit 1
+}
+[ -f "$regdb_lpi_patch" ] || {
+	echo "Missing expected US indoor power-limit patch" >&2
+	exit 1
+}
+grep -Fq '(5925 - 7125 @ 320), (29), NO-OUTDOOR' "$regdb_lpi_patch" || {
+	echo "Unexpected US indoor power-limit patch" >&2
+	exit 1
+}
+[ -f "$regdb_xz_patch" ] || {
+	echo "Missing reviewed XZ 6 GHz laboratory profile" >&2
+	exit 1
+}
+grep -Fq 'country XZ: DFS-ETSI' "$regdb_xz_patch" || {
+	echo "XZ laboratory profile lacks its isolated user-assigned domain" >&2
+	exit 1
+}
+grep -Fq '(5925 - 7125 @ 320), (36), NO-OUTDOOR' "$regdb_xz_patch" || {
+	echo "XZ laboratory profile has an unexpected power rule" >&2
+	exit 1
+}
+grep -Fq '(2400 - 2483.5 @ 40), (4000 mW)' "$regdb_xz_patch" || {
+	echo "XZ composite profile lacks the pinned AU 2.4 GHz rule" >&2
+	exit 1
+}
+for xz_au_5g_rule in \
+	'(5150 - 5250 @ 80), (200 mW), NO-OUTDOOR, AUTO-BW' \
+	'(5250 - 5350 @ 80), (100 mW), NO-OUTDOOR, AUTO-BW, DFS' \
+	'(5470 - 5600 @ 80), (500 mW), DFS' \
+	'(5650 - 5730 @ 80), (500 mW), DFS' \
+	'(5730 - 5850 @ 80), (4000 mW), AUTO-BW' \
+	'(5850 - 5875 @ 20), (25 mW), AUTO-BW'; do
+	grep -Fq "$xz_au_5g_rule" "$regdb_xz_patch" || {
+		echo "XZ composite profile lacks pinned AU 5 GHz rule: $xz_au_5g_rule" >&2
+		exit 1
+	}
+done
+cp "$regdb_xz_patch" "$regdb_lab_patch"
+grep -Fq 'country XZ: DFS-ETSI' "$regdb_lab_patch" || {
+	echo "Unable to install the reviewed XZ laboratory profile" >&2
+	exit 1
+}
+
+# Keep LuCI's native country selector, but accurately explain that XR1710G's
+# radios share one PHY and therefore one kernel regulatory domain. XZ is an
+# explicit composite laboratory profile, not a normal country domain.
+luci_feed='feeds/luci'
+luci_wireless_js="$luci_feed/modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js"
+luci_zh_hans_po="$luci_feed/modules/luci-base/po/zh_Hans/base.po"
+luci_regulatory_patch="$GITHUB_WORKSPACE/patches/luci/0600-xr1710g-per-radio-regulatory-guidance.patch"
+[ -f "$luci_wireless_js" ] || {
+	echo "Missing pinned LuCI wireless configuration view" >&2
+	exit 1
+}
+[ -f "$luci_regulatory_patch" ] || {
+	echo "Missing XR1710G shared-PHY regulatory guidance patch" >&2
+	exit 1
+}
+grep -Fq "CBIWifiCountryValue, 'country', _('Country Code')" "$luci_wireless_js" || {
+	echo "Unexpected LuCI country selector baseline" >&2
+	exit 1
+}
+git -C "$luci_feed" apply --check "$luci_regulatory_patch"
+git -C "$luci_feed" apply "$luci_regulatory_patch"
+grep -Fq 'XR1710G composite laboratory profile' "$luci_wireless_js" || {
+	echo "LuCI composite laboratory selector failed to install" >&2
+	exit 1
+}
+[ -f "$luci_zh_hans_po" ] || {
+	echo "Missing pinned LuCI Simplified Chinese translation catalog" >&2
+	exit 1
+}
+if ! grep -Fq 'msgid "Shared-PHY regulatory mode"' "$luci_zh_hans_po"; then
+	cat >> "$luci_zh_hans_po" <<'EOF'
+
+#: modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js
+msgid "Select the standard country code matching the location where the router is operated. Available channels and actual transmit power remain limited by regulatory rules, the wireless driver, firmware and factory calibration."
+msgstr "请选择路由器实际使用地对应的标准国家代码；可用信道和实际发射功率仍受监管规则、无线驱动、固件及出厂校准共同限制。"
+
+#: modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js
+msgid "XR1710G exposes all three bands through one shared PHY, so the kernel ultimately applies one regulatory domain to every radio. XZ is an opt-in composite profile: AU rules for 2.4/5 GHz plus the 6 GHz 36 dBm no-AFC laboratory rule. When XZ is selected here, LuCI writes XZ to all three radio sections so reboot order cannot replace the shared-PHY profile. It is never selected automatically."
+msgstr "XR1710G 的三个频段共用同一个 PHY，因此内核最终会把一个监管域应用到全部无线电。XZ 是需主动选择的组合配置：2.4/5 GHz 使用 AU 规则，6 GHz 使用 36 dBm 无 AFC 实验规则。在此选择 XZ 时，LuCI 会把 XZ 写入三张无线电配置，避免重启顺序覆盖共享 PHY 配置；系统绝不会自动启用。"
+
+#: modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js
+msgid "Shared-PHY regulatory mode"
+msgstr "共享 PHY 监管模式"
+
+#: modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js
+msgid "Standard country mode (XZ composite laboratory profile is opt-in)"
+msgstr "标准国家模式（XZ 组合实验配置需主动选择）"
+
+#: modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js
+msgid "XZ - XR1710G composite laboratory profile (AU 2.4/5 GHz + 6 GHz 36 dBm, no AFC)"
+msgstr "XZ - XR1710G 组合实验配置（AU 2.4/5 GHz + 6 GHz 36 dBm，无 AFC）"
+
+#: modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js
+msgid "WARNING: XZ is not a country regulatory domain and this firmware does not implement AFC. Choosing XZ on the 6 GHz radio writes XZ to all three radio sections and applies the complete XZ composite profile to the shared PHY: AU 2.4/5 GHz rules plus the experimental 6 GHz rule. It does not grant Standard Power authorization. Use only for controlled laboratory or otherwise authorized testing. You are responsible for compliance with all local laws, rules, channel limits and power limits."
+msgstr "警告：XZ 不是国家监管域，本固件也未实现 AFC。在 6 GHz 无线电上选择 XZ，会把 XZ 写入三张无线电配置，并把完整的 XZ 组合配置应用到共享 PHY：2.4/5 GHz 使用 AU 规则，6 GHz 使用实验规则。它不代表已获得标准功率授权；仅限受控实验室或已获得相应授权的测试使用。用户必须自行遵守所在地法律法规、信道及功率限制。"
+EOF
+fi
+grep -Fq 'msgstr "XZ - XR1710G 组合实验配置（AU 2.4/5 GHz + 6 GHz 36 dBm，无 AFC）"' "$luci_zh_hans_po" || {
+	echo "LuCI Simplified Chinese laboratory label failed to install" >&2
+	exit 1
+}
+
 # The baseline's first Airoha TRNG follow-up opens the SCU clock gates after
 # touching RNG_EN. Install the reviewed ordering-only patch deterministically
 # and refuse stale or duplicate copies.
@@ -29,12 +149,12 @@ grep -Fq 'enable SCU clocks before starting TRNG' "$trng_patch_dst" || {
 }
 
 # Image assembly enables every rc.common service after overlay files are
-# copied. Make AdGuard Home opt-in at the immutable rootfs level as well as in
-# the first-boot policy: pass it through prepare_rootfs' disabled-service list
-# for every target image.
+# copied. Make AdGuard Home and the upstream OpenWrt dockerd service opt-in at
+# the immutable rootfs level.  An enabled dockerd symlink is explicitly kept
+# across sysupgrade by files/lib/upgrade/keep.d/xr1710g-docker.
 image_makefile='include/image.mk'
 old_prepare_rootfs='$(call prepare_rootfs,$(mkfs_cur_target_dir),$(TOPDIR)/files)'
-new_prepare_rootfs='$(call prepare_rootfs,$(mkfs_cur_target_dir),$(TOPDIR)/files,adguardhome)'
+new_prepare_rootfs='$(call prepare_rootfs,$(mkfs_cur_target_dir),$(TOPDIR)/files,adguardhome dockerd)'
 old_prepare_line="$(printf '\t%s' "$old_prepare_rootfs")"
 new_prepare_line="$(printf '\t%s' "$new_prepare_rootfs")"
 if grep -Fqx "$new_prepare_line" "$image_makefile"; then
@@ -45,11 +165,117 @@ elif grep -Fqx "$old_prepare_line" "$image_makefile"; then
 	[ -n "$prepare_line_number" ] || exit 1
 	sed -i "${prepare_line_number}c\\${new_prepare_line}" "$image_makefile"
 else
-	echo "Unexpected image rootfs assembly call; cannot disable AdGuard Home" >&2
+	echo "Unexpected image rootfs assembly call; cannot apply opt-in services" >&2
 	exit 1
 fi
 grep -Fqx "$new_prepare_line" "$image_makefile" || {
-	echo "Unable to disable AdGuard Home during image rootfs assembly" >&2
+	echo "Unable to apply opt-in service policy during image assembly" >&2
+	exit 1
+}
+
+# Keep Docker itself entirely upstream: Moby dockerd, Docker CLI, containerd,
+# runc and luci-app-dockerman all come from the pinned OpenWrt feeds.  This
+# narrow OpenWrt service-wrapper patch only exposes daemon log-opts through
+# the existing dockerd UCI-to-JSON conversion so bounded logs remain
+# compatible with iStore and Dockerman's single /etc/config/dockerd.
+dockerd_feed='feeds/packages'
+dockerd_init="$dockerd_feed/utils/dockerd/files/dockerd.init"
+dockerd_patch="$GITHUB_WORKSPACE/patches/packages/0201-dockerd-support-uci-log-options.patch"
+[ -f "$dockerd_init" ] || {
+	echo "Missing pinned OpenWrt dockerd init script" >&2
+	exit 1
+}
+[ -f "$dockerd_patch" ] || {
+	echo "Missing reviewed OpenWrt dockerd UCI log-options patch" >&2
+	exit 1
+}
+[ "$(sha256sum "$dockerd_patch" | cut -d' ' -f1)" = \
+	'f2851e370a83380903c1933b59978ac90a1cf8c08b544144a3c8bc6a281654bd' ] || {
+	echo "Unexpected OpenWrt dockerd UCI log-options patch content" >&2
+	exit 1
+}
+grep -Fq 'json_add_string "log-driver" "${log_driver}"' "$dockerd_init" || {
+	echo "Unexpected OpenWrt dockerd init baseline" >&2
+	exit 1
+}
+git -C "$dockerd_feed" apply --check "$dockerd_patch"
+git -C "$dockerd_feed" apply "$dockerd_patch"
+grep -Fq 'config_list_foreach globals log_opts json_add_log_option' "$dockerd_init" || {
+	echo "OpenWrt dockerd UCI log-options patch failed validation" >&2
+	exit 1
+}
+
+# Keep the upstream Dockerman application, but make its intentional stopped
+# state understandable. The pinned page otherwise returns the raw socket
+# connection error before rendering any heading or start control.
+dockerman_feed='feeds/luci'
+dockerman_overview="$dockerman_feed/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js"
+dockerman_zh_hans="$dockerman_feed/applications/luci-app-dockerman/po/zh_Hans/dockerman.po"
+dockerman_stopped_patch="$GITHUB_WORKSPACE/patches/luci/0610-dockerman-disabled-state-guidance.patch"
+[ -f "$dockerman_overview" ] || {
+	echo "Missing pinned Dockerman overview" >&2
+	exit 1
+}
+[ -f "$dockerman_zh_hans" ] || {
+	echo "Missing pinned Dockerman Simplified Chinese catalog" >&2
+	exit 1
+}
+[ -f "$dockerman_stopped_patch" ] || {
+	echo "Missing reviewed Dockerman stopped-state patch" >&2
+	exit 1
+}
+grep -Fq "return E('div', {}, [ info_response?.body?.message ]);" "$dockerman_overview" || {
+	echo "Unexpected Dockerman stopped-state baseline" >&2
+	exit 1
+}
+git -C "$dockerman_feed" apply --check "$dockerman_stopped_patch"
+git -C "$dockerman_feed" apply "$dockerman_stopped_patch"
+grep -Fq "handleEnableAndStart(ev)" "$dockerman_overview" || {
+	echo "Dockerman enable-and-start action failed to install" >&2
+	exit 1
+}
+if ! grep -Fq 'msgid "Docker is not running"' "$dockerman_zh_hans"; then
+	cat >> "$dockerman_zh_hans" <<'EOF'
+
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+msgid "Docker is not running"
+msgstr "Docker 未运行"
+
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+msgid "Docker is installed but disabled by default to conserve memory and storage writes. No Docker resources are used until you enable it."
+msgstr "Docker 已安装，但默认关闭以节省内存并减少存储写入。在您主动启用前，Docker 不会占用运行资源。"
+
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+msgid "Click the button below to enable Docker at boot and start the upstream OpenWrt Docker service now. iStore and Dockerman will use the same service and data directory."
+msgstr "点击下方按钮可启用 Docker 开机启动，并立即启动 OpenWrt 上游 Docker 服务。iStore 与 Dockerman 将共用同一服务和数据目录。"
+
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+msgid "Enable and start Docker"
+msgstr "启用并启动 Docker"
+
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+msgid "Enabling the Docker service failed"
+msgstr "启用 Docker 服务失败"
+
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+msgid "Starting the Docker service failed"
+msgstr "启动 Docker 服务失败"
+
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+msgid "Docker is starting. This page will refresh automatically."
+msgstr "Docker 正在启动，页面将自动刷新。"
+
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+msgid "Failed to enable and start Docker: %s"
+msgstr "启用并启动 Docker 失败：%s"
+
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+msgid "Unable to connect to the configured Docker host."
+msgstr "无法连接到已配置的 Docker 主机。"
+EOF
+fi
+grep -Fq 'msgstr "Docker 未运行"' "$dockerman_zh_hans" || {
+	echo "Dockerman stopped-state Chinese translation failed to install" >&2
 	exit 1
 }
 
@@ -171,17 +397,17 @@ for uhttpd_patch in $uhttpd_proxy_patches; do
 done
 
 [ "$(sha256sum "$uhttpd_patch_dir/501-1-feat-add-raw-proxy.patch" | cut -d' ' -f1)" = \
-	'b87ac4cea290fd0cff99b1e7092f0a5847ac94a678ca590691d35e884d65fb1e' ] || {
+	'174a2521df1d25b40eb72ef42660ca118a7f7801d0be00d154990277c023b7b5' ] || {
 	echo "Unexpected iStoreOS raw-proxy patch content" >&2
 	exit 1
 }
 [ "$(sha256sum "$uhttpd_patch_dir/501-2-fix-force-backend-close-for-proxied-http.patch" | cut -d' ' -f1)" = \
-	'e8b84a06e0d40de9a0c0a3ad642b2f40ce0fd7f9d3260934eb29ba346d875753' ] || {
+	'3d73af37c533240bb38b1b1cdf70b966845c8d33c1ef2ce6166ad341795c437f' ] || {
 	echo "Unexpected iStoreOS proxy-close patch content" >&2
 	exit 1
 }
 [ "$(sha256sum "$uhttpd_patch_dir/501-3-feat-forward-original-request-headers-to-backend.patch" | cut -d' ' -f1)" = \
-	'e23262991b6b8cb59d107f16560876a6e542e0bbfbe60e9dddd9c92ca625071c' ] || {
+	'4d31d429d86d6593acdbe37463f8f34d81f3b082c75455a2f49883ba5970fcbd' ] || {
 	echo "Unexpected iStoreOS forwarded-header patch content" >&2
 	exit 1
 }
@@ -302,6 +528,33 @@ if printf '%s\n' "$xr1710g_profile" | grep -Fq 'wpad-basic-mbedtls'; then
 	echo "XR1710G profile still contains wpad-basic-mbedtls" >&2
 	exit 1
 fi
+
+# The first public image used the corrected UBI 2.0 layout but a clean install
+# did not persist OpenWrt's generic compatibility marker. Keep metadata stable
+# and enforce the real safety condition in the Airoha platform hook instead:
+# all four live MTD boundaries must exactly match XR1710G UBI 2.0 before every
+# sysupgrade. This supports repeatable background upgrades without weakening
+# the old-layout migration guard.
+xr_transition_patch="$GITHUB_WORKSPACE/patches/openwrt/0100-xr1710g-guard-transition-sysupgrade.patch"
+[ -f "$xr_transition_patch" ] || {
+	echo "XR1710G guarded transition patch is missing" >&2
+	exit 1
+}
+git apply --check "$xr_transition_patch"
+git apply "$xr_transition_patch"
+grep -Fq 'XR1710G UBI 2.0 boundaries are not active' \
+	target/linux/airoha/an7581/base-files/lib/upgrade/platform.sh || {
+	echo "XR1710G platform layout guard was not installed" >&2
+	exit 1
+}
+xr1710g_profile="$(
+	sed -n '/^define Device\/econet_xr1710g-ubi$/,/^endef$/p' \
+		target/linux/airoha/image/an7581.mk
+)"
+printf '%s\n' "$xr1710g_profile" | grep -Fq 'DEVICE_COMPAT_VERSION := 1.0' || {
+	echo "XR1710G layout-aware compatibility metadata was not installed" >&2
+	exit 1
+}
 
 # ===== 追加第三方插件包（不影响 .config 主文件）=====
 PKG_CONF="$GITHUB_WORKSPACE/packages/openwrt.conf"

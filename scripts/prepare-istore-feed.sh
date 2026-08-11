@@ -3,10 +3,10 @@ set -eu
 
 makefile="feeds/istore/luci/luci-app-store/Makefile"
 is_opkg="feeds/istore/luci/luci-app-store/root/bin/is-opkg"
+quickstart_js="feeds/linkease_nas_luci/luci/luci-app-quickstart/htdocs/luci-static/quickstart/index.js"
+quickstart_template="feeds/linkease_nas_luci/luci/luci-app-quickstart/luasrc/view/quickstart/main.htm"
 old='LUCI_DEPENDS+=$(if $(CONFIG_USE_APK),+apk +luci-compat,+opkg)'
 new='LUCI_DEPENDS+=+USE_APK:apk +USE_APK:luci-compat +!USE_APK:opkg'
-old_apk='    APK_CONFIG=${APK_CONF} apk "$@"'
-new_apk='    APK_CONFIG=${APK_CONF} apk --repositories-file /dev/null "$@"'
 adguard_patch="${GITHUB_WORKSPACE:-/builder}/patches/packages/0200-adguardhome-do-not-autostart-unconfigured.patch"
 adguard_defaults='feeds/packages/net/adguardhome/files/adguardhome.defaults'
 adguard_init='feeds/packages/net/adguardhome/files/adguardhome.init'
@@ -33,20 +33,24 @@ grep -Fqx "$new" "$makefile"
 	exit 1
 }
 
-# apk-tools 3 still reads /etc/apk/repositories.d in addition to APK_CONFIG.
-# iStore's private package database must be isolated from the system feeds;
-# otherwise a broken system mirror also makes iStore update/install fail.
-if grep -Fqx "$new_apk" "$is_opkg"; then
-	:
-elif grep -Fqx "$old_apk" "$is_opkg"; then
-	line="$(grep -nFx "$old_apk" "$is_opkg" | cut -d: -f1)"
-	[ -n "$line" ] || exit 1
-	sed -i "${line}c\\${new_apk}" "$is_opkg"
-else
-	echo "Unexpected iStore APK wrapper; refusing an unreviewed patch" >&2
+# Apply one verified policy to all APK install and upgrade paths. The helper
+# checks exact upstream anchors, so an iStore update cannot silently produce a
+# partially patched package manager.
+python3 "$(dirname "$0")/patch-istore-wrapper.py" "$is_opkg"
+grep -Fq 'SYSTEM_REPOSITORIES=/etc/apk/repositories.d/distfeeds.list' "$is_opkg"
+grep -Fq 'apk_wrap add --simulate "$@"' "$is_opkg"
+grep -Fq 'apk_wrap upgrade --simulate "$@"' "$is_opkg"
+grep -Fq 'apk_wrap "$action" --simulate "$@"' "$is_opkg"
+grep -Fq 'Preflight dependency resolution failed; no packages were changed.' "$is_opkg"
+
+[ -f "$quickstart_js" ] || {
+	echo "QuickStart frontend not found: $quickstart_js" >&2
 	exit 1
-fi
-grep -Fqx "$new_apk" "$is_opkg"
+}
+python3 "$(dirname "$0")/patch-quickstart-link-state.py" "$quickstart_js" "$quickstart_template"
+[ "$(grep -Fo '.linkState!=="UP"' "$quickstart_js" | wc -l)" -eq 5 ]
+! grep -Fq '.linkState=="DOWN"' "$quickstart_js"
+grep -Fq 'index.js?v=xr-linkstate1' "$quickstart_template"
 
 [ -f "$adguard_patch" ] || {
 	echo "AdGuard Home policy patch not found: $adguard_patch" >&2

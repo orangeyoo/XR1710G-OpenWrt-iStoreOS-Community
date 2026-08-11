@@ -104,6 +104,9 @@ jobs:
         ./scripts/feeds update -a
         chmod +x "$GITHUB_WORKSPACE/scripts/prepare-istore-feed.sh"
         "$GITHUB_WORKSPACE/scripts/prepare-istore-feed.sh"
+        XR_ISTORE_FIXTURE="$PWD/feeds/istore/luci/luci-app-store/root/bin/is-opkg" \
+        XR_QUICKSTART_FIXTURE="$PWD/feeds/linkease_nas_luci/luci/luci-app-quickstart/htdocs/luci-static/quickstart/index.js" \
+          "$GITHUB_WORKSPACE/scripts/test-status-and-istore-safety.sh" "$GITHUB_WORKSPACE"
 
     - name: 安装 feeds
       run: cd openwrt && ./scripts/feeds install -a

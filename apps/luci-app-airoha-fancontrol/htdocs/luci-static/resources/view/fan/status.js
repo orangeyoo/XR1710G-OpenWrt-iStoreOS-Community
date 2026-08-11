@@ -80,7 +80,7 @@ function updateFanGauge(rpm, percentage) {
 
 return view.extend({
 	load: function() {
-		return callFanStatus();
+		return callFanStatus().catch(function() { return {}; });
 	},
 
 	render: function(status) {
@@ -149,7 +149,7 @@ return view.extend({
 				if (presetEl) {
 					presetEl.textContent = this.getPresetText(status.uci_mode, status.uci_preset);
 				}
-			}, this));
+			}, this)).catch(function() { return null; });
 		}, this), 3);
 
 		return viewEl;

@@ -7,3 +7,6 @@ feeds.d/* text eol=lf
 packages/*.conf text eol=lf
 *.yml text eol=lf
 apps/** text eol=lf
+files/** text eol=lf
+scripts/** text eol=lf
+diy-part2.d/** text eol=lf

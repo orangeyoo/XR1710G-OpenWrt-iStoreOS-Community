@@ -11,10 +11,9 @@ on:
         default: 'sync'
         options:
           - sync
-          - clear
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   sync-target:
@@ -114,55 +113,11 @@ jobs:
             fi
           done
 
-      - name: Clear Target Files
-        if: github.event.inputs.action == 'clear'
-        run: |
-          echo "=== 清理 apps/ 下的目标文件夹及备份文件 ==="
-
-          # 1. 删除指定的目标文件夹及其 .bak 文件夹
-          for dir in $FOLDERS; do
-            if [ -d "apps/$dir" ]; then
-              rm -rf "apps/$dir"
-              echo "✅ 已删除 apps/$dir"
-            fi
-            if [ -d "apps/${dir}.bak" ]; then
-              rm -rf "apps/${dir}.bak"
-              echo "✅ 已删除备份目录 apps/${dir}.bak"
-            fi
-          done
-
-          # 2. 扫尾：清理 apps/ 目录下任何残留的 *.bak 目录和文件
-          if [ -d "apps" ]; then
-            find apps/ -name "*.bak" -exec rm -rf {} + 2>/dev/null || true
-            echo "✅ 已彻底扫描并清理所有残留的 *.bak 文件及目录"
-          fi
-
-          echo ""
-          echo "正在提交清理..."
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add apps/ 2>/dev/null || true
-          git commit -m "clear: remove airoha luci apps and backup files from apps/ ($(date +%Y%m%d))" || echo "无需提交"
-
-          echo ""
-          echo "=== 推送前同步远程 ==="
-          git fetch origin
-          git rebase origin/main
-          git push || echo "推送失败"
-          echo "✅ 清理完成"
-
       - name: Commit and Push
         if: github.event.inputs.action == 'sync'
         run: |
-          echo "=== 推送前同步远程 ==="
-          git fetch origin
-          git rebase origin/main
-          echo ""
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add apps/
-          git commit -m "sync: airoha luci apps into apps/ from naoki66/ImmortalWrt-for-Gemtek-XR1710G ($(date +%Y%m%d))" || echo "无需提交"
-          git push || echo "推送失败"
-          echo "✅ 同步完成"
-
-          rm -rf tmp-xr1710g-source
+          echo "=== 安全检查与人工审核边界 ==="
+          chmod +x scripts/test-status-and-istore-safety.sh
+          scripts/test-status-and-istore-safety.sh .
+          echo "上游同步只用于生成本次工作流差异，不再自动覆盖并推送维护分支。"
+          echo "请下载日志、审查 apps/ 差异，并通过常规提交流程合并。"
