@@ -24,14 +24,14 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $workspace = Split-Path $builder -Parent
-$out = Join-Path $workspace 'output\hostapd-wds-r3'
+$out = Join-Path $workspace 'output\hostapd-wds-baseline'
 New-Item -ItemType Directory -Force $out | Out-Null
 $outMount = $out -replace '\\', '/'
 docker run --rm `
     --mount "type=volume,source=$WorkVolume,target=/work,readonly" `
     --mount "type=bind,source=$outMount,target=/export" `
     $Image `
-    bash -c 'cp -a /work/hostapd-wds-r3/. /export/'
+    bash -c 'cp -a /work/hostapd-wds-baseline/. /export/'
 if ($LASTEXITCODE -ne 0) {
     throw "Unable to copy hostapd WDS packages from the build volume"
 }

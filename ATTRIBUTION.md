@@ -10,7 +10,7 @@
 
 | 项目 | 本项目中的用途 | 来源/固定版本 | 许可证说明 |
 |---|---|---|---|
-| [YYH2913/openwrt](https://github.com/YYH2913/openwrt) | XR1710G DTS、AN7581 target、UBI 2.0、网口、NPU/MT7996 支持 | `2a845ee80c7c52caafe57d518a15b16738eb9ed7` | 以仓库内各组件许可证为准，OpenWrt 核心主要为 GPL-2.0 |
+| [YYH2913/openwrt](https://github.com/YYH2913/openwrt) | XR1710G DTS、AN7581 target、UBI 2.0、网口、PPE、NPU/MT7996支持及无线线程分配 | `99598e539d47aa9f137baff43f0c2f77becc2e50` | 以仓库内各组件许可证为准，OpenWrt核心主要为GPL-2.0 |
 | [OpenWrt](https://github.com/openwrt/openwrt) | Linux 路由系统、构建系统、软件包框架 | 由 YYH2913 分支及固定 feeds 提供 | GPL-2.0 及各软件包自身许可证 |
 | [ImmortalWrt](https://github.com/immortalwrt/immortalwrt) | 配置兼容与社区生态参考 | `configs/immortalwrt.config` | 以各文件/软件包声明为准 |
 | [naoki66/ImmortalWrt-for-Gemtek-XR1710G](https://github.com/naoki66/ImmortalWrt-for-Gemtek-XR1710G) | `luci-app-airoha-fancontrol`、`luci-app-airoha-flowsense`、`luci-app-airoha-npu` 初始来源 | 同步工作流明确记录来源 | 应用 Makefile 声明 GPL-2.0-or-later 或 Apache-2.0 |
@@ -20,8 +20,7 @@
 | 项目 | 本项目中的用途 | 来源/固定版本 | 许可证说明 |
 |---|---|---|---|
 | [OpenWrt mt76](https://github.com/openwrt/mt76) | MT7996 Wi-Fi 7 驱动 | `b2704cf5a4068b672bf47ad5bf6b4802b6770a90`，叠加 YYH2913 AN7581/NPU 补丁 | ISC/GPL 兼容声明以源码文件为准 |
-| [hostapd/wpa_supplicant](https://w1.fi/hostapd/) | WPA3-SAE、802.11s Mesh、AP/STA-WDS | `b004de0bf1b54d669d358b7f33d6f474bd9719a6` | BSD-3-Clause |
-| hostapd commit `61280edc...` | 多 BSS 下 WDS unexpected-frame 事件路由修复 | 补丁保留作者 Kamil Bienkiewicz 和 Signed-off-by | 沿用 hostapd 许可证 |
+| [hostapd/wpa_supplicant](https://w1.fi/hostapd/) | WPA3-SAE、802.11s Mesh、AP/STA-WDS | `f08f2749aa696c4e47c5c0f591dda99951bf9fac`；新版 YYH/OpenWrt 底座自带多 BSS WDS 事件路由修复 | BSD-3-Clause |
 | OpenWrt uhttpd / iStoreOS backports | `/apps` raw proxy、后端关闭及 forwarded headers | 来自 iStoreOS `istoreos-24.10` 的公开补丁，源码内保留版权文本 | uhttpd 的 ISC 许可及补丁原声明 |
 
 ## iStoreOS、LuCI 与应用生态

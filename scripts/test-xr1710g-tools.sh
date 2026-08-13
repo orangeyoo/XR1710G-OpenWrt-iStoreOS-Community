@@ -5,6 +5,10 @@ BUILDER="${1:-/builder}"
 ROLE_SRC="$BUILDER/files/usr/sbin/xr1710g-role"
 WAN_CARRIER_SRC="$BUILDER/files/usr/sbin/xr1710g-wan-carrier"
 BOOTLOG_SRC="$BUILDER/files/etc/init.d/xr1710g-bootlog"
+CPUFREQ_SRC="$BUILDER/files/etc/init.d/xr1710g-cpufreq"
+UBOOT_RESTORE_SRC="$BUILDER/files/etc/init.d/xr1710g-uboot-recovery-restore"
+RECOVERY_RPC="$BUILDER/apps/luci-app-xr1710g-recovery/root/usr/libexec/rpcd/luci.xr1710g_recovery"
+UBOOT_ENV_PATCH="$BUILDER/patches/openwrt/0101-xr1710g-fix-uboot-env-layout.patch"
 POLICY_SRC="$BUILDER/files/etc/uci-defaults/zz-xr1710g-services.sh"
 WIRELESS_SRC="$BUILDER/files/usr/sbin/xr1710g-wireless-defaults"
 TRANSITION_PATCH="$BUILDER/patches/openwrt/0100-xr1710g-guard-transition-sysupgrade.patch"
@@ -26,10 +30,42 @@ fail() {
 	exit 1
 }
 
-for script in "$ROLE_SRC" "$WAN_CARRIER_SRC" "$BOOTLOG_SRC" "$POLICY_SRC" "$WIRELESS_SRC"; do
+for script in "$ROLE_SRC" "$WAN_CARRIER_SRC" "$BOOTLOG_SRC" "$CPUFREQ_SRC" "$UBOOT_RESTORE_SRC" "$RECOVERY_RPC" "$POLICY_SRC" "$WIRELESS_SRC"; do
 	[ -f "$script" ] || fail "missing $script"
 	sh -n "$script" || fail "syntax error in $script"
 done
+
+[ -f "$UBOOT_ENV_PATCH" ] || fail "missing $UBOOT_ENV_PATCH"
+grep -Fq '"0x4000" "0x1f000"' "$UBOOT_ENV_PATCH" ||
+	fail 'XR1710G U-Boot environment layout is not fixed at 0x4000'
+grep -Fq "grep -Ec '^/dev/ubi[0-9]+_[0-9]+[[:space:]]+0x0[[:space:]]+0x4000" "$UBOOT_ENV_PATCH" ||
+	fail 'preserved XR1710G U-Boot environments are not migrated by exact layout validation'
+grep -Fq 'native_one_shot_supported' "$RECOVERY_RPC" ||
+	fail 'recovery RPC lacks native one-shot capability detection'
+grep -Fq "fw_setenv recovery_trigger 1" "$RECOVERY_RPC" ||
+	fail 'native recovery path does not arm the advertised trigger'
+if grep -Eq 'legacy_one_shot_supported|legacy-double-reset|xr1710g_recovery_stage|recovery_port 10g' "$RECOVERY_RPC"; then
+	fail 'unverified legacy software recovery path is still exposed'
+fi
+grep -Fq 'fw_setenv bootcmd "$backup"' "$UBOOT_RESTORE_SRC" ||
+	fail 'boot service does not restore the saved bootcmd'
+grep -Fq 'fw_setenv xr1710g_recovery_stage1' "$UBOOT_RESTORE_SRC" ||
+	fail 'boot service does not clear legacy recovery stage 1'
+grep -Fq 'fw_setenv xr1710g_recovery_stage2' "$UBOOT_RESTORE_SRC" ||
+	fail 'boot service does not clear legacy recovery stage 2'
+grep -Fq 'fw_setenv xr1710g_recovery_once' "$UBOOT_RESTORE_SRC" ||
+	fail 'boot service does not clear the obsolete legacy trigger'
+grep -Fq '/etc/init.d/xr1710g-uboot-recovery-restore enable' "$POLICY_SRC" ||
+	fail 'obsolete recovery-variable cleanup service is not enabled'
+
+grep -Fq "xr1710g_governor='performance'" "$POLICY_SRC" ||
+	fail 'first-boot service policy does not persist the performance default'
+grep -Fq '/etc/init.d/xr1710g-cpufreq enable' "$POLICY_SRC" ||
+	fail 'first-boot service policy does not enable cpufreq replay'
+grep -Fq 'system.@system[0].xr1710g_governor' "$CPUFREQ_SRC" ||
+	fail 'cpufreq service does not load the persistent governor'
+grep -Fq 'policy[0-9]*' "$CPUFREQ_SRC" ||
+	fail 'cpufreq service does not apply all CPU policies'
 
 for docker_file in "$DOCKER_CONFIG" "$DOCKER_KEEP" "$DOCKER_PATCH" "$DOCKERMAN_PATCH"; do
 	[ -f "$docker_file" ] || fail "missing $docker_file"
@@ -329,8 +365,11 @@ XR1710G_WIFI_WAIT_ATTEMPTS=2 XR_TEST_WIFI_MODE=complete "$wireless"
 
 for expected in \
 	'wireless.radio0.country=US' \
-	'wireless.default_radio0.ssid=XR1710G-CHANGE-ME' \
-	'wireless.default_radio0.encryption=psk-mixed' \
+	'wireless.radio0.channel=auto' \
+	'wireless.radio0.htmode=HE20' \
+	'wireless.radio0.txpower=28' \
+	'wireless.default_radio0.ssid=XR1710G' \
+	'wireless.default_radio0.encryption=none' \
 	'wireless.default_radio0.uapsd=0' \
 	'wireless.default_radio0.disassoc_low_ack=0' \
 	'wireless.default_radio0.ieee80211r=0' \
@@ -339,25 +378,38 @@ for expected in \
 	'wireless.radio1.country=US' \
 	'wireless.radio1.channel=36' \
 	'wireless.radio1.htmode=EHT80' \
-	'wireless.default_radio1.ssid=XR1710G-5G-CHANGE-ME' \
-	'wireless.default_radio1.encryption=sae-mixed' \
+	'wireless.radio1.txpower=29' \
+	'wireless.radio1.he_bss_color=2' \
+	'wireless.radio1.background_radar=1' \
+	'wireless.default_radio1.ssid=XR1710G-5G' \
+	'wireless.default_radio1.encryption=none' \
 	'wireless.default_radio1.uapsd=0' \
 	'wireless.default_radio1.disassoc_low_ack=0' \
+	'wireless.default_radio1.max_inactivity=86400' \
 	'wireless.default_radio1.ieee80211r=1' \
 	'wireless.default_radio1.mobility_domain=6616' \
 	'wireless.default_radio1.ft_psk_generate_local=1' \
 	'wireless.radio2.country=US' \
 	'wireless.radio2.channel=37' \
-	'wireless.radio2.htmode=EHT80' \
+	'wireless.radio2.htmode=EHT320' \
+	'wireless.radio2.txpower=28' \
 	'wireless.default_radio2.mode=mesh' \
 	'wireless.default_radio2.mesh_id=XR1710G-6G-BACKHAUL' \
 	'wireless.default_radio2.encryption=sae' \
 	'wireless.default_radio2.mesh_fwding=1' \
-	'wireless.default_radio2.disabled=0' \
+	'wireless.default_radio2.disabled=1' \
 	'system.@system[0].xr1710g_wireless_defaults=1'; do
 	grep -Fqx "$expected" "$XR_TEST_STATE/uci.db" ||
 		fail "post-kmod wireless policy is missing: $expected"
 done
+if grep -Eq '^wireless\.default_radio[012]\.key=' "$XR_TEST_STATE/uci.db"; then
+	fail 'factory wireless policy contains a preconfigured key'
+fi
+if grep -Eqi '5.?GHz.*EHT160|EHT160.*5.?GHz|5g.*EHT160|EHT160.*5g|5.?GHz.*30.?dBm|30.?dBm.*5.?GHz|5g.*30.?dBm|30.?dBm.*5g' \
+	"$BUILDER/README.md" "$BUILDER/README-EN.md" \
+	"$BUILDER/RELEASE-NOTES.md" "$BUILDER/CHANGES-v1.md"; then
+	fail 'public documentation still contains a stale 5 GHz EHT160/30dBm default'
+fi
 if grep -Eq '^wireless\.default_radio2\.(ssid|owe_groups|owe_transition_)=' \
 	"$XR_TEST_STATE/uci.db"; then
 	fail '6 GHz mesh retained an AP/OWE-only option'

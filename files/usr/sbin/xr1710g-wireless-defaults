@@ -70,11 +70,16 @@ apply_policy() {
 
 	for radio in $(radios_for_band 2g); do
 		uci -q set wireless."$radio".country='US'
+		uci -q set wireless."$radio".channel='auto'
+		uci -q set wireless."$radio".htmode='HE20'
+		uci -q set wireless."$radio".txpower='28'
+		uci -q set wireless."$radio".he_mu_beamformer='0'
+		uci -q set wireless."$radio".he_su_beamformer='1'
 		for iface in $(ifaces_for_radio "$radio"); do
 			[ "$(uci -q get wireless."$iface".mode 2>/dev/null || true)" = 'ap' ] || continue
-			uci -q set wireless."$iface".ssid='XR1710G-CHANGE-ME'
-			uci -q set wireless."$iface".encryption='psk-mixed'
-			uci -q set wireless."$iface".key='XR1710G-CHANGE-ME'
+			uci -q set wireless."$iface".ssid='XR1710G'
+			uci -q set wireless."$iface".encryption='none'
+			delete_if_present wireless."$iface".key
 			apply_ap_common "$iface"
 			uci -q set wireless."$iface".ieee80211r='0'
 			delete_if_present wireless."$iface".mobility_domain
@@ -85,17 +90,25 @@ apply_policy() {
 
 	for radio in $(radios_for_band 5g); do
 		uci -q set wireless."$radio".country='US'
-		# Keep the EHT80 value used in the two-router throughput/roaming tests.
-		# The early board default requests EHT160 but cannot run before mt7996;
-		# do not silently introduce that unverified width during this repair.
 		uci -q set wireless."$radio".channel='36'
 		uci -q set wireless."$radio".htmode='EHT80'
+		uci -q set wireless."$radio".txpower='29'
+		uci -q set wireless."$radio".he_su_beamformer='1'
+		uci -q set wireless."$radio".he_mu_beamformer='1'
+		uci -q set wireless."$radio".eht_su_beamformer='1'
+		uci -q set wireless."$radio".eht_mu_beamformer='1'
+		uci -q set wireless."$radio".he_bss_color='2'
+		uci -q set wireless."$radio".background_radar='1'
 		for iface in $(ifaces_for_radio "$radio"); do
 			[ "$(uci -q get wireless."$iface".mode 2>/dev/null || true)" = 'ap' ] || continue
-			uci -q set wireless."$iface".ssid='XR1710G-5G-CHANGE-ME'
-			uci -q set wireless."$iface".encryption='sae-mixed'
-			uci -q set wireless."$iface".key='XR1710G-CHANGE-ME'
+			uci -q set wireless."$iface".ssid='XR1710G-5G'
+			uci -q set wireless."$iface".encryption='none'
+			delete_if_present wireless."$iface".key
 			apply_ap_common "$iface"
+			# Real-device logs showed active MT7996 5 GHz clients being
+			# periodically expired by hostapd's inactivity timer.  Avoid
+			# needless full SAE/EAPOL reconnects.
+			uci -q set wireless."$iface".max_inactivity='86400'
 			uci -q set wireless."$iface".ieee80211r='1'
 			uci -q set wireless."$iface".mobility_domain='6616'
 			uci -q set wireless."$iface".ft_over_ds='0'
@@ -106,19 +119,27 @@ apply_policy() {
 	for radio in $(radios_for_band 6g); do
 		uci -q set wireless."$radio".country='US'
 		uci -q set wireless."$radio".channel='37'
-		uci -q set wireless."$radio".htmode='EHT80'
+		uci -q set wireless."$radio".htmode='EHT320'
+		uci -q set wireless."$radio".txpower='28'
+		uci -q set wireless."$radio".eht_su_beamformer='1'
+		uci -q set wireless."$radio".eht_mu_beamformer='1'
+		uci -q set wireless."$radio".he_su_beamformer='1'
+		uci -q set wireless."$radio".he_mu_beamformer='1'
+		uci -q set wireless."$radio".he_bss_color='1'
 		for iface in $(ifaces_for_radio "$radio"); do
 			uci -q set wireless."$iface".mode='mesh'
 			delete_if_present wireless."$iface".ssid
 			delete_if_present wireless."$iface".owe_groups
 			uci -q set wireless."$iface".mesh_id='XR1710G-6G-BACKHAUL'
 			uci -q set wireless."$iface".encryption='sae'
-			uci -q set wireless."$iface".key='XR1710G-CHANGE-ME'
+			delete_if_present wireless."$iface".key
 			uci -q set wireless."$iface".mesh_fwding='1'
 			delete_if_present wireless."$iface".wds
 			delete_if_present wireless."$iface".owe_transition_ifname
 			delete_if_present wireless."$iface".owe_transition_ssid
-			uci -q set wireless."$iface".disabled='0'
+			# 6 GHz SAE cannot start with an empty key. Keep the reviewed Mesh
+			# template disabled until the owner sets a key on every node.
+			uci -q set wireless."$iface".disabled='1'
 		done
 	done
 

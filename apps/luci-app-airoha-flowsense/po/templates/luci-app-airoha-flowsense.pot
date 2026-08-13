@@ -39,3 +39,6 @@ msgstr ""
 
 msgid "VLAN Offload"
 msgstr ""
+
+msgid "Not enabled or configured"
+msgstr ""

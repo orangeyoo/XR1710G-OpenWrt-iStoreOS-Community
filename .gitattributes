@@ -1,5 +1,5 @@
 * text=auto
-*.patch text eol=lf
+*.patch text eol=lf whitespace=-space-before-tab,-trailing-space
 *.sh text eol=lf
 files/etc/uci-defaults/41_uhttpd_proxy_linkease text eol=lf
 *.sh text eol=lf

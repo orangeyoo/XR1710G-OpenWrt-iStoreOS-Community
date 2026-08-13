@@ -1,0 +1,51 @@
+diff --git a/package/boot/uboot-tools/uboot-envtools/files/airoha_an7581 b/package/boot/uboot-tools/uboot-envtools/files/airoha_an7581
+index 86de601..67df25e 100644
+--- a/package/boot/uboot-tools/uboot-envtools/files/airoha_an7581
++++ b/package/boot/uboot-tools/uboot-envtools/files/airoha_an7581
+@@ -6,9 +6,31 @@
+ 
+ board=$(board_name)
+ 
++ubootenv_add_ubi_xr1710g() {
++	. /lib/upgrade/nand.sh
++	local envubi="$(nand_find_ubi ubi)"
++	local dev="/dev/$(nand_find_volume "$envubi" ubootenv)"
++	local dev2="/dev/$(nand_find_volume "$envubi" ubootenv2)"
++
++	# YYH2913/http-uboot-xr1710g uses CONFIG_ENV_SIZE=0x4000. The generic
++	# 0x1f000 layout writes a CRC U-Boot does not accept.
++	ubootenv_add_uci_config "$dev" "0x0" "0x4000" "0x1f000" "1"
++	ubootenv_add_uci_config "$dev2" "0x0" "0x4000" "0x1f000" "1"
++}
++
+ case "$board" in
+-gemtek,w1700k-ubi|\
+-econet,xr1710g-ubi|\
++econet,xr1710g-ubi)
++	# A preserved config from an older image may point at the correct dynamic
++	# UBI volumes while still using the incompatible generic 0x1f000 size.
++	# Keep only the exact redundant 0x4000 layout expected by YYH2913 U-Boot.
++	if [ -e /etc/config/ubootenv ] && [ -e /etc/fw_env.config ] &&
++		[ "$(grep -Ec '^/dev/ubi[0-9]+_[0-9]+[[:space:]]+0x0[[:space:]]+0x4000[[:space:]]+0x1f000[[:space:]]+1$' /etc/fw_env.config)" -eq 2 ]; then
++		exit 0
++	fi
++
++	rm -f /etc/config/ubootenv /etc/fw_env.config /etc/fw_sys.config
++	;;
++gemtek,w1700k-ubi|\
+ nokia,xg-040g-md-ubi)
+ 	if [ -e /etc/config/ubootenv ] && [ -e /etc/fw_env.config ] &&
+ 		grep -Eq '^/dev/ubi[0-9]+_[0-9]+[[:space:]]' /etc/fw_env.config; then
+@@ -27,8 +49,10 @@ touch /etc/config/ubootenv
+ . /lib/uboot-envtools.sh
+ 
+ case "$board" in
+-gemtek,w1700k-ubi|\
+-econet,xr1710g-ubi|\
++econet,xr1710g-ubi)
++	ubootenv_add_ubi_xr1710g
++	;;
++gemtek,w1700k-ubi|\
+ nokia,xg-040g-md-ubi)
+ 	ubootenv_add_ubi_default
+ 	;;

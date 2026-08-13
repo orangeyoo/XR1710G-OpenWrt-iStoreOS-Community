@@ -8,7 +8,18 @@
 
 它不是 LinkEase/iStoreOS、OpenWrt、Gemtek、Airoha 或 MediaTek 的官方发布版。只适用于 XR1710G，不要刷到相似外壳或其他 Airoha/MediaTek 设备。
 
-## v1.1.0 重点更新
+## v1.2.0 Pre-release 重点更新
+
+> 本版相关底层和功能已通过两台实机运行态热修、无线与双机测试，最终 Recovery/Sysupgrade 也已通过完整离线镜像门禁。由于用户决定不再把这两个最终 ITB 重新刷入设备复验，本版以 **Pre-release** 发布，不宣称最终镜像已完成刷后验收。
+
+- 平台更新至 Linux 6.18.41 和新版 YYH2913 AN7581 以太网、PCIe、PHY、PPE 底座；hostapd 更新至 2026-07-09，并使用该底座自带的 AP-WDS 多 BSS 事件修复。
+- MT7996 增加 operating-mode/NSS 传递修复和 XR1710G 专用 NAPI/TX 工作线程分配；干净首启默认使用 performance governor，用户在 Airoha 页面选择的其他内核策略会持久保存并在后续启动重放。
+- 修复 5GHz 活跃终端被 inactivity 计时器周期清退：默认 `max_inactivity=86400`、`disassoc_low_ack=0`；最终采用完成零丢包UDP和游戏稳定性验证的 channel 36/EHT80。
+- 首次 2.4/5GHz 不再预置公共密码，6GHz SAE Mesh 空密钥模板默认禁用；设置安全密钥后再启用。
+- Airoha 页准确区分“未启用/未配置”和“不支持”，普通端口状态只显示 `wan/lan1/lan2/lan3`，隐藏内部 `eth0`。
+- 恢复页始终提供“iStoreOS 恢复出厂”；只有检测到已验证的一次性软件触发时才显示“U-Boot Recovery”，当前旧版YYH U-Boot不显示无效按钮，物理Recovery步骤见刷机指南。
+
+## v1.1.0 已发布修复
 
 - 平台级修复 Airoha SoC/NPU、FlowSense 和风扇页面：共享缓存、互斥锁、过期锁恢复、单项失败降级；移除 LuCI 请求热路径中的 `devmem`/物理寄存器轮询。
 - 修复打开状态页后 LuCI 会话失效的社区反馈；两台实机连续快照和浏览器会话保持通过。
@@ -23,7 +34,7 @@
 
 ## 核心能力
 
-- Linux 6.18.38，XR1710G AN7581 DTS、NAND/UBI 2.0、以太网和 NPU 支持。
+- Linux 6.18.41，XR1710G AN7581 DTS、NAND/UBI 2.0、以太网、PPE 和 NPU 支持。
 - 固定 XR1710G MT76/MT7996 适配提交 `b2704cf5`。
 - 2.4/5/6GHz 三频 Wi-Fi 7，WPA3-SAE 802.11s Mesh。
 - hostapd AP-WDS 多 BSS 事件路由修复；WDS是补充能力，不是默认回程。
@@ -37,12 +48,11 @@
 
 干净首启后，驱动加载完成才应用无线默认值：
 
-- 2.4GHz：US、WPA/WPA2 Personal混合模式，兼容老设备。
-- 5GHz：US、channel 36、EHT80、WPA2/WPA3混合模式，启用温和的802.11k/v/r漫游辅助。
-- 6GHz：US、PSC channel 37、EHT80、WPA3-SAE 802.11s Mesh。
-- Mesh ID和密码是明确的 `CHANGE-ME` 占位值，投入使用前必须同时修改两台。
+- 2.4GHz：US、自动信道、HE20、请求28dBm；SSID为 `XR1710G`，初始开放且不预置密码。
+- 5GHz：US、channel 36、EHT80、请求29dBm；SSID为 `XR1710G-5G`，初始开放且不预置密码，并启用802.11k/v/r及周期重连修复。
+- 6GHz：US、PSC channel 37、EHT320、请求28dBm、WPA3-SAE 802.11s Mesh模板；不预置密钥，因此首次默认禁用。
 
-默认 EHT80 是为了首次建链和救援稳定性，不是性能上限。确认有独立管理路径和自动恢复后，可在两端设置完全相同的 EHT160/EHT320 参数。
+首次登录后应立即为2.4/5GHz设置加密和密码。需要兼容老设备时可把2.4GHz设为WPA/WPA2 Personal混合模式。两台设备的6GHz Mesh必须设置相同的Mesh ID、SAE密钥、频道、带宽和监管域，再分别启用；空密钥不能启动合法的6GHz SAE回程。
 
 XR1710G 三个频段实际共用同一个 Linux PHY，因此内核最终只应用一个监管域。不能把三张 Radio 当作完全独立国家码。标准国家模式保持原始 regdb 规则。
 
@@ -97,7 +107,7 @@ xr1710g-role node 192.168.50.2/24 192.168.50.1
 
 普通用户请阅读 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。Release只保留4个必要文件：已验证YYH2913 U-Boot、唯一Sysupgrade系统镜像、SHA256SUMS和双语说明。
 
-YYH2913 HTTP U-Boot正常系统安装路径：进入 `http://192.168.255.1/`，选择 **Firmware + UBI 2.0 - 439 MiB**，上传Release里的 `xr1710g-community-v1.1.0-sysupgrade.itb`。不要把initramfs调试镜像当普通安装包。
+YYH2913 HTTP U-Boot正常系统安装路径：进入 `http://192.168.255.1/`，选择 **Firmware + UBI 2.0 - 439 MiB**，上传Release里的 `xr1710g-community-v1.2.0-sysupgrade.itb`。不要把initramfs调试镜像当普通安装包。
 
 必须确认设备已经使用匹配的XR1710G UBI 2.0布局：
 

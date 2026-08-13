@@ -262,7 +262,10 @@ function renderOffloadBadge(enabled, id) {
 }
 
 function renderVlanOffloadStatus(enabled) {
-	return renderOffloadBadge(enabled, 'vlan-offload-status');
+	return E('span', {
+		'id': 'vlan-offload-status',
+		'class': 'offload-badge ' + (enabled ? 'offload-on' : 'offload-off')
+	}, enabled ? _('Enabled') : _('Not enabled or configured'));
 }
 
 function renderFlowOffloadStatus(enabled) {
@@ -270,7 +273,10 @@ function renderFlowOffloadStatus(enabled) {
 }
 
 function renderPppoeOffloadStatus(enabled) {
-	return renderOffloadBadge(enabled, 'pppoe-offload-status');
+	return E('span', {
+		'id': 'pppoe-offload-status',
+		'class': 'offload-badge ' + (enabled ? 'offload-on' : 'offload-off')
+	}, enabled ? _('Enabled') : _('Not enabled or configured'));
 }
 
 /* ── PPE Panels ── */
@@ -618,6 +624,10 @@ function translateAlertMsg(msg) {
 
 function renderConflictAlerts(alertData) {
 	var alerts = (alertData && Array.isArray(alertData.alerts)) ? alertData.alerts : [];
+	// Older installed RPC backends may still emit this invalid heuristic until
+	// the next full image upgrade. High latency to one probe target does not
+	// prove NPU bypass; only the CAKE + HW-offload conflict is actionable.
+	alerts = alerts.filter(function(a) { return a && a.id !== 'npu_bypass_latency'; });
 	if (!alerts.length) return E('div', { 'id': 'conflict-alerts' });
 	var items = alerts.map(function(a) {
 		var isErr = a.severity === 'error';
@@ -1173,7 +1183,7 @@ function buildWifiTachoElements(wifi, ti, st, ppe) {
 
 /* ── Ethernet Port Horizontal Bar Gauges ── */
 function _ethLabel(iface) {
-	var m = { wan:'WAN', lan1:'LAN 1', lan2:'LAN 2', lan3:'LAN 3', lan4:'LAN 4' };
+	var m = { wan:'WAN', lan1:'LAN 1', lan2:'LAN 2', lan3:'LAN 3' };
 	return m[iface] || iface.toUpperCase();
 }
 function _ethSpeed(speed) {
@@ -1226,7 +1236,7 @@ function buildEthPortSVG(port, txMbps, rxMbps, ppe) {
 			footerClr = '#555';
 		}
 	} else {
-		var portIdx  = {lan1:0, lan2:1, lan3:2, lan4:3}[iface];
+		var portIdx  = {lan1:0, lan2:1, lan3:2}[iface];
 		var bndPort  = (ppe && ppe.bnd && ppe.bnd.port_bnd) ? (ppe.bnd.port_bnd[portIdx] || 0) : 0;
 		footerTxt = 'BND: ' + bndPort;
 		footerClr = bndPort > 0 ? '#00c8ff' : '#555';
@@ -1484,10 +1494,10 @@ return view.extend({
 				}
 
 				// Offload status badges
-				function _setOffloadStatus(id, on) { var b=document.getElementById(id); if(b) { b.className='offload-badge '+(on?'offload-on':'offload-off'); b.textContent=on?_('Enabled'):_('Disabled'); } }
-				_setOffloadStatus('vlan-offload-status', vo.enabled);
+				function _setOffloadStatus(id, on, inactiveText) { var b=document.getElementById(id); if(b) { b.className='offload-badge '+(on?'offload-on':'offload-off'); b.textContent=on?_('Enabled'):(inactiveText || _('Disabled')); } }
+				_setOffloadStatus('vlan-offload-status', vo.enabled, _('Not enabled or configured'));
 				_setOffloadStatus('flow-offload-status', flo.enabled);
-				_setOffloadStatus('pppoe-offload-status', ppo.enabled);
+				_setOffloadStatus('pppoe-offload-status', ppo.enabled, _('Not enabled or configured'));
 
 				// Ethernet port gauges — compute per-port Mbps deltas from cumulative byte counters
 				var ethPorts = (eth && Array.isArray(eth.ports)) ? eth.ports : [];

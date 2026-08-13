@@ -122,7 +122,7 @@ grep -Fq 'msgstr "XZ - XR1710G 组合实验配置（AU 2.4/5 GHz + 6 GHz 36 dBm�
 	exit 1
 }
 
-# The baseline's first Airoha TRNG follow-up opens the SCU clock gates after
+# The 6.18.41 baseline's Airoha TRNG follow-up opens the SCU clock gates after
 # touching RNG_EN. Install the reviewed ordering-only patch deterministically
 # and refuse stale or duplicate copies.
 trng_patch_src="$GITHUB_WORKSPACE/patches/kernel/0921-hwrng-airoha-enable-scu-clocks-before-trng.patch"
@@ -205,6 +205,31 @@ grep -Fq 'config_list_foreach globals log_opts json_add_log_option' "$dockerd_in
 	exit 1
 }
 
+# YYH2913/http-uboot-xr1710g stores only 0x4000 bytes of environment data in
+# each redundant UBI volume. Install the reviewed board-specific envtools
+# layout so software recovery requests are visible to the installed U-Boot.
+xr_uboot_env_patch="$GITHUB_WORKSPACE/patches/openwrt/0101-xr1710g-fix-uboot-env-layout.patch"
+xr_uboot_env_script='package/boot/uboot-tools/uboot-envtools/files/airoha_an7581'
+[ -f "$xr_uboot_env_patch" ] || {
+	echo "Missing XR1710G U-Boot environment layout patch" >&2
+	exit 1
+}
+[ -f "$xr_uboot_env_script" ] || {
+	echo "Missing Airoha uboot-envtools platform script" >&2
+	exit 1
+}
+grep -Fq 'ubootenv_add_ubi_default' "$xr_uboot_env_script" || {
+	echo "Unexpected Airoha uboot-envtools baseline" >&2
+	exit 1
+}
+git apply --check "$xr_uboot_env_patch"
+git apply "$xr_uboot_env_patch"
+grep -Fq 'ubootenv_add_uci_config "$dev" "0x0" "0x4000" "0x1f000" "1"' \
+	"$xr_uboot_env_script" || {
+	echo "XR1710G U-Boot environment layout patch failed validation" >&2
+	exit 1
+}
+
 # Keep the upstream Dockerman application, but make its intentional stopped
 # state understandable. The pinned page otherwise returns the raw socket
 # connection error before rendering any heading or start control.
@@ -279,58 +304,46 @@ grep -Fq 'msgstr "Docker 未运行"' "$dockerman_zh_hans" || {
 	exit 1
 }
 
-# Backport the upstream fix for NL80211_CMD_UNEXPECTED_4ADDR_FRAME event
-# routing.  With multiple BSS contexts sharing one nl80211 driver, the pinned
-# hostapd revision delivers this event to the first BSS instead of the BSS
-# identified by the event ifindex.  XR1710G AP-WDS therefore authenticates but
-# never creates its AP_VLAN/WDS interface.  Refuse to apply this narrowly
-# reviewed fix to any unrecognized hostapd baseline.
+# The refreshed YYH/OpenWrt baseline already carries the reviewed fix for
+# routing NL80211_CMD_UNEXPECTED_4ADDR_FRAME to the BSS selected by the event
+# ifindex.  Validate that exact baseline patch instead of stacking a duplicate
+# local backport, which would fail while preparing hostapd.
 hostapd_makefile="package/network/services/hostapd/Makefile"
-hostapd_wds_patch_src="$GITHUB_WORKSPACE/patches/hostapd/0804-nl80211-report-unexpected-frame-events-to-correct-bss.patch"
-hostapd_wds_patch_dst="package/network/services/hostapd/patches/804-nl80211-report-unexpected-frame-events-to-correct-bss.patch"
+hostapd_wds_patch="package/network/services/hostapd/patches/060-nl80211-fix-reporting-spurious-frame-events.patch"
 [ -f "$hostapd_makefile" ] || {
 	echo "Missing pinned hostapd package Makefile" >&2
 	exit 1
 }
-grep -qx 'PKG_SOURCE_DATE:=2026-04-02' "$hostapd_makefile" || {
-	echo "Unexpected hostapd source date; refusing an unreviewed WDS backport" >&2
+grep -qx 'PKG_SOURCE_DATE:=2026-07-09' "$hostapd_makefile" || {
+	echo "Unexpected hostapd source date; refusing an unreviewed WDS baseline" >&2
 	exit 1
 }
-grep -qx 'PKG_SOURCE_VERSION:=b004de0bf1b54d669d358b7f33d6f474bd9719a6' \
+grep -qx 'PKG_SOURCE_VERSION:=f08f2749aa696c4e47c5c0f591dda99951bf9fac' \
 	"$hostapd_makefile" || {
-	echo "Unexpected hostapd source revision; refusing an unreviewed WDS backport" >&2
+	echo "Unexpected hostapd source revision; refusing an unreviewed WDS baseline" >&2
 	exit 1
 }
-grep -qx 'PKG_RELEASE:=2' "$hostapd_makefile" || {
-	echo "Unexpected hostapd package release; refusing an ambiguous WDS update" >&2
+grep -qx 'PKG_RELEASE:=1' "$hostapd_makefile" || {
+	echo "Unexpected hostapd package release; refusing an ambiguous WDS baseline" >&2
 	exit 1
 }
-[ -f "$hostapd_wds_patch_src" ] || {
-	echo "Missing reviewed hostapd WDS event-routing patch" >&2
+[ -f "$hostapd_wds_patch" ] || {
+	echo "Baseline hostapd WDS event-routing patch is missing" >&2
 	exit 1
 }
-grep -Fq '61280edc2e1d6e38566d386e64227655eee3120e' \
-	"$hostapd_wds_patch_src" || {
-	echo "Hostapd WDS patch is not the reviewed upstream backport" >&2
-	exit 1
-}
-grep '^+' "$hostapd_wds_patch_src" |
+grep '^+' "$hostapd_wds_patch" |
 	grep -Fq 'wpa_supplicant_event(bss->ctx, EVENT_RX_FROM_UNKNOWN, &event);' || {
-	echo "Hostapd WDS patch failed content validation" >&2
+	echo "Baseline hostapd WDS patch failed new-route validation" >&2
 	exit 1
 }
-
-sed -i 's/^PKG_RELEASE:=2$/PKG_RELEASE:=3/' "$hostapd_makefile"
-rm -f "$hostapd_wds_patch_dst"
-install -m 0644 "$hostapd_wds_patch_src" "$hostapd_wds_patch_dst"
-
-grep -qx 'PKG_RELEASE:=3' "$hostapd_makefile" || {
-	echo "Unable to select the WDS-fixed hostapd package release" >&2
+grep '^-' "$hostapd_wds_patch" |
+	grep -Fq 'wpa_supplicant_event(drv->ctx, EVENT_RX_FROM_UNKNOWN, &event);' || {
+	echo "Baseline hostapd WDS patch failed old-route validation" >&2
 	exit 1
 }
-grep -Fq 'wpa_supplicant_event(bss->ctx, EVENT_RX_FROM_UNKNOWN, &event);' \
-	"$hostapd_wds_patch_dst" || {
-	echo "Installed hostapd WDS patch failed content validation" >&2
+[ "$(find package/network/services/hostapd/patches -maxdepth 1 -type f \
+	-name '*unexpected-frame-events-to-correct-bss*.patch' | wc -l)" -eq 0 ] || {
+	echo "Duplicate local hostapd WDS backport is present" >&2
 	exit 1
 }
 
@@ -425,8 +438,10 @@ grep -qx 'PKG_RELEASE:=2' "$uhttpd_makefile" || {
 mt76_makefile="package/kernel/mt76/Makefile"
 mt76_an7581_patch_src="$GITHUB_WORKSPACE/patches/mt76/0100-xr1710g-rebase-yyh-an7581-npu-stack-on-b2704cf5.patch"
 mt76_stats_patch_src="$GITHUB_WORKSPACE/patches/mt76/0099-wifi-mt76-mt7996-report-only-terminal-tx-failures.patch"
+mt76_rate_patch_src="$GITHUB_WORKSPACE/patches/mt76/0102-wifi-mt76-mt7996-pass-operating-mode-to-rate-control.patch"
 mt76_an7581_patch_dst="package/kernel/mt76/patches/0100-xr1710g-rebase-yyh-an7581-npu-stack-on-b2704cf5.patch"
 mt76_stats_patch_dst="package/kernel/mt76/patches/0101-wifi-mt76-mt7996-report-only-terminal-tx-failures.patch"
+mt76_rate_patch_dst="package/kernel/mt76/patches/0102-wifi-mt76-mt7996-pass-operating-mode-to-rate-control.patch"
 [ -f "$mt76_makefile" ] || {
 	echo "Missing pinned mt76 package Makefile" >&2
 	exit 1
@@ -442,6 +457,10 @@ grep -qx 'PKG_SOURCE_VERSION:=59676919ea408b0b13a9d23f2e2e1a1ab407fba1' \
 }
 [ -f "$mt76_stats_patch_src" ] || {
 	echo "Missing reviewed MT7996 tx_failed patch" >&2
+	exit 1
+}
+[ -f "$mt76_rate_patch_src" ] || {
+	echo "Missing reviewed MT7996 operating-mode rate-control patch" >&2
 	exit 1
 }
 grep -qx 'PKG_RELEASE=3' "$mt76_makefile" || {
@@ -463,6 +482,7 @@ sed -i \
 find package/kernel/mt76/patches -maxdepth 1 -type f -name '*.patch' -delete
 install -m 0644 "$mt76_an7581_patch_src" "$mt76_an7581_patch_dst"
 install -m 0644 "$mt76_stats_patch_src" "$mt76_stats_patch_dst"
+install -m 0644 "$mt76_rate_patch_src" "$mt76_rate_patch_dst"
 
 grep -qx 'PKG_RELEASE=5' "$mt76_makefile" || {
 	echo "Unable to select the A/B-tested mt76 package release" >&2
@@ -486,6 +506,38 @@ grep -Fq 'wcid->stats.tx_failed +=' "$mt76_stats_patch_dst" || {
 	echo "Installed MT7996 statistics patch failed content validation" >&2
 	exit 1
 }
+grep -Fq 'ra->op_vht_rx_nss = link_sta->rx_nss ? link_sta->rx_nss - 1 : 0;' \
+	"$mt76_rate_patch_dst" || {
+	echo "Installed MT7996 operating-mode patch failed content validation" >&2
+	exit 1
+}
+
+# The refreshed YYH baseline carries XR1710G-specific MT7996 NAPI/TX thread
+# distribution in the platform packet-steering hook. Refuse to build if a
+# future base silently drops it.
+xr_packet_steering='target/linux/airoha/an7581/base-files/usr/libexec/platform/packet-steering.sh'
+[ -f "$xr_packet_steering" ] || {
+	echo "Missing XR1710G platform packet-steering hook" >&2
+	exit 1
+}
+grep -Fq 'napi/phy*' "$xr_packet_steering" &&
+	grep -Fq 'mt76-tx\ phy*' "$xr_packet_steering" || {
+	echo "XR1710G MT7996 worker distribution is absent" >&2
+	exit 1
+}
+
+# Preserve this community port's passwordless first-login policy. The refreshed
+# YYH board default otherwise installs a public fixed root password.
+xr_board_network='target/linux/airoha/an7581/base-files/etc/board.d/02_network'
+grep -Fq 'ucidef_set_root_password_plain "password"' "$xr_board_network" || {
+	echo "Unexpected XR1710G board password baseline" >&2
+	exit 1
+}
+sed -i '/ucidef_set_root_password_plain "password"/d' "$xr_board_network"
+if grep -Fq 'ucidef_set_root_password_plain "password"' "$xr_board_network"; then
+	echo "Unable to remove the fixed XR1710G root password" >&2
+	exit 1
+fi
 
 # The XR1710G device profile pulls in wpad-basic-mbedtls by default.  A full
 # wpad-mesh build conflicts with every other hostapd/wpad provider, so remove
@@ -571,7 +623,7 @@ sed -i -E \
 cat >> .config <<'CONFIGEOF'
 CONFIG_VERSIONOPT=y
 CONFIG_VERSION_DIST="iStoreOS-XR1710G-Community"
-CONFIG_VERSION_NUMBER="v8"
+CONFIG_VERSION_NUMBER="v1.2.0"
 CONFIG_VERSION_MANUFACTURER="XR1710G Community"
 CONFIG_VERSION_PRODUCT="XR1710G iStoreOS Community Port"
 CONFIG_VERSION_HOME_URL="https://doc.linkease.com/zh/guide/istoreos/"

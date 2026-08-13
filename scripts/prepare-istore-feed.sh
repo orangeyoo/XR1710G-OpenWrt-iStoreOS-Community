@@ -50,7 +50,8 @@ grep -Fq 'Preflight dependency resolution failed; no packages were changed.' "$i
 python3 "$(dirname "$0")/patch-quickstart-link-state.py" "$quickstart_js" "$quickstart_template"
 [ "$(grep -Fo '.linkState!=="UP"' "$quickstart_js" | wc -l)" -eq 5 ]
 ! grep -Fq '.linkState=="DOWN"' "$quickstart_js"
-grep -Fq 'index.js?v=xr-linkstate1' "$quickstart_template"
+[ "$(grep -Fo '["wan","lan1","lan2","lan3"].includes(x.name)' "$quickstart_js" | wc -l)" -eq 2 ]
+grep -Fq 'index.js?v=xr-portfilter2' "$quickstart_template"
 
 [ -f "$adguard_patch" ] || {
 	echo "AdGuard Home policy patch not found: $adguard_patch" >&2

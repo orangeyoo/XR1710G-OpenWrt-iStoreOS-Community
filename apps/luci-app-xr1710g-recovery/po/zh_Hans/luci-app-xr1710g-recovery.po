@@ -1,0 +1,65 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Recovery and Reset"
+msgstr "恢复与救援"
+
+msgid "Reboot to U-Boot Recovery"
+msgstr "重启进入 U-Boot Recovery"
+
+msgid "Sets a one-time recovery trigger and reboots. User configuration is not erased."
+msgstr "设置一次性救援触发并重启，不会清除用户配置。"
+
+msgid "The installed U-Boot does not advertise a verified one-time software trigger. Power off the router, connect the computer to the 1G recovery port, hold Reset, and power it on to open 192.168.255.1. This firmware will not replace bootcmd."
+msgstr "当前 U-Boot 未提供已验证的一次性软件触发。请关闭路由器，把电脑接到 1G 救援口，按住 Reset 再通电，然后打开 192.168.255.1；本固件不会替换 bootcmd。"
+
+msgid "iStoreOS Factory Reset"
+msgstr "iStoreOS 恢复出厂设置"
+
+msgid "Erases installed packages and all user configuration, then returns to the firmware defaults at 192.168.50.1. U-Boot, Factory, EEPROM and wireless calibration data are not changed."
+msgstr "清除已安装软件和全部用户配置，并恢复至固件默认地址 192.168.50.1；不会修改 U-Boot、Factory、EEPROM 或无线校准数据。"
+
+msgid "Erase configuration and reboot"
+msgstr "清除配置并重启"
+
+msgid "The router will become unavailable and should open its recovery service at 192.168.255.1. Continue?"
+msgstr "路由器将暂时离线，并应在 192.168.255.1 提供救援页面。是否继续？"
+
+msgid "Continue"
+msgstr "继续"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "The installed U-Boot does not support the safe one-time trigger."
+msgstr "当前 U-Boot 不支持已验证的安全一次性触发。"
+
+msgid "Rebooting…"
+msgstr "正在重启…"
+
+msgid "Waiting for device…"
+msgstr "正在等待设备…"
+
+msgid "Confirm factory reset"
+msgstr "确认恢复出厂设置"
+
+msgid "This permanently erases all user configuration and installed packages. Back up anything needed before continuing."
+msgstr "此操作会永久清除全部用户配置和已安装软件。继续前请备份所需内容。"
+
+msgid "I understand that all configuration will be erased"
+msgstr "我确认全部配置将被清除"
+
+msgid "Erase and reboot"
+msgstr "清除并重启"
+
+msgid "Confirm the data-loss warning first."
+msgstr "请先确认数据清除警告。"
+
+msgid "Factory reset could not be started."
+msgstr "无法启动恢复出厂设置。"
+
+msgid "Resetting…"
+msgstr "正在恢复…"
+
+msgid "The router will restart at 192.168.50.1."
+msgstr "路由器将以 192.168.50.1 重新启动。"

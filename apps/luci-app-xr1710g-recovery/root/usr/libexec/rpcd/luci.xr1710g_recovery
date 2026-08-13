@@ -1,0 +1,100 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+board_ok() {
+	[ "$(board_name 2>/dev/null)" = 'econet,xr1710g-ubi' ]
+}
+
+envtools_available() {
+	board_ok || return 1
+	command -v fw_printenv >/dev/null 2>&1 || return 1
+	command -v fw_setenv >/dev/null 2>&1 || return 1
+	[ -r /etc/fw_env.config ] || return 1
+}
+
+native_one_shot_supported() {
+	envtools_available || return 1
+	[ "$(fw_printenv -n recovery_trigger_supported 2>/dev/null)" = '1' ]
+}
+
+ensure_boot_env() {
+	local var value force="${1:-0}"
+
+	if [ "$force" = 1 ]; then
+		cat <<-'EOF' | fw_setenv -s -
+		loadaddr 0x81800000
+		bootconf config-1
+		bootargs console=ttyS0,115200 earlycon ubi.block=0,fit root=/dev/fit0 rootwait
+		boot_ubi ubi part ubi && run boot_production
+		boot_production run ubi_read_production && bootm ${loadaddr}#${bootconf}
+		bootcmd run boot_ubi || http_recovery
+		ubi_read_production ubi read ${loadaddr} fit
+		EOF
+		return $?
+	fi
+
+	while read -r var value; do
+		fw_printenv -n "$var" >/dev/null 2>&1 || fw_setenv "$var" "$value" || return 1
+	done <<-'EOF'
+	loadaddr 0x81800000
+	bootconf config-1
+	bootargs console=ttyS0,115200 earlycon ubi.block=0,fit root=/dev/fit0 rootwait
+	boot_ubi ubi part ubi && run boot_production
+	boot_production run ubi_read_production && bootm ${loadaddr}#${bootconf}
+	bootcmd run boot_ubi || http_recovery
+	ubi_read_production ubi read ${loadaddr} fit
+	EOF
+}
+
+get_status() {
+	local supported=false native=false legacy=false active=false mode=unavailable bootcmd
+	if native_one_shot_supported; then
+		supported=true native=true mode=native
+		[ "$(fw_printenv -n recovery_trigger 2>/dev/null)" = '1' ] && active=true
+	fi
+	printf '{"board":%s,"uboot_one_shot_supported":%s,"native_trigger_supported":%s,"legacy_trigger_supported":%s,"trigger_mode":"%s","uboot_recovery_armed":%s,"factory_reset_supported":%s}\n' \
+		"$([ "$(board_name 2>/dev/null)" = 'econet,xr1710g-ubi' ] && echo true || echo false)" \
+		"$supported" "$native" "$legacy" "$mode" "$active" "$([ -x /sbin/firstboot ] && echo true || echo false)"
+}
+
+reboot_to_uboot() {
+	local bootcmd loadaddr backup trigger stage1 stage2
+
+	if native_one_shot_supported; then
+		fw_setenv recovery_trigger 1 || {
+			printf '{"success":false,"error":"cannot-arm-native-trigger"}\n'
+			return 0
+		}
+	else
+		printf '{"success":false,"error":"one-shot-not-supported"}\n'
+		return 0
+	fi
+
+	sync
+	(sleep 1; reboot) >/dev/null 2>&1 </dev/null &
+	printf '{"success":true}\n'
+}
+
+factory_reset() {
+	board_ok && [ -x /sbin/firstboot ] || {
+		printf '{"success":false,"error":"factory-reset-unavailable"}\n'
+		return 0
+	}
+	(sleep 1; /sbin/firstboot -y && sync && reboot -f) >/dev/null 2>&1 </dev/null &
+	printf '{"success":true}\n'
+}
+
+case "$1" in
+	list)
+		printf '{"getStatus":{},"rebootToUboot":{},"factoryReset":{}}\n'
+		;;
+	call)
+		case "$2" in
+			getStatus) get_status ;;
+			rebootToUboot) reboot_to_uboot ;;
+			factoryReset) factory_reset ;;
+			*) printf '{"error":"invalid-method"}\n' ;;
+		esac
+		;;
+esac

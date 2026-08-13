@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+# WSL may append Windows application directories containing spaces or
+# parentheses. OpenWrt embeds PATH in image recipes, so keep this helper as
+# hermetic as the main build entrypoint.
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
 # On this Airoha branch the first world build can cache Image-initramfs before
 # package/install has populated root-airoha. Rebuild only the initramfs kernel
 # after the complete rootfs exists, otherwise a correctly named recovery FIT
@@ -13,7 +18,7 @@ TARGET_DIR="$PWD/bin/targets/airoha/an7581"
 ROOT_DIR="$PWD/build_dir/target-aarch64_cortex-a53_musl/root-airoha"
 KERNEL_DIR="$PWD/build_dir/target-aarch64_cortex-a53_musl/linux-airoha_an7581"
 LINUX_DIR="$(find "$KERNEL_DIR" -mindepth 1 -maxdepth 1 -type d \
-	-name 'linux-*' -print -quit)"
+	-name 'linux-[0-9]*' -print -quit)"
 
 [ -d "$TARGET_DIR" ] || {
 	echo "Target output is missing: $TARGET_DIR" >&2

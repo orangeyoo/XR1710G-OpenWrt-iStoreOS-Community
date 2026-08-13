@@ -243,15 +243,14 @@ get_ppe_entries() {
 	unb_json=$(printf '%s' "$unb_json" | sed 's/}$/,"band_unb":'"$band_unb"'}/')
 
 	# Per-port BND counts for LAN ports using bridge FDB learned MACs
-	local macs_p1 macs_p2 macs_p3 macs_p4
+	local macs_p1 macs_p2 macs_p3
 	macs_p1=$(bridge fdb show dev lan1 2>/dev/null | grep -v " self\| permanent" | awk '{print $1}' | tr '\n' '|' | sed 's/|$//')
 	macs_p2=$(bridge fdb show dev lan2 2>/dev/null | grep -v " self\| permanent" | awk '{print $1}' | tr '\n' '|' | sed 's/|$//')
 	macs_p3=$(bridge fdb show dev lan3 2>/dev/null | grep -v " self\| permanent" | awk '{print $1}' | tr '\n' '|' | sed 's/|$//')
-	macs_p4=$(bridge fdb show dev lan4 2>/dev/null | grep -v " self\| permanent" | awk '{print $1}' | tr '\n' '|' | sed 's/|$//')
 
-	local port_bnd="[0,0,0,0]"
+	local port_bnd="[0,0,0]"
 	if [ -f "$bind_file" ]; then
-		port_bnd=$(awk -v m1="$macs_p1" -v m2="$macs_p2" -v m3="$macs_p3" -v m4="$macs_p4" '
+		port_bnd=$(awk -v m1="$macs_p1" -v m2="$macs_p2" -v m3="$macs_p3" '
 		function has(macs, eth,    n,arr,i,low) {
 			if (macs == "") return 0
 			low = tolower(eth)
@@ -264,10 +263,9 @@ get_ppe_entries() {
 			if      (has(m1,eth)) c1++
 			else if (has(m2,eth)) c2++
 			else if (has(m3,eth)) c3++
-			else if (has(m4,eth)) c4++
 		}
-		END { printf "[%d,%d,%d,%d]", c1+0, c2+0, c3+0, c4+0 }
-		' "$bind_file" 2>/dev/null || printf "[0,0,0,0]")
+		END { printf "[%d,%d,%d]", c1+0, c2+0, c3+0 }
+		' "$bind_file" 2>/dev/null || printf "[0,0,0]")
 	fi
 	bnd_json=$(printf '%s' "$bnd_json" | sed 's/}$/,"port_bnd":'"$port_bnd"'}/')
 
@@ -834,28 +832,16 @@ get_conflict_alerts() {
 		alert_count=$((alert_count + 1))
 	fi
 
-	# ── Alert 3: NPU Bypass + High Latency ────────────────────────────────
-	# NPU is on but jitter result shows high latency — NPU not helping or
-	# the path has a real latency problem.
-	local jitter_file="/tmp/npu-jitter.json"
-	if [ "$hw_offload" = "1" ] && [ -f "$jitter_file" ]; then
-		local last_ping
-		last_ping=$(jsonfilter -i "$jitter_file" -e "@.last_ping" 2>/dev/null)
-		# Warn if ping > 60ms with hw offload on (something is wrong)
-		if [ -n "$last_ping" ] && awk "BEGIN{exit !($last_ping > 60)}"; then
-			[ -n "$alerts" ] && alerts="${alerts},"
-			alerts="${alerts}{\"id\":\"npu_bypass_latency\",\"severity\":\"warning\",\"title\":\"NPU Bypass Detected\",\"message\":\"HW offload is enabled but ISP latency is high (${last_ping}ms). Latency management may be skipped by hardware acceleration.\"}"
-			alert_count=$((alert_count + 1))
-		fi
-	fi
-
 	printf '{"alert_count":%d,"alerts":[%s]}' "$alert_count" "$alerts"
 }
 
 get_eth_stats() {
 	printf '{"ports":['
 	local first=1
-	for iface in wan lan1 lan2 lan3 lan4; do
+	# Only external XR1710G jacks belong in the ordinary status view. eth0 is
+	# the fixed CPU-to-switch interconnect and lan4 is not a physical XR1710G
+	# jack; both remain available to low-level diagnostics only.
+	for iface in wan lan1 lan2 lan3; do
 		local sys="/sys/class/net/$iface"
 		[ -d "$sys" ] || continue
 		[ "$first" = "1" ] || printf ","

@@ -3,6 +3,20 @@
 
 [ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = 'econet,xr1710g-ubi' ] || exit 0
 
+# Favor deterministic latency on this four-core router. Store the default in
+# UCI and let the dedicated boot service replay the owner's later selection on
+# every boot instead of making this one-shot uci-default the source of truth.
+uci -q set system.@system[0].xr1710g_governor='performance'
+uci -q commit system
+if [ -x /etc/init.d/xr1710g-cpufreq ]; then
+	/etc/init.d/xr1710g-cpufreq enable
+	/etc/init.d/xr1710g-cpufreq start
+fi
+
+if [ -x /etc/init.d/xr1710g-uboot-recovery-restore ]; then
+	/etc/init.d/xr1710g-uboot-recovery-restore enable
+fi
+
 # AdGuard Home is optional.  A fresh image must not expose its setup port or
 # compete with dnsmasq for port 53 before the owner explicitly enables it.
 if [ -x /etc/init.d/adguardhome ]; then

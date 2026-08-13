@@ -12,8 +12,11 @@ core="$root/apps/xr1710g-status-core/files/xr1710g-status-common"
 prepare="$root/scripts/prepare-istore-feed.sh"
 patcher="$root/scripts/patch-istore-wrapper.py"
 quickstart_patcher="$root/scripts/patch-quickstart-link-state.py"
+recovery_view="$root/apps/luci-app-xr1710g-recovery/htdocs/luci-static/resources/view/system/xr1710g-recovery.js"
+jitter_init="$root/apps/luci-app-airoha-flowsense/root/etc/init.d/npu-jitter"
+jitter_config="$root/apps/luci-app-airoha-flowsense/root/etc/config/npu-monitor"
 
-for file in "$npu" "$flow" "$npu_js" "$flow_js" "$fan_status_js" "$fan_settings_js" "$core" "$prepare" "$patcher" "$quickstart_patcher"; do
+for file in "$npu" "$flow" "$npu_js" "$flow_js" "$fan_status_js" "$fan_settings_js" "$core" "$prepare" "$patcher" "$quickstart_patcher" "$recovery_view" "$jitter_init" "$jitter_config"; do
 	[ -f "$file" ] || { echo "missing $file" >&2; exit 1; }
 done
 
@@ -22,6 +25,20 @@ if [ -n "$rpc_backends" ] && grep -Eq '(^|[^A-Za-z])(devmem|/dev/mem)([^A-Za-z]|
 	echo 'LuCI RPC backend contains forbidden raw-register access' >&2
 	exit 1
 fi
+
+! grep -Fq 'npu_bypass_latency' "$flow"
+! grep -Fq 'HW offload is enabled but ISP latency is high' "$flow"
+grep -Fq 'cake_on_wan' "$flow"
+grep -Fq "a.id !== 'npu_bypass_latency'" "$flow_js"
+! grep -Fq 'VLAN offload not supported on this device' "$flow_js" "$root/apps/luci-app-airoha-flowsense/po/zh_Hans/luci-app-airoha-flowsense.po"
+! grep -Fq 'PPPoE offload not supported on this device' "$flow_js" "$root/apps/luci-app-airoha-flowsense/po/zh_Hans/luci-app-airoha-flowsense.po"
+grep -Fq "enabled ? _('Enabled') : _('Not enabled or configured')" "$flow_js"
+grep -Fq 'if (oneShot)' "$recovery_view"
+! grep -Fq "}, !oneShot)" "$recovery_view"
+grep -Fq "option target 'auto'" "$jitter_config"
+grep -Fq "config jitter 'jitter'" "$jitter_config"
+grep -Fq "npu-monitor.@jitter[0].target" "$jitter_init"
+grep -Fq "jsonfilter -e '@[\"dns-server\"][0]'" "$jitter_init"
 
 grep -Fq "method: 'getSnapshot'" "$npu_js"
 grep -Fq "method: 'getSnapshot'" "$flow_js"
@@ -77,5 +94,8 @@ python3 "$quickstart_patcher" "$quick_fixture"
 [ "$quick_hash" = "$(sha256sum "$quick_fixture" | awk '{print $1}')" ]
 [ "$(grep -Fo '.linkState!=="UP"' "$quick_fixture" | wc -l)" -eq 5 ]
 ! grep -Fq '.linkState=="DOWN"' "$quick_fixture"
+[ "$(grep -Fo '["wan","lan1","lan2","lan3"].includes(x.name)' "$quick_fixture" | wc -l)" -eq 2 ]
+! grep -Fq 'y.portList=C.ports||[]' "$quick_fixture"
+! grep -Fq 'd.portList=_.ports||[],v.value=_.ports||[]' "$quick_fixture"
 
 echo 'status RPC, physical-link and iStore dependency safety checks passed'

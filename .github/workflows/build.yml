@@ -28,6 +28,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: XR1710G统一预构建门禁
+      run: |
+        chmod +x scripts/prebuild-xr1710g-release.sh
+        scripts/prebuild-xr1710g-release.sh
+
     - name: 服务器信息
       run: |
         echo "------------------------------- CPU -------------------------------"
@@ -61,7 +66,7 @@ jobs:
       env:
         REPO_URL: https://github.com/YYH2913/openwrt
         REPO_BRANCH: xr1710g-6.18-integration
-        REPO_COMMIT: 2a845ee80c7c52caafe57d518a15b16738eb9ed7
+        REPO_COMMIT: 99598e539d47aa9f137baff43f0c2f77becc2e50
       run: |
         df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
@@ -83,6 +88,7 @@ jobs:
         chmod 0755 openwrt/files/etc/uci-defaults/41_uhttpd_proxy_linkease
         chmod 0755 openwrt/files/etc/uci-defaults/zz-xr1710g-services.sh
         chmod 0755 openwrt/files/etc/init.d/xr1710g-bootlog
+        chmod 0755 openwrt/files/etc/init.d/xr1710g-cpufreq
         chmod 0755 openwrt/files/usr/sbin/xr1710g-role
         chmod 0755 openwrt/files/usr/sbin/xr1710g-wireless-defaults
         chmod 0755 openwrt/files/usr/sbin/xr1710g-mesh-diag
@@ -157,6 +163,14 @@ jobs:
         if ! make olddefconfig; then
           yes "" | make oldconfig
         fi
+        for xr_package in \
+          luci-app-airoha-fancontrol \
+          luci-app-airoha-flowsense \
+          luci-app-airoha-npu \
+          luci-app-xr1710g-recovery \
+          xr1710g-status-core; do
+          make "package/$xr_package/clean"
+        done
         make -j$(nproc) || make -j1 || make -j1 V=s
         chmod +x "$GITHUB_WORKSPACE/scripts/rebuild-initramfs-recovery.sh"
         "$GITHUB_WORKSPACE/scripts/rebuild-initramfs-recovery.sh" "$PWD"

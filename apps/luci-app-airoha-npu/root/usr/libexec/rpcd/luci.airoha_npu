@@ -262,7 +262,7 @@ get_token_info() {
 }
 
 set_governor() {
-	local governor
+	local governor policy applied=0
 	governor=$(echo "$1" | jsonfilter -e "@.governor" 2>/dev/null)
 
 	if [ -z "$governor" ]; then
@@ -277,8 +277,19 @@ set_governor() {
 		return
 	fi
 
-	echo "$governor" > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>/dev/null
-	if [ $? -eq 0 ]; then
+	for policy in /sys/devices/system/cpu/cpufreq/policy[0-9]*; do
+		[ -d "$policy" ] || continue
+		[ -w "$policy/scaling_governor" ] || continue
+		grep -qw "$governor" "$policy/scaling_available_governors" 2>/dev/null || continue
+		printf '%s\n' "$governor" > "$policy/scaling_governor" 2>/dev/null || continue
+		applied=1
+	done
+	if [ "$applied" -eq 1 ]; then
+		uci -q set system.@system[0].xr1710g_governor="$governor"
+		if ! uci -q commit system; then
+			echo '{"error":"governor changed for this boot but persistence failed"}'
+			return
+		fi
 		printf '{"result":"ok","governor":"%s"}' "$governor"
 	else
 		echo '{"error":"failed to set governor"}'

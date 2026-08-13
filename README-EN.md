@@ -8,7 +8,17 @@ This is an unofficial community port for the **Econet/Gemtek XR1710G (Airoha AN7
 
 It is not an official release from LinkEase/iStoreOS, OpenWrt, Gemtek, Airoha, or MediaTek. It is only for the XR1710G and must not be flashed to visually similar devices or other Airoha/MediaTek hardware.
 
-## v1.1.0 highlights
+## v1.2.0 pre-release highlights
+
+> The underlying changes and features were exercised on two physical units through runtime hot fixes, wireless checks, and two-node testing. The final Recovery and Sysupgrade images also passed the complete offline image gate. The owner chose not to reflash these final ITB files for another post-flash run, so this build is published as a **Pre-release** and does not claim final-image post-flash acceptance.
+
+- Updates to Linux 6.18.41 and the refreshed YYH2913 AN7581 Ethernet, PCIe, PHY, and PPE baseline; hostapd moves to 2026-07-09 and uses the AP-WDS multi-BSS event fix already carried by that baseline.
+- Adds MT7996 operating-mode/NSS propagation and XR1710G-specific NAPI/TX worker distribution. A clean install defaults to the performance governor; another kernel-advertised governor selected on the Airoha page is persisted and replayed on later boots.
+- Prevents periodic inactivity eviction of active 5GHz clients with `max_inactivity=86400` and `disassoc_low_ack=0`. The final default is channel 36/EHT80, which passed the zero-loss UDP and game-stability checks.
+- Removes all preset terminal-Wi-Fi passwords. The empty-key 6GHz SAE Mesh template is disabled until the owner sets a key.
+- Corrects disabled PPPoE/VLAN offload wording and hides internal interfaces from ordinary port status. The recovery page always provides iStoreOS factory reset and shows U-Boot Recovery only when a verified one-shot software trigger exists.
+
+## v1.1.0 released fixes
 
 - Platform-wide reliability fixes for the Airoha SoC/NPU, FlowSense, and fan pages: shared caching, per-item locks, stale-lock recovery, and graceful degradation. LuCI request paths no longer poll physical registers through `devmem`.
 - Fixes the reported LuCI session failure after opening a status page; repeated snapshots and browser sessions passed on two physical units.
@@ -23,7 +33,7 @@ See [CHANGES-v1.md](CHANGES-v1.md) for the full change list and [ATTRIBUTION.md]
 
 ## Core features
 
-- Linux 6.18.38 with XR1710G AN7581 device tree, NAND/UBI 2.0, Ethernet, and NPU support.
+- Linux 6.18.41 with XR1710G AN7581 device tree, NAND/UBI 2.0, Ethernet, PPE, and NPU support.
 - Pinned XR1710G mt76/MT7996 adaptation commit `b2704cf5`.
 - Tri-band 2.4/5/6GHz Wi-Fi 7 and WPA3-SAE 802.11s Mesh.
 - hostapd AP-WDS multi-BSS event-routing fix. WDS is supplementary and is not the default backhaul.
@@ -37,12 +47,11 @@ See [CHANGES-v1.md](CHANGES-v1.md) for the full change list and [ATTRIBUTION.md]
 
 On a clean first boot, wireless defaults are applied only after the driver is ready:
 
-- 2.4GHz: US, mixed WPA/WPA2 Personal for older-client compatibility.
-- 5GHz: US, channel 36, EHT80, mixed WPA2/WPA3, with conservative 802.11k/v/r roaming assistance.
-- 6GHz: US, PSC channel 37, EHT80, WPA3-SAE 802.11s Mesh.
-- Mesh ID and password are explicit `CHANGE-ME` placeholders and must be changed identically on both units before deployment.
+- 2.4GHz: US, automatic channel, HE20, requested 28dBm; SSID `XR1710G`, open on first boot with no preset password.
+- 5GHz: US, channel 36, EHT80, requested 29dBm; SSID `XR1710G-5G`, open on first boot with no preset password, plus 802.11k/v/r and the inactivity fix.
+- 6GHz: US, PSC channel 37, EHT320, requested 28dBm, WPA3-SAE 802.11s Mesh template. It has no preset key and is therefore disabled initially.
 
-EHT80 is the initial-link and recovery-safe default, not a performance limit. With an independent management path and tested recovery, both ends can be changed to identical EHT160/EHT320 settings.
+Immediately configure encryption and passwords for 2.4/5GHz after first login. Mixed WPA/WPA2 Personal can be selected on 2.4GHz when older devices require it. Configure the same Mesh ID, SAE key, channel, width, and regulatory profile on both routers before enabling 6GHz; a legal 6GHz SAE backhaul cannot start with an empty key.
 
 All three XR1710G bands share one Linux PHY, so the kernel ultimately applies one regulatory domain. The three LuCI radios cannot be treated as independent country domains. Standard country profiles retain their original regulatory database rules.
 
@@ -97,7 +106,7 @@ This project does not implement a private Docker engine. The firmware only prein
 
 Read the [bilingual flashing guide](FLASHING-GUIDE.md). The Release contains only four required downloads: the validated YYH2913 U-Boot, one Sysupgrade system image, SHA256SUMS, and the bilingual guide.
 
-For a normal install through YYH2913 HTTP U-Boot, open `http://192.168.255.1/`, choose **Firmware + UBI 2.0 - 439 MiB**, and upload `xr1710g-community-v1.1.0-sysupgrade.itb`. Do not use an initramfs development image as the normal installer.
+For a normal install through YYH2913 HTTP U-Boot, open `http://192.168.255.1/`, choose **Firmware + UBI 2.0 - 439 MiB**, and upload `xr1710g-community-v1.2.0-sysupgrade.itb`. Do not use an initramfs development image as the normal installer.
 
 The device must use the matching XR1710G UBI 2.0 layout:
 

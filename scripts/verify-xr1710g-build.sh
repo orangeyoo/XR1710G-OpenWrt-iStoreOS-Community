@@ -37,6 +37,7 @@ require_config 'CONFIG_PACKAGE_usteer=y'
 require_config 'CONFIG_PACKAGE_luci-app-airoha-npu=y'
 require_config 'CONFIG_PACKAGE_luci-app-airoha-flowsense=y'
 require_config 'CONFIG_PACKAGE_luci-app-airoha-fancontrol=y'
+require_config 'CONFIG_PACKAGE_luci-app-xr1710g-recovery=y'
 require_config 'CONFIG_PACKAGE_xr1710g-status-core=y'
 require_config 'CONFIG_PACKAGE_luci-app-dockerman=y'
 require_config 'CONFIG_PACKAGE_dockerd=y'
@@ -62,7 +63,7 @@ require_config 'CONFIG_TARGET_PREINIT_IP="192.168.50.1"'
 require_config 'CONFIG_TARGET_PREINIT_NETMASK="255.255.255.0"'
 require_config 'CONFIG_TARGET_PREINIT_BROADCAST="192.168.50.255"'
 require_config 'CONFIG_VERSION_DIST="iStoreOS-XR1710G-Community"'
-require_config 'CONFIG_VERSION_NUMBER="v8"'
+require_config 'CONFIG_VERSION_NUMBER="v1.2.0"'
 
 if grep -Eq '^CONFIG_TARGET_airoha_an7581_DEVICE_(airoha_|gemtek_|nokia_).*=y$' "$CONFIG"; then
 	fail "a non-XR1710G device profile is enabled"
@@ -177,6 +178,10 @@ fi
 uhttpd_makefile="$TOPDIR/package/network/services/uhttpd/Makefile"
 uhttpd_patch_dir="$TOPDIR/package/network/services/uhttpd/patches"
 [ -f "$uhttpd_makefile" ] || fail "uhttpd package Makefile is missing"
+[ -f "$TOPDIR/target/linux/generic/kernel-6.18" ] ||
+	fail "Linux 6.18 version descriptor is missing"
+grep -Fqx 'LINUX_VERSION-6.18 = .41' "$TOPDIR/target/linux/generic/kernel-6.18" ||
+	fail "Linux 6.18.41 is not selected"
 grep -qx 'PKG_SOURCE_DATE:=2026-06-16' "$uhttpd_makefile" ||
 	fail "unexpected uhttpd source date"
 grep -qx 'PKG_SOURCE_VERSION:=7b1bec45826bd78c8afc993435bdc0f1df2fe399' \
@@ -214,25 +219,28 @@ fi
 
 # XR1710G AP-WDS depends on hostapd receiving
 # NL80211_CMD_UNEXPECTED_4ADDR_FRAME in the BSS selected by the event ifindex.
-# The pinned upstream revision predates that fix, so verify the exact reviewed
-# backport, its package release, the prepared source, and the image manifest.
+# The refreshed YYH/OpenWrt baseline already contains the reviewed fix. Verify
+# its exact patch, the prepared source, and the image manifest, and reject a
+# duplicate local backport.
 hostapd_makefile="$TOPDIR/package/network/services/hostapd/Makefile"
-hostapd_wds_patch="$TOPDIR/package/network/services/hostapd/patches/804-nl80211-report-unexpected-frame-events-to-correct-bss.patch"
+hostapd_wds_patch="$TOPDIR/package/network/services/hostapd/patches/060-nl80211-fix-reporting-spurious-frame-events.patch"
 [ -f "$hostapd_makefile" ] || fail "hostapd package Makefile is missing"
-grep -qx 'PKG_SOURCE_DATE:=2026-04-02' "$hostapd_makefile" ||
+grep -qx 'PKG_SOURCE_DATE:=2026-07-09' "$hostapd_makefile" ||
 	fail "unexpected hostapd source date"
-grep -qx 'PKG_SOURCE_VERSION:=b004de0bf1b54d669d358b7f33d6f474bd9719a6' \
+grep -qx 'PKG_SOURCE_VERSION:=f08f2749aa696c4e47c5c0f591dda99951bf9fac' \
 	"$hostapd_makefile" || fail "unexpected hostapd source revision"
-grep -qx 'PKG_RELEASE:=3' "$hostapd_makefile" ||
-	fail "WDS-fixed hostapd package release is not selected"
-[ -f "$hostapd_wds_patch" ] || fail "hostapd WDS event-routing patch is missing"
-grep -Fq '61280edc2e1d6e38566d386e64227655eee3120e' \
-	"$hostapd_wds_patch" || fail "hostapd WDS patch is not the reviewed upstream backport"
-grep -Fq 'wpa_supplicant_event(bss->ctx, EVENT_RX_FROM_UNKNOWN, &event);' \
-	"$hostapd_wds_patch" || fail "hostapd WDS patch content is unexpected"
+grep -qx 'PKG_RELEASE:=1' "$hostapd_makefile" ||
+	fail "unexpected hostapd package release"
+[ -f "$hostapd_wds_patch" ] || fail "baseline hostapd WDS event-routing patch is missing"
+grep '^+' "$hostapd_wds_patch" |
+	grep -Fq 'wpa_supplicant_event(bss->ctx, EVENT_RX_FROM_UNKNOWN, &event);' ||
+	fail "baseline hostapd WDS patch lacks the corrected BSS route"
+grep '^-' "$hostapd_wds_patch" |
+	grep -Fq 'wpa_supplicant_event(drv->ctx, EVENT_RX_FROM_UNKNOWN, &event);' ||
+	fail "baseline hostapd WDS patch lacks the broken route removal"
 [ "$(find "$TOPDIR/package/network/services/hostapd/patches" -maxdepth 1 \
-	-type f -name '*unexpected-frame-events-to-correct-bss*.patch' | wc -l)" -eq 1 ] ||
-	fail "hostapd patch directory contains duplicate WDS event-routing patches"
+	-type f -name '*unexpected-frame-events-to-correct-bss*.patch' | wc -l)" -eq 0 ] ||
+	fail "hostapd patch directory contains a duplicate local WDS backport"
 
 hostapd_source="$(find "$TOPDIR/build_dir/target-aarch64_cortex-a53_musl" \
 	-type f -path '*/src/drivers/driver_nl80211_event.c' \
@@ -245,14 +253,15 @@ if grep -Fq 'wpa_supplicant_event(drv->ctx, EVENT_RX_FROM_UNKNOWN, &event);' \
 	fail "prepared hostapd source still routes WDS events to the first BSS"
 fi
 
-grep -hEq '^hostapd-common[[:space:]]+-[[:space:]]+2026\.04\.02~b004de0b-r3$' \
-	"$TARGET_DIR"/*.manifest || fail "manifest does not contain WDS-fixed hostapd-common r3"
-grep -hEq '^wpad-mesh-openssl[[:space:]]+-[[:space:]]+2026\.04\.02~b004de0b-r3$' \
-	"$TARGET_DIR"/*.manifest || fail "manifest does not contain WDS-fixed wpad-mesh-openssl r3"
+grep -hEq '^hostapd-common[[:space:]]+-[[:space:]]+2026\.07\.09~f08f2749-r1$' \
+	"$TARGET_DIR"/*.manifest || fail "manifest does not contain baseline-fixed hostapd-common r1"
+grep -hEq '^wpad-mesh-openssl[[:space:]]+-[[:space:]]+2026\.07\.09~f08f2749-r1$' \
+	"$TARGET_DIR"/*.manifest || fail "manifest does not contain baseline-fixed wpad-mesh-openssl r1"
 
 mt76_makefile="$TOPDIR/package/kernel/mt76/Makefile"
 mt76_an7581_patch="$TOPDIR/package/kernel/mt76/patches/0100-xr1710g-rebase-yyh-an7581-npu-stack-on-b2704cf5.patch"
 mt76_tx_failed_patch="$TOPDIR/package/kernel/mt76/patches/0101-wifi-mt76-mt7996-report-only-terminal-tx-failures.patch"
+mt76_rate_patch="$TOPDIR/package/kernel/mt76/patches/0102-wifi-mt76-mt7996-pass-operating-mode-to-rate-control.patch"
 grep -qx 'PKG_SOURCE_DATE:=2026-08-01' "$mt76_makefile" ||
 	fail "unexpected mt76 source date"
 grep -qx 'PKG_SOURCE_VERSION:=b2704cf5a4068b672bf47ad5bf6b4802b6770a90' \
@@ -275,8 +284,11 @@ grep -Fq 'wcid->stats.tx_failed +=' "$mt76_tx_failed_patch" ||
 if grep '^+' "$mt76_tx_failed_patch" | grep -Fq 'tx_failed = tx_retries +'; then
 	fail "MT7996 patch still folds retries into tx_failed"
 fi
+[ -f "$mt76_rate_patch" ] || fail "MT7996 operating-mode rate-control patch is missing"
+grep -Fq 'ra->op_vht_rx_nss = link_sta->rx_nss ? link_sta->rx_nss - 1 : 0;' \
+	"$mt76_rate_patch" || fail "MT7996 operating-mode patch content is unexpected"
 [ "$(find "$TOPDIR/package/kernel/mt76/patches" -maxdepth 1 -type f \
-	-name '*.patch' | wc -l)" -eq 2 ] ||
+	-name '*.patch' | wc -l)" -eq 3 ] ||
 	fail "mt76 patch directory contains an unexpected stale patch"
 
 trng_base_patch="$TOPDIR/target/linux/airoha/patches-6.18/920-hwrng-airoha-fix-init-sequence-default-to-DRBG.patch"
@@ -290,7 +302,7 @@ grep -Fq 'enable SCU clocks before starting TRNG' "$trng_order_patch" ||
 	fail "Airoha patch directory contains an unexpected TRNG ordering patch"
 
 linux_dir="$(find "$TOPDIR/build_dir/target-aarch64_cortex-a53_musl/linux-airoha_an7581" \
-	-mindepth 1 -maxdepth 1 -type d -name 'linux-*' -print -quit)"
+	-mindepth 1 -maxdepth 1 -type d -name 'linux-[0-9]*' -print -quit)"
 trng_source="$linux_dir/drivers/char/hw_random/airoha-trng.c"
 [ -f "$trng_source" ] || fail "prepared Airoha TRNG source is missing"
 trng_clock_line="$(grep -n 'regmap_set_bits(trng->scu, REG_SCU_BUS_CLK_GAT' \
@@ -341,16 +353,16 @@ mt76_manifest_line="$(grep -hE '^kmod-mt7996e[[:space:]]+-[[:space:]]+' \
 printf '%s\n' "$mt76_manifest_line" | grep -Fq '2026.08.01~b2704cf5-r5' ||
 	fail "manifest does not identify the A/B-tested mt76 build"
 
-recovery_pattern='*-v8-*-econet_xr1710g-ubi-initramfs-recovery.itb'
-sysupgrade_pattern='*-v8-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb'
+recovery_pattern='*-v1.2.0-*-econet_xr1710g-ubi-initramfs-recovery.itb'
+sysupgrade_pattern='*-v1.2.0-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb'
 recovery_count="$(find "$TARGET_DIR" -maxdepth 1 -type f \
 	-name "$recovery_pattern" -print | wc -l)"
 sysupgrade_count="$(find "$TARGET_DIR" -maxdepth 1 -type f \
 	-name "$sysupgrade_pattern" -print | wc -l)"
 [ "$recovery_count" -eq 1 ] ||
-	fail "expected exactly one v8 XR1710G recovery image, found $recovery_count"
+	fail "expected exactly one v1.2.0 XR1710G recovery image, found $recovery_count"
 [ "$sysupgrade_count" -eq 1 ] ||
-	fail "expected exactly one v8 XR1710G sysupgrade image, found $sysupgrade_count"
+	fail "expected exactly one v1.2.0 XR1710G sysupgrade image, found $sysupgrade_count"
 recovery="$(find "$TARGET_DIR" -maxdepth 1 -type f \
 	-name "$recovery_pattern" -print -quit)"
 sysupgrade="$(find "$TARGET_DIR" -maxdepth 1 -type f \
@@ -453,6 +465,10 @@ grep -qx 'usr/sbin/xr1710g-wireless-defaults' "$VERIFY_TMP/recovery.files" ||
 	fail "recovery ramdisk does not contain the post-kmod wireless policy tool"
 grep -qx 'etc/init.d/xr1710g-bootlog' "$VERIFY_TMP/recovery.files" ||
 	fail "recovery ramdisk does not contain the persistent boot logger"
+grep -qx 'etc/init.d/xr1710g-uboot-recovery-restore' "$VERIFY_TMP/recovery.files" ||
+	fail "recovery ramdisk does not contain the legacy U-Boot recovery restore service"
+grep -qx 'etc/uci-defaults/30_uboot-envtools' "$VERIFY_TMP/recovery.files" ||
+	fail "recovery ramdisk does not contain the XR1710G U-Boot environment generator"
 grep -qx 'etc/init.d/adguardhome' "$VERIFY_TMP/recovery.files" ||
 	fail "recovery ramdisk does not contain the patched AdGuard Home service"
 for docker_file in \
@@ -538,6 +554,8 @@ for installed in \
 	'squashfs-root/usr/sbin/xr1710g-wan-carrier' \
 	'squashfs-root/usr/sbin/xr1710g-wireless-defaults' \
 	'squashfs-root/etc/init.d/xr1710g-bootlog' \
+	'squashfs-root/etc/init.d/xr1710g-uboot-recovery-restore' \
+	'squashfs-root/etc/uci-defaults/30_uboot-envtools' \
 	'squashfs-root/etc/init.d/adguardhome' \
 	'squashfs-root/usr/bin/dockerd' \
 	'squashfs-root/usr/bin/docker' \
@@ -591,6 +609,9 @@ mkdir "$VERIFY_TMP/core-root"
 		'etc/uci-defaults/99-custom.sh' \
 		'etc/uci-defaults/41_uhttpd_proxy_linkease' \
 		'etc/uci-defaults/zz-xr1710g-services.sh' \
+		'etc/init.d/xr1710g-cpufreq' \
+		'etc/init.d/xr1710g-uboot-recovery-restore' \
+		'etc/uci-defaults/30_uboot-envtools' \
 		'usr/sbin/xr1710g-role' \
 		'usr/sbin/xr1710g-wan-carrier' \
 		'usr/sbin/xr1710g-wireless-defaults' \
@@ -610,15 +631,19 @@ mkdir "$VERIFY_TMP/core-root"
 		'bin/is-opkg' \
 		'usr/libexec/rpcd/luci.airoha_npu' \
 		'usr/libexec/rpcd/luci.airoha_flowsense' \
+		'usr/libexec/rpcd/luci.xr1710g_recovery' \
 		'usr/libexec/xr1710g-status-common' \
 		'www/luci-static/resources/view/airoha_npu/status.js' \
 		'www/luci-static/resources/view/airoha_flowsense/status.js' \
+		'www/luci-static/resources/view/system/xr1710g-recovery.js' \
+		'usr/libexec/platform/packet-steering.sh' \
 		'www/luci-static/quickstart/index.js' \
 		'usr/lib/lua/luci/view/quickstart/main.htm' \
 		'www/luci-static/resources/view/fan/status.js' \
 		'www/luci-static/resources/view/fan/settings.js' \
 		'www/luci-static/resources/view/network/wireless.js' \
 		'usr/libexec/rpcd/luci.fan' \
+		'etc/config/npu-monitor' \
 		'etc/init.d/npu-jitter' \
 		< "$VERIFY_TMP/recovery.cpio" 2>/dev/null
 ) || fail "cannot extract files required for package-source validation"
@@ -632,6 +657,9 @@ unsquashfs -d "$VERIFY_TMP/permanent-root" "$VERIFY_TMP/sysupgrade.rootfs" \
 	etc/uci-defaults/99-custom.sh \
 	etc/uci-defaults/41_uhttpd_proxy_linkease \
 	etc/uci-defaults/zz-xr1710g-services.sh \
+	etc/init.d/xr1710g-cpufreq \
+	etc/init.d/xr1710g-uboot-recovery-restore \
+	etc/uci-defaults/30_uboot-envtools \
 	usr/sbin/xr1710g-role \
 	usr/sbin/xr1710g-wan-carrier \
 	usr/sbin/xr1710g-wireless-defaults \
@@ -651,21 +679,27 @@ unsquashfs -d "$VERIFY_TMP/permanent-root" "$VERIFY_TMP/sysupgrade.rootfs" \
 	bin/is-opkg \
 	usr/libexec/rpcd/luci.airoha_npu \
 	usr/libexec/rpcd/luci.airoha_flowsense \
+	usr/libexec/rpcd/luci.xr1710g_recovery \
 	usr/libexec/xr1710g-status-common \
 	www/luci-static/resources/view/airoha_npu/status.js \
 	www/luci-static/resources/view/airoha_flowsense/status.js \
+	www/luci-static/resources/view/system/xr1710g-recovery.js \
+	usr/libexec/platform/packet-steering.sh \
 	www/luci-static/quickstart/index.js \
 	usr/lib/lua/luci/view/quickstart/main.htm \
 	www/luci-static/resources/view/fan/status.js \
 	www/luci-static/resources/view/fan/settings.js \
 	www/luci-static/resources/view/network/wireless.js \
 	usr/libexec/rpcd/luci.fan \
+	etc/config/npu-monitor \
 	etc/init.d/npu-jitter >/dev/null 2>&1 ||
 	fail "cannot extract files required for permanent-rootfs validation"
 
-# Do not accept a merely successful compile.  Recovery and permanent images
-# must carry the exact stripped modules that completed the two-router A/B and
-# 60-second soak tests on 2026-08-02.
+# Do not accept a merely successful compile. The new operating-mode/NSS patch
+# intentionally changes the mt7996 module set, so old A/B hashes are no longer
+# valid. Prove instead that Recovery and permanent images carry byte-identical
+# modules from the r5 APKs built in this same release run. Runtime acceptance
+# of these new modules remains mandatory on the upstairs router.
 mkdir "$VERIFY_TMP/recovery-mt76"
 (
 	cd "$VERIFY_TMP/recovery-mt76"
@@ -681,28 +715,37 @@ unsquashfs -d "$VERIFY_TMP/permanent-mt76" "$VERIFY_TMP/sysupgrade.rootfs" \
 	'lib/modules/*/mt7996e.ko' >/dev/null 2>&1 ||
 	fail "cannot extract mt76 modules from permanent rootfs"
 
-verify_tested_module() {
+verify_built_module() {
 	module="$1"
-	expected="$2"
+	package_pattern="$2"
 	recovery_module="$(find "$VERIFY_TMP/recovery-mt76/lib/modules" -type f \
 		-name "$module" -print -quit)"
 	permanent_module="$(find "$VERIFY_TMP/permanent-mt76/lib/modules" -type f \
 		-name "$module" -print -quit)"
+	module_apk="$(find "$TOPDIR/bin/targets/airoha/an7581/packages" -maxdepth 1 \
+		-type f -name "$package_pattern" -print -quit)"
 	[ -n "$recovery_module" ] || fail "recovery is missing $module"
 	[ -n "$permanent_module" ] || fail "permanent rootfs is missing $module"
+	[ -f "$module_apk" ] || fail "release build is missing APK for $module"
 	cmp "$recovery_module" "$permanent_module" ||
 		fail "recovery and permanent rootfs differ at $module"
-	actual="$(sha256sum "$permanent_module" | awk '{ print $1 }')"
-	[ "$actual" = "$expected" ] ||
-		fail "$module does not match the A/B-tested module: $actual"
+	package_dir="$VERIFY_TMP/mt76-apk-${module%.ko}"
+	mkdir -p "$package_dir"
+	"$TOPDIR/staging_dir/host/bin/apk" --allow-untrusted extract \
+		--destination "$package_dir" "$module_apk" >/dev/null ||
+		fail "cannot extract APK for $module"
+	package_module="$(find "$package_dir/lib/modules" -type f -name "$module" -print -quit)"
+	[ -n "$package_module" ] || fail "APK does not contain $module"
+	cmp "$permanent_module" "$package_module" ||
+		fail "assembled images do not contain the current release $module"
 }
 
-verify_tested_module mt76.ko \
-	b8a82417f4df72277c8623e33939674cf14a33ac9d473315b593c0420a543a80
-verify_tested_module mt76-connac-lib.ko \
-	0d2f8c5eb501e1f94e4d3452912b66967e7beadfdcf8ed00c729d73b7c4c7d40
-verify_tested_module mt7996e.ko \
-	bcf4660268e9252e1ad401811b49fd615edb44fb787aa51731fd82818da58585
+verify_built_module mt76.ko \
+	'kmod-mt76-core-6.18.41.2026.08.01~b2704cf5-r5.apk'
+verify_built_module mt76-connac-lib.ko \
+	'kmod-mt76-connac-6.18.41.2026.08.01~b2704cf5-r5.apk'
+verify_built_module mt7996e.ko \
+	'kmod-mt7996e-6.18.41.2026.08.01~b2704cf5-r5.apk'
 
 for critical in \
 	etc/openclash/core/clash_meta \
@@ -713,6 +756,9 @@ for critical in \
 	etc/uci-defaults/99-custom.sh \
 	etc/uci-defaults/41_uhttpd_proxy_linkease \
 	etc/uci-defaults/zz-xr1710g-services.sh \
+	etc/init.d/xr1710g-cpufreq \
+	etc/init.d/xr1710g-uboot-recovery-restore \
+	etc/uci-defaults/30_uboot-envtools \
 	usr/sbin/xr1710g-role \
 	usr/sbin/xr1710g-wan-carrier \
 	usr/sbin/xr1710g-wireless-defaults \
@@ -727,9 +773,12 @@ for critical in \
 	bin/is-opkg \
 	usr/libexec/rpcd/luci.airoha_npu \
 	usr/libexec/rpcd/luci.airoha_flowsense \
+	usr/libexec/rpcd/luci.xr1710g_recovery \
 	usr/libexec/xr1710g-status-common \
 	www/luci-static/resources/view/airoha_npu/status.js \
 	www/luci-static/resources/view/airoha_flowsense/status.js \
+	www/luci-static/resources/view/system/xr1710g-recovery.js \
+	usr/libexec/platform/packet-steering.sh \
 	www/luci-static/quickstart/index.js \
 	usr/lib/lua/luci/view/quickstart/main.htm \
 	www/luci-static/resources/view/fan/status.js \
@@ -737,6 +786,7 @@ for critical in \
 	www/luci-static/resources/view/network/wireless.js \
 	www/luci-static/resources/view/dockerman/overview.js \
 	usr/libexec/rpcd/luci.fan \
+	etc/config/npu-monitor \
 	etc/init.d/npu-jitter; do
 	cmp "$VERIFY_TMP/core-root/$critical" "$VERIFY_TMP/permanent-root/$critical" ||
 		fail "recovery and permanent rootfs differ at /$critical"
@@ -846,9 +896,11 @@ for image_root in "$VERIFY_TMP/core-root" "$VERIFY_TMP/permanent-root"; do
 	if grep -Fq '.linkState=="DOWN"' "$quickstart_js"; then
 		fail "QuickStart still misclassifies LOWERLAYERDOWN as connected"
 	fi
-	grep -Fq 'index.js?v=xr-linkstate1' \
+	grep -Fq 'index.js?v=xr-portfilter2' \
 		"$image_root/usr/lib/lua/luci/view/quickstart/main.htm" ||
 		fail "QuickStart link-state fix has no browser cache bust"
+	[ "$(grep -Fo '["wan","lan1","lan2","lan3"].includes(x.name)' "$quickstart_js" | wc -l)" -eq 2 ] ||
+		fail "QuickStart home card does not hide internal and wireless interfaces"
 done
 
 for image_root in "$VERIFY_TMP/core-root" "$VERIFY_TMP/permanent-root"; do
@@ -891,20 +943,25 @@ for required_band in 2g 5g 6g; do
 	grep -Fq "radios_for_band $required_band" "$wireless_defaults" ||
 		fail "wireless policy does not require the $required_band radio"
 done
-grep -Fq "encryption='psk-mixed'" "$wireless_defaults" ||
-	fail "2.4 GHz defaults do not provide WPA/WPA2 compatibility"
+if grep -Fq "encryption='psk-mixed'" "$wireless_defaults"; then
+	fail "factory 2.4 GHz Wi-Fi still enables encryption without an owner password"
+fi
 grep -Fq "uapsd='0'" "$wireless_defaults" ||
 	fail "post-kmod AP defaults do not carry the board U-APSD stability setting"
 grep -Fq "disassoc_low_ack='0'" "$wireless_defaults" ||
 	fail "post-kmod AP defaults do not carry the low-ACK stability setting"
+grep -Fq "max_inactivity='86400'" "$wireless_defaults" ||
+	fail "post-kmod AP defaults do not carry the MT7996 inactivity workaround"
 grep -Fq "ieee80211k='1'" "$wireless_defaults" ||
 	fail "AP defaults do not enable 802.11k"
 grep -Fq "bss_transition='1'" "$wireless_defaults" ||
 	fail "AP defaults do not enable 802.11v"
 grep -Fq "ieee80211r='0'" "$wireless_defaults" ||
 	fail "2.4 GHz defaults do not explicitly disable 802.11r"
-grep -Fq "encryption='sae-mixed'" "$wireless_defaults" ||
-	fail "5 GHz defaults do not use WPA2/WPA3 transition mode"
+grep -Fq "encryption='none'" "$wireless_defaults" ||
+	fail "factory terminal Wi-Fi does not start without a preset password"
+[ "$(grep -Fc "encryption='none'" "$wireless_defaults")" -eq 2 ] ||
+	fail "both 2.4 and 5 GHz terminal Wi-Fi must start without a preset password"
 grep -Fq "wireless.\"\$radio\".channel='36'" "$wireless_defaults" ||
 	fail "5 GHz defaults do not pin the tested channel 36 baseline"
 grep -Fq "ieee80211r='1'" "$wireless_defaults" ||
@@ -920,7 +977,19 @@ grep -Fq "mode='mesh'" "$wireless_defaults" ||
 grep -Fq "mesh_id='XR1710G-6G-BACKHAUL'" "$wireless_defaults" ||
 	fail "first-boot defaults do not set the 6 GHz mesh ID"
 grep -Fq "htmode='EHT80'" "$wireless_defaults" ||
-	fail "first-boot defaults do not use the stable EHT80 baseline"
+	fail "5 GHz first-boot defaults do not use the hardware-tested EHT80 baseline"
+if grep -Eqi '5.?GHz.*EHT160|EHT160.*5.?GHz|5g.*EHT160|EHT160.*5g|5.?GHz.*30.?dBm|30.?dBm.*5.?GHz|5g.*30.?dBm|30.?dBm.*5g' \
+	"$GITHUB_WORKSPACE/README.md" "$GITHUB_WORKSPACE/README-EN.md" \
+	"$GITHUB_WORKSPACE/RELEASE-NOTES.md" "$GITHUB_WORKSPACE/CHANGES-v1.md"; then
+	fail "public documentation contains a stale 5 GHz EHT160/30dBm default"
+fi
+grep -Fq "htmode='EHT320'" "$wireless_defaults" ||
+	fail "6 GHz Mesh template does not use the tested EHT320 baseline"
+grep -Fq "wireless.\"\$iface\".disabled='1'" "$wireless_defaults" ||
+	fail "empty-key 6 GHz SAE Mesh is not safely disabled"
+if grep -Fq "wireless.\"\$iface\".key=" "$wireless_defaults"; then
+	fail "factory wireless policy contains a preset key"
+fi
 grep -Fq "mesh_fwding='1'" "$wireless_defaults" ||
 	fail "first-boot defaults do not enable mesh forwarding"
 grep -Fq "delete_if_present wireless.\"\$iface\".owe_groups" "$wireless_defaults" ||
@@ -957,6 +1026,90 @@ grep -Fq '[ ! -s "$agh_config" ]' "$service_policy" ||
 	fail "XR1710G service policy does not preserve an existing AdGuard configuration"
 grep -Fq '/etc/init.d/xr1710g-bootlog enable' "$service_policy" ||
 	fail "XR1710G service policy does not enable the boot logger"
+grep -Fq "xr1710g_governor='performance'" "$service_policy" ||
+	fail "XR1710G persistent performance governor default is missing"
+grep -Fq '/etc/init.d/xr1710g-cpufreq enable' "$service_policy" ||
+	fail "XR1710G cpufreq replay service is not enabled"
+cpufreq_service="$VERIFY_TMP/core-root/etc/init.d/xr1710g-cpufreq"
+[ -x "$cpufreq_service" ] || fail "XR1710G cpufreq replay service is missing"
+grep -Fq 'system.@system[0].xr1710g_governor' "$cpufreq_service" ||
+	fail "XR1710G cpufreq service does not replay the persistent selection"
+grep -Fq 'policy[0-9]*' "$cpufreq_service" ||
+	fail "XR1710G cpufreq service does not cover every CPU policy"
+
+recovery_rpc="$VERIFY_TMP/core-root/usr/libexec/rpcd/luci.xr1710g_recovery"
+recovery_view="$VERIFY_TMP/core-root/www/luci-static/resources/view/system/xr1710g-recovery.js"
+[ -x "$recovery_rpc" ] || fail "XR1710G recovery RPC backend is missing"
+[ -f "$recovery_view" ] || fail "XR1710G recovery LuCI view is missing"
+grep -Fq 'native_one_shot_supported' "$recovery_rpc" ||
+	fail "U-Boot recovery action lacks native capability detection"
+grep -Fq 'fw_setenv recovery_trigger 1' "$recovery_rpc" ||
+	fail "native U-Boot recovery action does not arm the advertised trigger"
+grep -Eq 'if ?\(oneShot\)' "$recovery_view" ||
+	fail "unsupported software U-Boot recovery section is not hidden"
+if grep -Eq '\}, ?!oneShot\)' "$recovery_view"; then
+	fail "unsupported software U-Boot recovery is still rendered as a disabled button"
+fi
+if grep -Eq 'legacy_one_shot_supported|legacy-double-reset|xr1710g_recovery_stage|recovery_port 10g' "$recovery_rpc"; then
+	fail "unverified legacy software recovery path is still exposed"
+fi
+
+flowsense_rpc="$VERIFY_TMP/core-root/usr/libexec/rpcd/luci.airoha_flowsense"
+if grep -Eq 'npu_bypass_latency|HW offload is enabled but ISP latency is high' "$flowsense_rpc"; then
+	fail "path-specific latency is still misreported as NPU bypass"
+fi
+grep -Fq 'cake_on_wan' "$flowsense_rpc" ||
+	fail "real CAKE and hardware-offload conflict detection is missing"
+flowsense_view="$VERIFY_TMP/core-root/www/luci-static/resources/view/airoha_flowsense/status.js"
+grep -Eq "a.id ?!== ?'npu_bypass_latency'" "$flowsense_view" ||
+	fail "FlowSense view does not suppress invalid legacy NPU-latency alerts"
+if grep -Eq 'VLAN offload not supported on this device|PPPoE offload not supported on this device' "$flowsense_view"; then
+	fail "disabled VLAN or PPPoE offload is still described as unsupported"
+fi
+grep -Fq "enabled ? _('Enabled') : _('Not enabled or configured')" "$flowsense_view" ||
+	fail "FlowSense disabled-offload wording is not accurate"
+jitter_config="$VERIFY_TMP/core-root/etc/config/npu-monitor"
+jitter_init="$VERIFY_TMP/core-root/etc/init.d/npu-jitter"
+grep -Fq "option target 'auto'" "$jitter_config" ||
+	fail "latency probe does not default to an automatic WAN target"
+grep -Fq "config jitter 'jitter'" "$jitter_config" ||
+	fail "latency probe default section is not addressable by name"
+grep -Fq "npu-monitor.@jitter[0].target" "$jitter_init" ||
+	fail "latency probe cannot read an upgraded anonymous legacy section"
+grep -Fq "jsonfilter -e '@[\"dns-server\"][0]'" "$jitter_init" ||
+	fail "latency probe cannot select the current WAN DNS target"
+grep -Fq '/sbin/firstboot -y' "$recovery_rpc" ||
+	fail "iStoreOS factory reset does not use the native overlay reset"
+recovery_restore="$VERIFY_TMP/core-root/etc/init.d/xr1710g-uboot-recovery-restore"
+[ -x "$recovery_restore" ] || fail "obsolete U-Boot recovery-variable cleanup service is missing"
+grep -Fq 'fw_setenv bootcmd "$backup"' "$recovery_restore" ||
+	fail "legacy U-Boot recovery restore service cannot restore bootcmd"
+grep -Fq 'fw_setenv xr1710g_recovery_stage1' "$recovery_restore" ||
+	fail "legacy U-Boot recovery restore service cannot clear stage 1"
+grep -Fq 'fw_setenv xr1710g_recovery_stage2' "$recovery_restore" ||
+	fail "legacy U-Boot recovery restore service cannot clear stage 2"
+grep -Fq 'fw_setenv xr1710g_recovery_once' "$recovery_restore" ||
+	fail "legacy U-Boot recovery restore service cannot clear the obsolete trigger"
+ubootenv_defaults="$VERIFY_TMP/core-root/etc/uci-defaults/30_uboot-envtools"
+[ -f "$ubootenv_defaults" ] || fail "XR1710G U-Boot environment generator is missing"
+grep -Fq 'ubootenv_add_uci_config "$dev" "0x0" "0x4000" "0x1f000" "1"' \
+	"$ubootenv_defaults" || fail "primary XR1710G U-Boot environment size is not 0x4000"
+grep -Fq 'ubootenv_add_uci_config "$dev2" "0x0" "0x4000" "0x1f000" "1"' \
+	"$ubootenv_defaults" || fail "redundant XR1710G U-Boot environment size is not 0x4000"
+grep -Fq "grep -Ec '^/dev/ubi[0-9]+_[0-9]+[[:space:]]+0x0[[:space:]]+0x4000" \
+	"$ubootenv_defaults" || fail "preserved XR1710G U-Boot environment layouts are not migrated"
+
+packet_steering="$VERIFY_TMP/core-root/usr/libexec/platform/packet-steering.sh"
+[ -x "$packet_steering" ] || fail "XR1710G platform packet-steering hook is missing"
+grep -Fq 'napi/phy*' "$packet_steering" ||
+	fail "MT7996 NAPI workers are not distributed"
+grep -Fq 'mt76-tx\ phy*' "$packet_steering" ||
+	fail "MT7996 TX workers are not distributed"
+
+board_network="$TOPDIR/target/linux/airoha/an7581/base-files/etc/board.d/02_network"
+if grep -Fq 'ucidef_set_root_password_plain "password"' "$board_network"; then
+	fail "XR1710G image contains the upstream public fixed root password"
+fi
 
 dockerd_config="$VERIFY_TMP/core-root/etc/config/dockerd"
 dockerd_init="$VERIFY_TMP/core-root/etc/init.d/dockerd"
@@ -1070,25 +1223,25 @@ unsquashfs -d "$VERIFY_TMP/permanent-all" "$VERIFY_TMP/sysupgrade.rootfs" \
 	>/dev/null 2>&1 || fail "cannot extract complete permanent rootfs for secret scanning"
 
 # Package manifests alone cannot prove that image assembly installed the new
-# monolithic wpad executable. Compare both deliverables with the r3 package
+# monolithic wpad executable. Compare both deliverables with the baseline r1
 # payload built in this same release run.
-wpad_r3_apk="$(find "$TOPDIR/bin/packages/aarch64_cortex-a53/base" -maxdepth 1 \
-	-type f -name 'wpad-mesh-openssl-2026.04.02~b004de0b-r3.apk' -print -quit)"
-[ -f "$wpad_r3_apk" ] || fail "WDS-fixed wpad r3 package is missing"
-mkdir -p "$VERIFY_TMP/wpad-r3-apk"
+wpad_baseline_apk="$(find "$TOPDIR/bin/packages/aarch64_cortex-a53/base" -maxdepth 1 \
+	-type f -name 'wpad-mesh-openssl-2026.07.09~f08f2749-r1.apk' -print -quit)"
+[ -f "$wpad_baseline_apk" ] || fail "baseline-fixed wpad r1 package is missing"
+mkdir -p "$VERIFY_TMP/wpad-baseline-apk"
 "$TOPDIR/staging_dir/host/bin/apk" --allow-untrusted extract \
-	--destination "$VERIFY_TMP/wpad-r3-apk" "$wpad_r3_apk" >/dev/null ||
-	fail "cannot extract WDS-fixed wpad r3 package"
-[ -x "$VERIFY_TMP/wpad-r3-apk/usr/sbin/wpad" ] ||
-	fail "WDS-fixed package does not contain executable wpad"
-wpad_r3_sha256="$(sha256sum "$VERIFY_TMP/wpad-r3-apk/usr/sbin/wpad" | cut -d' ' -f1)"
-[ -n "$wpad_r3_sha256" ] || fail "cannot hash WDS-fixed wpad r3 binary"
+	--destination "$VERIFY_TMP/wpad-baseline-apk" "$wpad_baseline_apk" >/dev/null ||
+	fail "cannot extract baseline-fixed wpad r1 package"
+[ -x "$VERIFY_TMP/wpad-baseline-apk/usr/sbin/wpad" ] ||
+	fail "baseline-fixed package does not contain executable wpad"
+wpad_baseline_sha256="$(sha256sum "$VERIFY_TMP/wpad-baseline-apk/usr/sbin/wpad" | cut -d' ' -f1)"
+[ -n "$wpad_baseline_sha256" ] || fail "cannot hash baseline-fixed wpad binary"
 for image_wpad in \
 	"$VERIFY_TMP/recovery-all/usr/sbin/wpad" \
 	"$VERIFY_TMP/permanent-all/usr/sbin/wpad"; do
 	[ -x "$image_wpad" ] || fail "assembled image does not contain executable wpad"
-	[ "$(sha256sum "$image_wpad" | cut -d' ' -f1)" = "$wpad_r3_sha256" ] ||
-		fail "assembled image contains stale/non-r3 wpad: $image_wpad"
+	[ "$(sha256sum "$image_wpad" | cut -d' ' -f1)" = "$wpad_baseline_sha256" ] ||
+		fail "assembled image contains stale/non-baseline wpad: $image_wpad"
 done
 for forbidden in \
 	'mt76-test-auto-rollback' 'mt76-ab-test'; do

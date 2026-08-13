@@ -1,0 +1,65 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Recovery and Reset"
+msgstr ""
+
+msgid "Reboot to U-Boot Recovery"
+msgstr ""
+
+msgid "Sets a one-time recovery trigger and reboots. User configuration is not erased."
+msgstr ""
+
+msgid "The installed U-Boot does not advertise a verified one-time software trigger. Power off the router, connect the computer to the 1G recovery port, hold Reset, and power it on to open 192.168.255.1. This firmware will not replace bootcmd."
+msgstr ""
+
+msgid "iStoreOS Factory Reset"
+msgstr ""
+
+msgid "Erases installed packages and all user configuration, then returns to the firmware defaults at 192.168.50.1. U-Boot, Factory, EEPROM and wireless calibration data are not changed."
+msgstr ""
+
+msgid "Erase configuration and reboot"
+msgstr ""
+
+msgid "The router will become unavailable and should open its recovery service at 192.168.255.1. Continue?"
+msgstr ""
+
+msgid "Continue"
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "The installed U-Boot does not support the safe one-time trigger."
+msgstr ""
+
+msgid "Rebooting…"
+msgstr ""
+
+msgid "Waiting for device…"
+msgstr ""
+
+msgid "Confirm factory reset"
+msgstr ""
+
+msgid "This permanently erases all user configuration and installed packages. Back up anything needed before continuing."
+msgstr ""
+
+msgid "I understand that all configuration will be erased"
+msgstr ""
+
+msgid "Erase and reboot"
+msgstr ""
+
+msgid "Confirm the data-loss warning first."
+msgstr ""
+
+msgid "Factory reset could not be started."
+msgstr ""
+
+msgid "Resetting…"
+msgstr ""
+
+msgid "The router will restart at 192.168.50.1."
+msgstr ""
