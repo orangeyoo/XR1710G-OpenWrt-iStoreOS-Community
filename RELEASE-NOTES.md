@@ -47,6 +47,15 @@ Gemtek XR1710G（Airoha AN7581 + MediaTek MT7996）非官方社区固件。This 
 
 首次管理地址为 `192.168.50.1`，用户名 `root`，初始密码为 `password`。2.4/5GHz 初始密码为空，属于开放网络；请先用有线单独连接，立即修改管理员密码并设置无线加密。6GHz Mesh 默认禁用，需先为两端设置相同的 Mesh ID 和 SAE 密钥。
 
+<!-- Future releases: keep this donation block immediately below the Chinese section. -->
+### 赞赏
+
+如果这套固件帮你省下了折腾时间，欢迎请我喝杯奶茶。赞赏完全自愿，不影响固件的下载、使用或开源许可。
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/public-first-release/docs/assets/zs.png" alt="太烧 Token 求打赏" width="520">
+</p>
+
 ## English
 
 ### New and fixed in v1.4.0
