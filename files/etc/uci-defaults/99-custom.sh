@@ -6,10 +6,23 @@
 board_name="$(cat /tmp/sysinfo/board_name 2>/dev/null)"
 [ "$board_name" = "econet,xr1710g-ubi" ] || exit 0
 
+# Do not continue into the deliberately open first-boot AP policy if the
+# earlier credential default failed. OpenWrt retains failed uci-defaults for a
+# later retry, so this keeps the exceptional path closed without overwriting
+# an owner-supplied hash.
+root_hash="$(awk -F: '$1 == "root" { print $2; exit }' /etc/shadow 2>/dev/null)"
+if [ -z "$root_hash" ]; then
+	logger -t xr1710g-firstboot \
+		'root credential is not ready; retaining first-boot defaults for retry' 2>/dev/null || true
+	exit 1
+fi
+
 uci -q set system.@system[0].hostname='iStoreOS-XR1710G'
 uci -q set luci.main.lang='zh_cn'
+# luci-theme-argon's own 30_luci-theme-argon default selects Argon only when
+# the theme is first installed. Register the theme here as a fallback, but do
+# not rewrite mediaurlbase: a sysupgrade must preserve the owner's theme.
 uci -q set luci.themes.Argon='/luci-static/argon'
-uci -q set luci.main.mediaurlbase='/luci-static/argon'
 uci -q set network.globals.packet_steering='1'
 uci -q set firewall.@defaults[0].flow_offloading='1'
 uci -q set firewall.@defaults[0].flow_offloading_hw='1'
@@ -41,7 +54,7 @@ REPOSEOF
 
 # Wireless discovery before kmodloader is empty on this board.  This helper
 # runs now, after kmodloader, waits until all three bands and their interfaces
-# exist, then atomically applies the public placeholder/roaming/Mesh policy.
+# exist, then atomically applies the open-AP/roaming/disabled-Mesh policy.
 # A failure deliberately makes this uci-default remain for the next boot.
 if ! /usr/sbin/xr1710g-wireless-defaults; then
 	logger -t xr1710g-firstboot \

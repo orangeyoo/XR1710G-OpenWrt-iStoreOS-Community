@@ -3,9 +3,15 @@
 
 [ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = 'econet,xr1710g-ubi' ] || exit 0
 
-# Favor deterministic latency on this four-core router. Store the default in
-# UCI and let the dedicated boot service replay the owner's later selection on
-# every boot instead of making this one-shot uci-default the source of truth.
+# Normalize any bare LAN IPv4 left by an older migration or iStore wizard
+# before the next boot.  The iface hotplug guard handles an in-session reload.
+if [ -x /etc/init.d/xr1710g-lan-cidr-guard ]; then
+	/etc/init.d/xr1710g-lan-cidr-guard enable
+	/etc/init.d/xr1710g-lan-cidr-guard start
+fi
+
+# Keep the validated performance policy for the 10G/PPE platform. Store it in
+# UCI; the dedicated boot service replays the owner's later selection.
 uci -q set system.@system[0].xr1710g_governor='performance'
 uci -q commit system
 if [ -x /etc/init.d/xr1710g-cpufreq ]; then

@@ -1,0 +1,161 @@
+diff --git a/modules/luci-base/htdocs/luci-static/resources/protocol/static.js b/modules/luci-base/htdocs/luci-static/resources/protocol/static.js
+index e7f810e..013119f 100644
+--- a/modules/luci-base/htdocs/luci-static/resources/protocol/static.js
++++ b/modules/luci-base/htdocs/luci-static/resources/protocol/static.js
+@@ -12,6 +12,41 @@ function isCIDR(value) {
+ 	return Array.isArray(value) || /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/(\d{1,2}|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.test(value);
+ }
+ 
++function sanitizeLanIPv4(section_id, value) {
++	if (section_id != 'lan')
++		return value;
++
++	return L.toArray(value).filter(addr => typeof addr == 'string' && addr != '');
++}
++
++/**
++ * Normalize a bare XR1710G LAN address to current OpenWrt CIDR-list form.
++ * Preserve an explicit legacy netmask when converting old configurations and
++ * use /24 only when no prefix information exists.
++ */
++function normalizeLanIPv4(section_id, value, netmask) {
++	value = sanitizeLanIPv4(section_id, value);
++
++	if (section_id != 'lan')
++		return value;
++
++	let prefix = 24;
++
++	/* maskToPrefix() does not accept null or undefined. */
++	if (typeof netmask == 'string' && netmask != '') {
++		const legacyPrefix = network.maskToPrefix(netmask);
++		if (legacyPrefix != null)
++			prefix = legacyPrefix;
++	}
++
++	return value.map(addr => {
++		if (addr.indexOf('/') >= 0)
++			return addr;
++
++		return validation.parseIPv4(addr) ? '%s/%d'.format(addr, prefix) : addr;
++	});
++}
++
+ /**
+  * Calculate the broadcast IP for a given IP.
+  * @param {Node} s the ui element to test.
+@@ -21,7 +56,9 @@ function isCIDR(value) {
+ function calculateBroadcast(s, use_cfgvalue) {
+ 	const readfn = use_cfgvalue ? 'cfgvalue' : 'formvalue';
+ 	const addropt = s.children.find(o => o.option == 'ipaddr');
+-	const addrvals = addropt ? L.toArray(addropt[readfn](s.section)) : [];
++	const addrvals = addropt
++		? L.toArray(addropt[readfn](s.section)).filter(addr => typeof addr == 'string' && addr != '')
++		: [];
+ 	const maskopt = s.children.find(o => o.option == 'netmask');
+ 	const maskval = maskopt ? maskopt[readfn](s.section) : null;
+ 	let firstsubnet = null;
+@@ -30,7 +67,7 @@ function calculateBroadcast(s, use_cfgvalue) {
+ 	if (addrvals.length && addrvals[0] && maskval)
+ 		firstsubnet = addrvals[0] + '/' + maskval;
+ 	else if (addrvals.length)
+-		firstsubnet = addrvals.find(a => a.indexOf('/') > 0);
++		firstsubnet = addrvals.find(a => typeof a == 'string' && a.indexOf('/') > 0);
+ 
+ 	if (!firstsubnet)
+ 		return null;
+@@ -91,7 +128,8 @@ return network.registerProtocol('static', {
+ 
+ 			const maskval = maskopt[0].formvalue(section_id);
+ 			const addrval = this.formvalue(section_id);
+-			const prefix = maskval ? network.maskToPrefix(maskval) : 32;
++			const prefix = maskval ? network.maskToPrefix(maskval)
++				: (section_id == 'lan' ? 24 : 32);
+ 
+ 			if (prefix == null)
+ 				return;
+@@ -113,10 +151,14 @@ return network.registerProtocol('static', {
+ 		},
+ 
+ 		renderWidget(section_id, option_index, cfgvalue) {
++			cfgvalue = sanitizeLanIPv4(section_id, cfgvalue);
++
+ 			const widget = isCIDR(cfgvalue) ? 'DynamicList' : 'Value';
+ 
+ 			if (widget == 'DynamicList') {
+-				this.datatype = 'or(cidr4,ipmask4)';
++				this.datatype = section_id == 'lan'
++					? 'or(cidr4,ipmask4,ip4addr("nomask"))'
++					: 'or(cidr4,ipmask4)';
+ 				this.placeholder = _('Add IPv4 address…');
+ 			}
+ 			else {
+@@ -136,6 +178,19 @@ return network.registerProtocol('static', {
+ 			return node;
+ 		},
+ 
++		write(section_id, value) {
++			if (section_id != 'lan')
++				return this.super('write', [ section_id, value ]);
++
++			const netmask = this.map.data.get('network', section_id, 'netmask');
++			const normalized = normalizeLanIPv4(section_id, value, netmask);
++
++			/* CIDR entries are authoritative in current OpenWrt. */
++			this.map.data.unset('network', section_id, 'netmask');
++
++			return this.super('write', [ section_id, normalized ]);
++		},
++
+ 		validate: validateBroadcast
+ 	}),
+ 
+@@ -178,6 +233,9 @@ return network.registerProtocol('static', {
+ 
+ 			if (addrval != null) {
+ 				for (let a of addrval) {
++					if (typeof a != 'string' || a == '')
++						continue;
++
+ 					const addr = a.split('/')[0];
+ 					if (value == addr)
+ 						return _('The gateway address must not be a local IP address');
+@@ -204,7 +262,9 @@ return network.registerProtocol('static', {
+ 	renderFormOptions(s) {
+ 		let o;
+ 
+-		s.taboption('general', this.CBIIPValue, 'ipaddr', _('IPv4 address'));
++		o = s.taboption('general', this.CBIIPValue, 'ipaddr', _('IPv4 address'));
++		/* Saving the page also repairs a pre-existing bare LAN list value. */
++		o.forcewrite = true;
+ 		s.taboption('general', this.CBINetmaskValue, 'netmask', _('IPv4 netmask'));
+ 		s.taboption('general', this.CBIGatewayValue, 'gateway', _('IPv4 gateway'));
+ 		s.taboption('general', this.CBIBroadcastValue, 'broadcast', _('IPv4 broadcast'));
+diff --git a/modules/luci-mod-network/htdocs/luci-static/resources/view/network/interfaces.js b/modules/luci-mod-network/htdocs/luci-static/resources/view/network/interfaces.js
+index 01ff027..d1413af 100644
+--- a/modules/luci-mod-network/htdocs/luci-static/resources/view/network/interfaces.js
++++ b/modules/luci-mod-network/htdocs/luci-static/resources/view/network/interfaces.js
+@@ -234,7 +234,10 @@ function get_netmask(s, use_cfgvalue) {
+ 	const readfn = use_cfgvalue ? 'cfgvalue' : 'formvalue';
+ 	const addrs = L.toArray(s[readfn](s.section, 'ipaddr'));
+ 	const mask = s[readfn](s.section, 'netmask');
+-	const firstsubnet = mask ? addrs[0] + '/' + mask : addrs.filter(function(a) { return a.indexOf('/') > 0 })[0];
++	const firstaddr = addrs.find(function(a) { return typeof a == 'string' && a != '' });
++	const firstsubnet = mask && firstaddr
++		? firstaddr + '/' + mask
++		: addrs.find(function(a) { return typeof a == 'string' && a.indexOf('/') > 0 });
+ 
+ 	if (firstsubnet == null)
+ 		return null;
+diff --git a/modules/luci-base/ucode/template/header.ut b/modules/luci-base/ucode/template/header.ut
+--- a/modules/luci-base/ucode/template/header.ut
++++ b/modules/luci-base/ucode/template/header.ut
+@@ -8,7 +8,7 @@
+ 	include(`themes/${theme}/header`);
+ -%}
+ 
+-<script src="{{ resource }}/luci.js?v={# PKG_VERSION #}-{{ pkgs_update_time }}"></script>
++<script src="{{ resource }}/luci.js?v={# PKG_VERSION #}-{{ pkgs_update_time }}-xr-ui-20260820"></script>
+ <script>
+ 	L = new LuCI({{ replace(`${ {
+ 		media          : media,

@@ -123,8 +123,7 @@ status() {
 	printf 'XR1710G role configuration (credentials are never displayed)\n'
 	show_value 'LAN protocol' network.lan.proto
 	show_value 'LAN device' network.lan.device
-	show_value 'LAN IPv4 address' network.lan.ipaddr
-	show_value 'LAN netmask' network.lan.netmask
+	show_value 'LAN IPv4 CIDR' network.lan.ipaddr
 	show_value 'LAN gateway' network.lan.gateway
 	show_value 'LAN DNS' network.lan.dns
 	show_value 'LAN IPv6 assignment' network.lan.ip6assign
@@ -163,8 +162,11 @@ backup_config() {
 
 set_lan_ipv4() {
 	uci -q set network.lan.proto='static'
-	uci -q set network.lan.ipaddr="$ROLE_IP"
-	uci -q set network.lan.netmask="$ROLE_NETMASK"
+	uci -q delete network.lan.ipaddr 2>/dev/null || true
+	uci -q add_list network.lan.ipaddr="$ROLE_IP/$ROLE_PREFIX"
+	# Current OpenWrt stores the prefix with each IPv4 address.  Remove the
+	# legacy sibling netmask so a later reboot cannot reconstruct a /32.
+	delete_if_present network.lan.netmask
 }
 
 set_main_lan() {

@@ -1,0 +1,291 @@
+#!/bin/sh
+
+UCI_BIN="${XR_FAN_UCI_BIN:-uci}"
+STATE_FILE="${XR_FAN_STATE_FILE:-/var/run/xr1710g-fan-control.state}"
+HWMON="${XR_FAN_HWMON:-}"
+
+log_msg() {
+	local priority="$1"
+	shift
+	logger -t xr1710g-fan-control -p "daemon.${priority}" -- "$*" 2>/dev/null ||
+		printf '%s\n' "xr1710g-fan-control: $*" >&2
+}
+
+find_nct7802() {
+	local hwmon
+
+	if [ -n "$HWMON" ] && [ -d "$HWMON" ]; then
+		printf '%s\n' "$HWMON"
+		return 0
+	fi
+
+	for hwmon in /sys/class/hwmon/hwmon*; do
+		[ -r "$hwmon/name" ] || continue
+		[ "$(cat "$hwmon/name" 2>/dev/null)" = "nct7802" ] || continue
+		printf '%s\n' "$hwmon"
+		return 0
+	done
+
+	return 1
+}
+
+is_uint() {
+	case "$1" in
+		''|*[!0-9]*) return 1 ;;
+		*) return 0 ;;
+	esac
+}
+
+uci_get() {
+	"$UCI_BIN" -q get "$1" 2>/dev/null
+}
+
+read_checked() {
+	[ -r "$1" ] || return 1
+	cat "$1" 2>/dev/null
+}
+
+write_checked() {
+	local path="$1"
+	local expected="$2"
+	local actual
+
+	[ -e "$path" ] && [ -w "$path" ] || {
+		log_msg err "Required fan control attribute is unavailable: $path"
+		return 1
+	}
+
+	printf '%s\n' "$expected" > "$path" 2>/dev/null || {
+		log_msg err "Failed to write $expected to $path"
+		return 1
+	}
+
+	actual="$(read_checked "$path")" || {
+		log_msg err "Failed to read back $path"
+		return 1
+	}
+
+	[ "$actual" = "$expected" ] || {
+		log_msg err "Fan control readback mismatch at $path: expected $expected, got $actual"
+		return 1
+	}
+}
+
+failsafe_full_speed() {
+	[ -n "$HWMON" ] || HWMON="$(find_nct7802 2>/dev/null)" || return 1
+
+	# Use raw best-effort writes here because this is the fallback for a failed
+	# checked write. Manual mode plus PWM 255 is the safest deterministic state.
+	printf '1\n' > "$HWMON/pwm1_enable" 2>/dev/null || true
+	printf '255\n' > "$HWMON/pwm1" 2>/dev/null || true
+	log_msg err "Fan controller entered fail-safe full-speed mode"
+}
+
+load_settings() {
+	local i temp pwm previous_temp=-1 previous_pwm=-1
+
+	MODE="$(uci_get fan.settings.mode)"
+	[ "$MODE" = "manual" ] || MODE="auto"
+	PRESET="$(uci_get fan.settings.curve_preset)"
+	case "$PRESET" in
+		quiet|balanced|performance|custom) ;;
+		*) PRESET="balanced" ;;
+	esac
+
+	MANUAL_PWM="$(uci_get fan.settings.manual_pwm)"
+	POLL_INTERVAL="$(uci_get fan.settings.poll_interval)"
+	HYSTERESIS="$(uci_get fan.settings.hysteresis)"
+	MINIMUM_PWM="$(uci_get fan.settings.minimum_pwm)"
+	FAILSAFE_TEMP="$(uci_get fan.settings.failsafe_temp)"
+
+	is_uint "$MANUAL_PWM" || MANUAL_PWM=127
+	is_uint "$POLL_INTERVAL" || POLL_INTERVAL=5
+	is_uint "$HYSTERESIS" || HYSTERESIS=3
+	is_uint "$MINIMUM_PWM" || MINIMUM_PWM=54
+	is_uint "$FAILSAFE_TEMP" || FAILSAFE_TEMP=88
+
+	[ "$MANUAL_PWM" -le 255 ] &&
+		[ "$POLL_INTERVAL" -ge 1 ] && [ "$POLL_INTERVAL" -le 60 ] &&
+		[ "$HYSTERESIS" -le 15 ] &&
+		[ "$MINIMUM_PWM" -ge 1 ] && [ "$MINIMUM_PWM" -le 255 ] &&
+		[ "$FAILSAFE_TEMP" -ge 70 ] && [ "$FAILSAFE_TEMP" -le 110 ] || {
+			log_msg err "Invalid fan safety settings"
+			return 1
+		}
+
+	for i in 1 2 3 4 5; do
+		temp="$(uci_get "fan.${PRESET}.point${i}_temp")"
+		pwm="$(uci_get "fan.${PRESET}.point${i}_pwm")"
+		is_uint "$temp" && is_uint "$pwm" || {
+			log_msg err "Fan curve $PRESET point $i is not numeric"
+			return 1
+		}
+		[ "$temp" -le 110 ] && [ "$pwm" -le 255 ] &&
+			[ "$pwm" -ge "$MINIMUM_PWM" ] || {
+			log_msg err "Fan curve $PRESET point $i is outside safe limits"
+			return 1
+		}
+		[ "$temp" -gt "$previous_temp" ] && [ "$pwm" -ge "$previous_pwm" ] || {
+			log_msg err "Fan curve $PRESET must have rising temperatures and non-decreasing PWM"
+			return 1
+		}
+		eval "POINT${i}_TEMP=\$temp"
+		eval "POINT${i}_PWM=\$pwm"
+		previous_temp="$temp"
+		previous_pwm="$pwm"
+	done
+
+	[ "$POINT5_PWM" -eq 255 ] || {
+		log_msg err "Fan curve $PRESET must end at full speed"
+		return 1
+	}
+
+	return 0
+}
+
+read_control_temp_millic() {
+	local file value max=-1
+
+	if [ -n "${XR_FAN_TEMP_INPUTS:-}" ]; then
+		set -- $XR_FAN_TEMP_INPUTS
+	else
+		set -- /sys/class/thermal/thermal_zone*/temp \
+			/sys/class/hwmon/hwmon*/temp*_input
+	fi
+
+	for file in "$@"; do
+		[ -r "$file" ] || continue
+		value="$(cat "$file" 2>/dev/null)" || continue
+		is_uint "$value" || continue
+		# Reject disconnected/bogus channels while accepting all plausible SoC,
+		# PHY, switch, Wi-Fi and board temperatures.
+		[ "$value" -ge 10000 ] && [ "$value" -le 120000 ] || continue
+		[ "$value" -gt "$max" ] && max="$value"
+	done
+
+	[ "$max" -ge 0 ] || return 1
+	printf '%s\n' "$max"
+}
+
+raw_step_for_temp() {
+	local temp="$1"
+	local target=1
+	local i threshold
+
+	for i in 2 3 4 5; do
+		eval "threshold=\$POINT${i}_TEMP"
+		[ "$temp" -ge "$threshold" ] && target="$i"
+	done
+
+	printf '%s\n' "$target"
+}
+
+step_with_hysteresis() {
+	local temp="$1"
+	local previous="$2"
+	local target threshold
+
+	target="$(raw_step_for_temp "$temp")"
+	is_uint "$previous" || previous=0
+
+	if [ "$previous" -gt 1 ] && [ "$target" -lt "$previous" ]; then
+		eval "threshold=\$POINT${previous}_TEMP"
+		# A falling temperature must clear the current step by the configured
+		# hysteresis before the fan is allowed to slow down.
+		[ "$temp" -le $((threshold - HYSTERESIS)) ] || target="$previous"
+	fi
+
+	printf '%s\n' "$target"
+}
+
+pwm_for_step() {
+	local pwm
+	eval "pwm=\$POINT${1}_PWM"
+	printf '%s\n' "$pwm"
+}
+
+apply_pwm() {
+	local pwm="$1"
+
+	write_checked "$HWMON/pwm1_enable" 1 &&
+		write_checked "$HWMON/pwm1" "$pwm"
+}
+
+write_state() {
+	local temp="$1"
+	local step="$2"
+	local pwm="$3"
+
+	{
+		printf 'control_temp=%s\n' "$temp"
+		printf 'step=%s\n' "$step"
+		printf 'pwm=%s\n' "$pwm"
+		printf 'mode=%s\n' "$MODE"
+		printf 'preset=%s\n' "$PRESET"
+	} > "$STATE_FILE" 2>/dev/null || true
+}
+
+run_controller() {
+	local temp_millic temp step=0 pwm last_pwm='' iterations=0
+
+	HWMON="$(find_nct7802)" || {
+		log_msg err "NCT7802 fan controller was not found"
+		return 1
+	}
+
+	load_settings || {
+		failsafe_full_speed
+		return 1
+	}
+
+	trap 'exit 0' TERM INT
+	trap 'failsafe_full_speed' EXIT
+
+	while :; do
+		temp_millic="$(read_control_temp_millic)" || {
+			failsafe_full_speed
+			sleep "$POLL_INTERVAL"
+			continue
+		}
+		temp=$(((temp_millic + 500) / 1000))
+
+		if [ "$temp" -ge "$FAILSAFE_TEMP" ]; then
+			step=5
+			pwm=255
+		elif [ "$MODE" = "manual" ]; then
+			step=0
+			pwm="$MANUAL_PWM"
+		else
+			step="$(step_with_hysteresis "$temp" "$step")"
+			pwm="$(pwm_for_step "$step")"
+		fi
+
+		if [ "$pwm" != "$last_pwm" ]; then
+			if apply_pwm "$pwm"; then
+				last_pwm="$pwm"
+			else
+				failsafe_full_speed
+				last_pwm=''
+			fi
+		fi
+
+		write_state "$temp" "$step" "${last_pwm:-255}"
+
+		iterations=$((iterations + 1))
+		if [ "${XR_FAN_MAX_ITERATIONS:-0}" -gt 0 ] 2>/dev/null &&
+			[ "$iterations" -ge "$XR_FAN_MAX_ITERATIONS" ]; then
+			trap - EXIT
+			return 0
+		fi
+		sleep "$POLL_INTERVAL"
+	done
+}
+
+main() {
+	case "${1:-run}" in
+		run) run_controller ;;
+		*) printf 'usage: %s run\n' "$0" >&2; return 2 ;;
+	esac
+}
+
+[ "${XR_FAN_LIB_ONLY:-0}" = "1" ] || main "$@"

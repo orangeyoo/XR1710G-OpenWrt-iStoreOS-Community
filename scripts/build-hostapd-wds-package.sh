@@ -46,6 +46,10 @@ git -C feeds/luci restore --source=HEAD --worktree --staged -- \
 	modules/luci-base/po/zh_Hans/base.po
 
 cp /builder/feeds.d/openwrt feeds.conf
+./scripts/feeds update -a
+./scripts/feeds uninstall -a >/dev/null 2>&1 || true
+/builder/scripts/prepare-istore-feed.sh
+./scripts/feeds install -a
 cp -a /builder/files/. files/
 cp -a /builder/apps/. package/
 cp /builder/configs/openwrt.config .config
@@ -64,7 +68,9 @@ fi
 # Force package preparation so the baseline fix is proven in the prepared
 # source rather than accepting a stale cached worktree.
 make package/network/services/hostapd/clean
-make package/network/services/hostapd/compile -j16 V=sc
+BUILD_JOBS="$(sh "$GITHUB_WORKSPACE/scripts/detect-build-jobs.sh")"
+echo "Using $BUILD_JOBS parallel build jobs (override with XR_BUILD_JOBS)"
+make package/network/services/hostapd/compile -j"$BUILD_JOBS" V=sc
 
 hostapd_source="$(find build_dir/target-aarch64_cortex-a53_musl \
 	-type f -path '*/src/drivers/driver_nl80211_event.c' \

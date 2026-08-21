@@ -1,86 +1,80 @@
-# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.4.0
 
 **Languages:** [English (this page)](README-EN.md) | [中文](README.md) | [Bilingual Flashing Guide](FLASHING-GUIDE.md)
 
 **Gemtek XR1710G, Airoha AN7581, MediaTek MT7996, OpenWrt, iStoreOS, Wi-Fi 7, and 6GHz 802.11s Mesh.**
 
-This is an unofficial community port for the **Econet/Gemtek XR1710G (Airoha AN7581 + MT7996)**. It builds on the board support from [YYH2913/openwrt](https://github.com/YYH2913/openwrt) and integrates iStore, QuickStart, Argon, OpenClash, upstream OpenWrt Docker packages, and XR1710G status and diagnostic components following the public modular approach used by iStoreOS.
+This is an unofficial community port for the **Econet/Gemtek XR1710G (Airoha AN7581 + MT7996)**. It builds on [YYH2913/openwrt](https://github.com/YYH2913/openwrt) board support and integrates iStore, QuickStart, Argon, OpenClash, PassWall2, upstream OpenWrt Docker packages, and XR1710G status and diagnostic components.
 
-It is not an official release from LinkEase/iStoreOS, OpenWrt, Gemtek, Airoha, or MediaTek. It is only for the XR1710G and must not be flashed to visually similar devices or other Airoha/MediaTek hardware.
+This project is not an official release from LinkEase/iStoreOS, OpenWrt, Gemtek, Airoha, or MediaTek. It is only for the XR1710G and must not be flashed to visually similar devices or other Airoha/MediaTek hardware.
 
-## v1.2.0 pre-release highlights
+## What is new in v1.4.0
 
-> The underlying changes and features were exercised on two physical units through runtime hot fixes, wireless checks, and two-node testing. The final Recovery and Sysupgrade images also passed the complete offline image gate. The owner chose not to reflash these final ITB files for another post-flash run, so this build is published as a **Pre-release** and does not claim final-image post-flash acceptance.
+- Fixes the LAN editor crash and static IPv4 CIDR persistence. A bare LAN address is safely normalized to `/24`; the back-end guard also converts legacy `ipaddr + netmask` data so LAN and DHCP do not disappear after a reboot.
+- Fixes the home page being redirected to **Status → Overview**. iStoreX/QuickStart home routes no longer depend on service-start timing.
+- Replaces competing fan services with one controller, including a low-temperature minimum stable step, staged speed increases, hysteresis, and sensor-failure fallback.
+- Makes Dockerman compatible with the Moby 29 information structure. A stopped Docker service now shows a clear state and enable action instead of raw nested JSON.
+- Removes GlassTheme and its Chinese package. A clean installation defaults to Argon, while Sysupgrade preserves the theme already selected by the owner.
+- Sets the clean-install 6GHz template to `US / channel 37 / EHT160 / 802.11s / network=lan`. No SAE key is preset, so the interface remains disabled until both nodes have a matching Mesh ID and key.
+- Preserves the ingress netdev on the MT7996 NPU RX path so bridge/FDB software fallback retains the correct context after a PPE cache miss. The accurate boundary is “wired Airoha PPE offload plus MT7996 Wi-Fi NPU queues”; no unverified end-to-end 802.11s PPE bypass is included.
+- Adds bridge/PPE protection for router-local traffic after a 10G uplink is active. Local-FDB, router-destination, and same-ingress reinjection flows are not bound back to 10G GDM4, while ordinary wired forwarding and NAT/PPE offload remain available.
+- Preinstalls `kmod-nft-fullcone` with matching libnftnl/nftables/firewall4/LuCI support. Full Cone stays disabled by default, cannot bypass CGNAT or double NAT, and does not guarantee NAT Type 1.
+- Preinstalls PassWall2 `26.8.20`, Xray `26.7.28`, sing-box `1.13.19`, and the firewall4-native nftables transparent-proxy path. PassWall2 is disabled by default; do not enable it together with OpenClash.
+- Strengthens first-boot credential checks: the initial administrator password is `password`; 2.4/5GHz have no preset Wi-Fi password, while the empty-key 6GHz Mesh template remains disabled.
 
-- Updates to Linux 6.18.41 and the refreshed YYH2913 AN7581 Ethernet, PCIe, PHY, and PPE baseline; hostapd moves to 2026-07-09 and uses the AP-WDS multi-BSS event fix already carried by that baseline.
-- Adds MT7996 operating-mode/NSS propagation and XR1710G-specific NAPI/TX worker distribution. A clean install defaults to the performance governor; another kernel-advertised governor selected on the Airoha page is persisted and replayed on later boots.
-- Prevents periodic inactivity eviction of active 5GHz clients with `max_inactivity=86400` and `disassoc_low_ack=0`. The final default is channel 36/EHT80, which passed the zero-loss UDP and game-stability checks.
-- Removes all preset terminal-Wi-Fi passwords. The empty-key 6GHz SAE Mesh template is disabled until the owner sets a key.
-- Corrects disabled PPPoE/VLAN offload wording and hides internal interfaces from ordinary port status. The recovery page always provides iStoreOS factory reset and shows U-Boot Recovery only when a verified one-shot software trigger exists.
-
-## v1.1.0 released fixes
-
-- Platform-wide reliability fixes for the Airoha SoC/NPU, FlowSense, and fan pages: shared caching, per-item locks, stale-lock recovery, and graceful degradation. LuCI request paths no longer poll physical registers through `devmem`.
-- Fixes the reported LuCI session failure after opening a status page; repeated snapshots and browser sessions passed on two physical units.
-- Fixes unplugged Ethernet ports being reported as connected or showing a negotiated speed by using physical `carrier` as the source of truth.
-- iStore install, upgrade, self-update, and direct APK transactions now run `--simulate` first, leaving the package database unchanged when dependencies cannot be resolved.
-- Preinstalls upstream OpenWrt Moby, containerd, runc, docker-compose, and Dockerman. Docker is stopped and disabled by default; iStore, Dockerman, and the CLI share `/etc/config/dockerd`, `/var/run/docker.sock`, and `/overlay/docker/`.
-- Dockerman shows a clear stopped-state message and an enable action instead of only exposing a socket error.
-- Brings up the physical WAN device before link detection and restores dnsmasq autostart during main-router role activation.
-- Adds an opt-in XZ composite laboratory profile with complete Chinese and English shared-PHY/no-AFC warnings. Standard US/AU entries are unchanged, and XZ is disabled by default.
-
-See [CHANGES-v1.md](CHANGES-v1.md) for the full change list and [ATTRIBUTION.md](ATTRIBUTION.md) for source and license boundaries.
+See [CHANGES-v1.md](CHANGES-v1.md) for detailed changes and [ATTRIBUTION.md](ATTRIBUTION.md) for source and license boundaries.
 
 ## Core features
 
 - Linux 6.18.41 with XR1710G AN7581 device tree, NAND/UBI 2.0, Ethernet, PPE, and NPU support.
-- Pinned XR1710G mt76/MT7996 adaptation commit `b2704cf5`.
-- Tri-band 2.4/5/6GHz Wi-Fi 7 and WPA3-SAE 802.11s Mesh.
-- hostapd AP-WDS multi-BSS event-routing fix. WDS is supplementary and is not the default backhaul.
-- MLO is disabled by default; the recommended stable backhaul remains single-hop 802.11s.
-- iStore, iStoreX, QuickStart, Argon, OpenClash, Nikki, EqosPlus, and diagnostic pages.
-- Default management address `192.168.50.1/24`, reducing conflicts with common `192.168.1.1` optical modems.
-- `/usr/sbin/xr1710g-role` for preparing main-router and node roles without automatically switching the network path or rebooting.
-- `/usr/sbin/xr1710g-mesh-diag` for Mesh, signal, PHY rate, retry, temperature, and log summaries.
+- Pinned XR1710G mt76/MT7996 adaptation commit `b2704cf5`; hostapd baseline 2026-07-09 `f08f2749`.
+- Tri-band 2.4/5/6GHz Wi-Fi 7 and WPA3-SAE 802.11s Mesh; MLO is disabled by default.
+- WDS/AP-WDS is supplementary and is not the default backhaul. The recommended backhaul remains single-hop 802.11s.
+- iStore, iStoreX, QuickStart, Argon, OpenClash, PassWall2, Nikki, EqosPlus, and diagnostic pages.
+- Upstream OpenWrt Moby, containerd, runc, docker-compose, and Dockerman. Docker is stopped and disabled by default.
+- Default management address `192.168.50.1/24`, reducing conflicts with optical modems commonly using `192.168.1.1`.
+- `/usr/sbin/xr1710g-role` prepares main-router and node roles without automatically switching the network path or rebooting.
+- `/usr/sbin/xr1710g-mesh-diag` produces privacy-reduced Mesh, signal, PHY-rate, retry, temperature, and log summaries.
 
 ## Default wireless policy
 
-On a clean first boot, wireless defaults are applied only after the driver is ready:
+Wireless defaults are applied on a clean first boot only after the driver is ready:
 
-- 2.4GHz: US, automatic channel, HE20, requested 28dBm; SSID `XR1710G`, open on first boot with no preset password.
-- 5GHz: US, channel 36, EHT80, requested 29dBm; SSID `XR1710G-5G`, open on first boot with no preset password, plus 802.11k/v/r and the inactivity fix.
-- 6GHz: US, PSC channel 37, EHT320, requested 28dBm, WPA3-SAE 802.11s Mesh template. It has no preset key and is therefore disabled initially.
+- 2.4GHz: US, automatic channel, HE20, requested 28dBm; SSID `XR1710G`, initially open with no preset password.
+- 5GHz: US, channel 36, EHT80, requested 29dBm; SSID `XR1710G-5G`, initially open with no preset password, with 802.11k/v/r and the active-client inactivity protection.
+- 6GHz: US, PSC channel 37, EHT160, requested 28dBm, WPA3-SAE 802.11s Mesh template attached to `lan`. It has no preset key and is disabled initially.
 
-Immediately configure encryption and passwords for 2.4/5GHz after first login. Mixed WPA/WPA2 Personal can be selected on 2.4GHz when older devices require it. Configure the same Mesh ID, SAE key, channel, width, and regulatory profile on both routers before enabling 6GHz; a legal 6GHz SAE backhaul cannot start with an empty key.
+Immediately replace the administrator password and configure encryption for 2.4/5GHz after the first login. Mixed WPA/WPA2 Personal may be selected on 2.4GHz when older devices require it. Configure the same Mesh ID, SAE key, channel, width, and regulatory profile on both routers before enabling 6GHz.
 
-All three XR1710G bands share one Linux PHY, so the kernel ultimately applies one regulatory domain. The three LuCI radios cannot be treated as independent country domains. Standard country profiles retain their original regulatory database rules.
+All three XR1710G bands share one Linux PHY, so the kernel ultimately applies one regulatory domain. The radios cannot be treated as three independent country-code devices. Standard US/AU profiles use the original regdb rules.
 
 ### XZ laboratory profile
 
-XZ is an opt-in composite laboratory profile: 2.4/5GHz use pinned AU-derived rules, while 6GHz adds an experimental 36dBm no-AFC rule. XZ is not a country domain. This firmware does not implement AFC and does not grant Standard Power authority. XZ is disabled by default and is intended only for controlled laboratory work or specifically authorized testing. The user is responsible for complying with local laws, channels, and power limits. Actual transmit power remains constrained by the driver, firmware, and Factory calibration; selecting a 36dBm limit does not mean the hardware will transmit at 36dBm.
+XZ is an opt-in composite laboratory profile: 2.4/5GHz use fixed AU-derived rules and 6GHz adds a 36dBm no-AFC experimental rule. XZ is not a country regulatory domain, the firmware does not implement AFC, and it grants no Standard Power authorization. It is disabled by default and is only for controlled laboratory work or testing with the required authorization. Users must comply with local channel and power rules. Actual output remains limited by the driver, firmware, and Factory calibration.
 
-## Two-unit hardware validation
+## Physical validation scope
 
-The two units were installed about five metres apart on different floors, across a wooden staircase and a concrete floor, with the upstairs node in the second-floor living room. With XZ/channel 37/EHT320 selected manually:
+Both v1.4.0 Recovery and Sysupgrade images passed the complete content gate. Critical rootfs content and checks for the wireless template, Argon, LAN CIDR, Dockerman, Full Cone, PassWall2, and the NPU fix agree between the two images.
 
-- 6GHz 802.11s remained `ESTAB`, with signal around `-63 to -67dBm`.
-- The 30-second bidirectional baseline was approximately `716/735Mbps`.
-- Twenty bidirectional four-stream runs over roughly ten minutes produced medians of `715/720Mbps` and minima of `678/671Mbps`; every run exceeded 400Mbps.
-- Two 600-packet idle Ping tests after load both had 0% loss, averaging about 2ms.
-- Across tens of millions of transmitted packets, `tx failed` increased by only 1/3 and driver retry rates were about 3.36%/2.10%.
-- Peak temperatures were about 56.3/59.3 degrees C. No `airtime_link_metric_get`, MT7996 reset/timeout/crash, MCU timeout, firmware crash, Call Trace, kernel panic, or reboot occurred.
+During the isolated 10G test:
 
-The iperf3 endpoints ran on the routers, with peak CPU around 44.8%. These figures validate backhaul stability and are not a claim of maximum throughput between two external 2.5GbE clients. Results vary with placement, construction, interference, and regulatory settings.
+- XR1710G `wan` negotiated 10Gbps Full and `lan1` negotiated 5Gbps Full with the test NAS.
+- A 15-second, four-stream TCP test measured about 3.85Gbps from XR to NAS and 1.69Gbps from NAS to XR.
+- Both ports ended with `rx/tx errors=0`, with no new Link Down, watchdog, DMA/NPU timeout, firmware crash, or kernel panic.
 
-## Router, node, and roaming setup
+These results establish carrier and direct local-endpoint transfer stability with the tested cable and peer. They are not a guarantee for every switch, ISP, routed/NAT, or heterogeneous bridge topology.
 
-The same image does not guess which unit should become the main router. Two clean units both start at `192.168.50.1` with DHCP enabled, so configure them one at a time:
+An earlier two-node wireless validation used one unit upstairs and one downstairs, approximately five metres apart across a wooden staircase and concrete floor. With XZ/channel 37/EHT320 selected manually, 20 bidirectional four-stream tests over about ten minutes had medians near 715/720Mbps and minima near 678/671Mbps; two post-load 600-packet Ping runs had 0% loss. This is a result for that placement and manual EHT320 configuration, not a throughput promise for the default EHT160 template or every environment.
 
-1. Keep a non-conflicting LAN address and DHCP on the main router. Configure DHCP/PPPoE only on the dedicated WAN interface; never turn LAN into PPPoE.
-2. Give the node a static address in the same subnet, such as `192.168.50.2`; disable its DHCPv4, RA, and DHCPv6 servers; and point its gateway/DNS to the main router.
-3. Configure identical 2.4/5GHz SSIDs, encryption modes, and passwords on both units. Settings are not automatically synchronized.
-4. Configure identical 6GHz Mesh ID, SAE key, channel, width, and regulatory profile on both units.
-5. Keep wired management available until `mesh plink: ESTAB` is confirmed, then disconnect the node cable.
+## Two-node roles and Mesh
+
+The image does not guess which unit should be the main router. Two clean units both start at `192.168.50.1` with DHCP enabled, so configure them one at a time:
+
+1. Keep a non-conflicting LAN address and DHCP on the main router, and configure Internet access only on the dedicated WAN interface.
+2. Give the node a static address in the same subnet, such as `192.168.50.2/24`; disable its DHCPv4, RA, and DHCPv6 servers, then point its gateway and DNS to the main router.
+3. Configure the same 2.4/5GHz SSIDs, encryption, and passwords on both units. These settings are not synchronized automatically.
+4. Configure the same 6GHz Mesh ID, SAE key, channel, width, and regulatory profile on both units.
+5. Keep Ethernet management connected until `mesh plink: ESTAB` is confirmed.
 
 Role-tool examples:
 
@@ -91,41 +85,38 @@ xr1710g-role main-pppoe 192.168.50.1/24
 xr1710g-role node 192.168.50.2/24 192.168.50.1
 ```
 
-The tool backs up UCI and commits configuration, but does not automatically reload networking/wireless or reboot. PPPoE passwords are read through hidden terminal input and are not written to command history.
+The tool backs up UCI and commits configuration only; it does not reload networking or wireless and does not reboot. The detailed Mesh guide is available in Chinese at [MESH-GUIDE-ZH.md](MESH-GUIDE-ZH.md).
 
 ## Docker
 
-This project does not implement a private Docker engine. The firmware only preinstalls the upstream packages supplied through OpenWrt feeds: Moby `dockerd`/CLI, containerd, runc, docker-compose, and luci-app-dockerman.
+This project does not provide a custom Docker engine. It preinstalls the open-source Moby, containerd, runc, docker-compose, and luci-app-dockerman packages from OpenWrt feeds.
 
-- Installed, stopped, and disabled by default.
-- Starts only after the user enables it through iStore or Dockerman.
-- iStore, Dockerman, and the command line control the same `/etc/init.d/dockerd` service.
-- The data root is `/overlay/docker/` on the roughly 311MiB overlay, not a separate large disk. External storage is recommended for many images or containers.
+- Installed by default, but stopped and disabled.
+- Starts only after the owner enables it through iStore, Dockerman, or the CLI.
+- All three paths control the same `/etc/init.d/dockerd`, `/etc/config/dockerd`, and `/var/run/docker.sock`.
+- The data root is `/overlay/docker/`; use external storage for large image and container collections.
 
-## Flashing
+## Release files
 
-Read the [bilingual flashing guide](FLASHING-GUIDE.md). The Release contains only four required downloads: the validated YYH2913 U-Boot, one Sysupgrade system image, SHA256SUMS, and the bilingual guide.
+The formal Release contains only the required files:
 
-For a normal install through YYH2913 HTTP U-Boot, open `http://192.168.255.1/`, choose **Firmware + UBI 2.0 - 439 MiB**, and upload `xr1710g-community-v1.2.0-sysupgrade.itb`. Do not use an initramfs development image as the normal installer.
+| File | Purpose |
+|---|---|
+| `xr1710g-community-v1.4.0-sysupgrade.itb` | Preferred image for compatible web upgrades and permanent installation through compatible HTTP U-Boot |
+| `xr1710g-community-v1.4.0-recovery.itb` | Temporary rescue/recovery image; it does not replace permanent Sysupgrade installation |
+| `xr1710g-uboot-flash-slot.bin` | Hardware-validated compatible build based on YYH2913 HTTP U-Boot, with paced large uploads and safe interrupted-upload cleanup; flash only when a U-Boot update is needed |
+| `SHA256SUMS.txt` | Integrity checks; never flash this file |
+| `FLASHING-GUIDE.md` | Bilingual file-purpose and flashing guide |
 
-The device must use the matching XR1710G UBI 2.0 layout:
+Read [FLASHING-GUIDE.md](FLASHING-GUIDE.md) before flashing. Prefer `xr1710g-community-v1.4.0-sysupgrade.itb` from a compatible OpenWrt/iStoreOS system or from the compatible HTTP U-Boot **Firmware + UBI 2.0 - 439 MiB** page. Never flash a system ITB into the U-Boot slot.
 
-| Partition | Start | Size |
-|---|---:|---:|
-| `vendor` | `0x00000000` | `0x00600000` |
-| `chainloader` | `0x00600000` | `0x00100000` |
-| `ubi` | `0x00700000` | `0x1b700000` |
-| `reserved_bmt` | `0x1be00000` | `0x04200000` |
-
-Do not modify or copy Factory, EEPROM, caldata, MAC, or wireless calibration data from another device. First boot uses `192.168.50.1`, user `root`, and an empty password. Connect by Ethernet and set an administrator password immediately.
+The initial address is `192.168.50.1`, the user is `root`, and the initial password is `password`. Connect one unit by Ethernet and immediately replace the administrator password and configure wireless encryption.
 
 ### Switching the UI to English
 
-The first-boot UI is Simplified Chinese. Open **System -> System -> Language and Style**, select **English**, and click **Save & Apply**. Changing the UI language does not alter WAN, LAN, Wi-Fi, or Mesh settings.
+The first-boot UI is Simplified Chinese. Open **System → System → Language and Style**, select **English**, and click **Save & Apply**.
 
-## Build and verification
-
-The build pins its base and feed commits and checks source anchors, RPC safety, iStore transaction preflight, QuickStart physical-link logic, recovery/sysupgrade image consistency, image types, and release hygiene.
+## Build
 
 ```sh
 docker volume create xr1710g-istoreos-final
@@ -135,20 +126,15 @@ docker run --name xr1710g-istoreos-build-final \
   ubuntu:22.04 bash /builder/scripts/build-local-docker.sh
 ```
 
-Important files:
+Key entry points:
 
 - `configs/openwrt.config`: pinned build configuration.
-- `feeds.d/openwrt`: pinned upstream feed commits.
+- `feeds.d/openwrt`: pinned upstream feeds commit.
 - `diy-part2.d/openwrt.sh`: XR1710G/iStoreOS community integration.
-- `patches/`: OpenWrt, LuCI, package, and regulatory patches.
-- `scripts/test-status-and-istore-safety.sh`: status, physical-link, and iStore transaction-safety tests.
-- `scripts/verify-xr1710g-build.sh`: final image gate.
-- `uboot/`: YYH2913 U-Boot source and independent experimental patch notes.
+- `patches/`: OpenWrt, LuCI, package, and kernel patches.
+- `scripts/prebuild-xr1710g-release.sh`: source release gate.
+- `scripts/verify-xr1710g-build.sh`: final Recovery/Sysupgrade image gate.
 
-## Upstream projects and licenses
+## Upstreams and licenses
 
-This project uses and credits work from YYH2913/openwrt, YYH2913/http-uboot, naoki66/ImmortalWrt-for-Gemtek-XR1710G, OpenWrt, mt76, hostapd, iStoreOS, iStore/iStoreX, QuickStart, OpenClash, Argon, Nikki, sirpdboy/EqosPlus, and Airoha/MediaTek upstream projects. See [ATTRIBUTION.md](ATTRIBUTION.md) for pinned commits, purposes, and licenses. Third-party components remain under their respective licenses, and this project does not imply endorsement by those upstream projects.
-
-## Reporting an issue
-
-Include the hardware batch, main-router/node role, regulatory profile, 6GHz channel and width, placement distance, and the relevant summaries from `xr1710g-mesh-diag`, `dmesg`, `iw dev`, and `ubus call network.wireless status`.
+This project uses and credits YYH2913/openwrt, YYH2913/http-uboot, naoki66/ImmortalWrt-for-Gemtek-XR1710G, OpenWrt, mt76, hostapd, iStoreOS, iStore/iStoreX, QuickStart, OpenClash, PassWall2, Argon, Nikki, sirpdboy/EqosPlus, and Airoha/MediaTek upstream work. See [ATTRIBUTION.md](ATTRIBUTION.md) for pinned revisions, purposes, and license boundaries. Each third-party component remains under its own license; inclusion does not imply endorsement.

@@ -1,0 +1,109 @@
+From: XR1710G Community <xr1710g-community@localhost>
+Date: Fri, 21 Aug 2026 18:00:00 +0800
+Subject: [PATCH] net: airoha: keep local bridge traffic out of PPE fallback
+
+The Airoha L2-cache-miss fallback asks the Linux bridge for an egress
+path before deciding whether an unbound packet may be committed to PPE.
+That lookup is valid for forwarded traffic, but a bridge-local FDB entry
+also carries a destination port.  When the bridge and a direct GDM port
+share a MAC address, the local entry can therefore look like a normal
+forwarding path and bind traffic addressed to the router back to the
+physical port.
+
+Reject local FDB entries in the bridge forward-path helper.  Add a
+second, driver-local safety boundary that refuses bridge-master and
+egress-device addresses as well as same-ingress hairpin paths.  All
+rejected cases fall back to the normal CPU path; ordinary routed/NAT and
+bridge forwarding flows remain eligible for PPE.
+
+The failure was independently reproduced on Gemtek XR1710G with a
+direct 10G GDM port after hardware flow offload became active:
+
+Link: https://github.com/naoki66/ImmortalWrt-for-Gemtek-XR1710G/issues/17
+---
+ drivers/net/ethernet/airoha/airoha_ppe.c | 21 ++++++++++++++++++---
+ net/bridge/br_device.c                   |  2 +-
+ 2 files changed, 19 insertions(+), 4 deletions(-)
+
+--- a/drivers/net/ethernet/airoha/airoha_ppe.c
++++ b/drivers/net/ethernet/airoha/airoha_ppe.c
+@@ -4,6 +4,7 @@
+  * Author: Lorenzo Bianconi <lorenzo@kernel.org>
+  */
+ 
++#include <linux/etherdevice.h>
+ #include <linux/ip.h>
+ #include <linux/ipv6.h>
+ #include <linux/kstrtox.h>
+@@ -1247,43 +1248,57 @@ airoha_ppe_foe_prepare_bridge_subflow(struct airoha_ppe *ppe,
+ 	struct net_device_path_stack stack;
+ 	struct ethhdr *eh = eth_hdr(skb);
+ 	struct airoha_flow_data data = {};
+ 	struct net_device *master, *egress;
++	u8 daddr[ETH_ALEN + 2] = {};
+ 	int err;
+ 
+ 	if (!is_valid_ether_addr(eh->h_source) ||
+ 	    !is_valid_ether_addr(eh->h_dest))
+ 		return false;
+ 
+-	ether_addr_copy(data.eth.h_dest, eh->h_dest);
++	ether_addr_copy(daddr, eh->h_dest);
++	ether_addr_copy(data.eth.h_dest, daddr);
+ 	ether_addr_copy(data.eth.h_source, eh->h_source);
+ 
+ 	if (!skb->dev)
+ 		return false;
+ 
+ 	/* Unbound hits can arrive before flowtable creates the L2 master flow
+ 	 * normally used for subflow binding. Start at the bridge master so the
+ 	 * FDB selects the destination port instead of reusing the ingress AP.
+ 	 */
+ 	master = airoha_ppe_foe_get_bridge_master(skb->dev);
+ 	if (!master)
+ 		return false;
+ 
++	/* A local bridge address must stay on the CPU path.  A bridge FDB
++	 * local entry can still carry a physical dst when ports share a MAC.
++	 */
++	if (is_etherdev_addr(master, daddr)) {
++		dev_put(master);
++		return false;
++	}
++
+ 	rcu_read_lock();
+-	err = dev_fill_forward_path(master, eh->h_dest, &stack);
++	err = dev_fill_forward_path(master, daddr, &stack);
+ 	if (err || stack.num_paths < 2 ||
+ 	    stack.path[0].type != DEV_PATH_BRIDGE) {
+ 		rcu_read_unlock();
+ 		dev_put(master);
+ 		return false;
+ 	}
+ 
+ 	/* The path immediately below the bridge is the real egress port. It
+ 	 * can be an AP netdev (resolved to WDMA by entry_prepare), a direct
+ 	 * GDM netdev, or a DSA user port.
+ 	 */
+ 	egress = (struct net_device *)stack.path[1].dev;
+-	if (!egress) {
++	/* Never turn a local port address or same-port hairpin into a PPE
++	 * bridge binding.  The software bridge remains the safe fallback.
++	 */
++	if (!egress || egress == skb->dev ||
++	    is_etherdev_addr(egress, daddr)) {
+ 		rcu_read_unlock();
+ 		dev_put(master);
+ 		return false;
+ 	}
+--- a/net/bridge/br_device.c
++++ b/net/bridge/br_device.c
+@@ -397,7 +397,7 @@ static int br_fill_forward_path(struct net_device_path_ctx *ctx,
+ 	br_vlan_fill_forward_path_pvid(br, ctx, path);
+ 
+ 	f = br_fdb_find_rcu(br, ctx->daddr, path->bridge.vlan_id);
+-	if (!f)
++	if (!f || test_bit(BR_FDB_LOCAL, &f->flags))
+ 		return -1;
+ 
+ 	dst = READ_ONCE(f->dst);

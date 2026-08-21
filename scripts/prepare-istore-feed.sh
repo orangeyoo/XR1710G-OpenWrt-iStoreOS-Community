@@ -5,6 +5,8 @@ makefile="feeds/istore/luci/luci-app-store/Makefile"
 is_opkg="feeds/istore/luci/luci-app-store/root/bin/is-opkg"
 quickstart_js="feeds/linkease_nas_luci/luci/luci-app-quickstart/htdocs/luci-static/quickstart/index.js"
 quickstart_template="feeds/linkease_nas_luci/luci/luci-app-quickstart/luasrc/view/quickstart/main.htm"
+istore_feed="feeds/linkease_nas_luci"
+home_routes_patch="${GITHUB_WORKSPACE:-/builder}/patches/istore/0300-keep-home-routes-independent-of-quickstart-startup.patch"
 old='LUCI_DEPENDS+=$(if $(CONFIG_USE_APK),+apk +luci-compat,+opkg)'
 new='LUCI_DEPENDS+=+USE_APK:apk +USE_APK:luci-compat +!USE_APK:opkg'
 adguard_patch="${GITHUB_WORKSPACE:-/builder}/patches/packages/0200-adguardhome-do-not-autostart-unconfigured.patch"
@@ -52,6 +54,38 @@ python3 "$(dirname "$0")/patch-quickstart-link-state.py" "$quickstart_js" "$quic
 ! grep -Fq '.linkState=="DOWN"' "$quickstart_js"
 [ "$(grep -Fo '["wan","lan1","lan2","lan3"].includes(x.name)' "$quickstart_js" | wc -l)" -eq 2 ]
 grep -Fq 'index.js?v=xr-portfilter2' "$quickstart_template"
+
+[ -f "$home_routes_patch" ] || {
+	echo "QuickStart/iStoreX home routing patch not found: $home_routes_patch" >&2
+	exit 1
+}
+home_routes_controller="luci/luci-app-istorex/luasrc/controller/istorex.lua"
+quickstart_controller="luci/luci-app-quickstart/luasrc/controller/quickstart.lua"
+for controller in "$home_routes_controller" "$quickstart_controller"; do
+	[ -f "$istore_feed/$controller" ] || {
+		echo "Home controller not found: $istore_feed/$controller" >&2
+		exit 1
+	}
+done
+if grep -Fq 'pgrep quickstart' \
+	"$istore_feed/$home_routes_controller" \
+	"$istore_feed/$quickstart_controller" ||
+	grep -Fq 'redirect_fallback' \
+		"$istore_feed/$home_routes_controller" \
+		"$istore_feed/$quickstart_controller"; then
+	git -C "$istore_feed" apply --check "$home_routes_patch"
+	git -C "$istore_feed" apply "$home_routes_patch"
+fi
+! grep -Fq 'pgrep quickstart' \
+	"$istore_feed/$home_routes_controller" \
+	"$istore_feed/$quickstart_controller"
+! grep -Fq 'redirect_fallback' \
+	"$istore_feed/$home_routes_controller" \
+	"$istore_feed/$quickstart_controller"
+grep -Fq 'entry({"admin", "istorex"}, call("istorex_template"))' \
+	"$istore_feed/$home_routes_controller"
+grep -Fq 'entry({"admin", "quickstart"}, template("quickstart/home")' \
+	"$istore_feed/$quickstart_controller"
 
 [ -f "$adguard_patch" ] || {
 	echo "AdGuard Home policy patch not found: $adguard_patch" >&2

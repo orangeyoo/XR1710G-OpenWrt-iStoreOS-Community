@@ -50,6 +50,32 @@ delete_if_present() {
 	uci -q delete "$1" >/dev/null 2>&1 || true
 }
 
+safeguard_discovered_6g() {
+	local radio iface current key_line changed
+
+	changed=0
+	for radio in $(radios_for_band 6g); do
+		for iface in $(ifaces_for_radio "$radio"); do
+			current="$(uci -q get wireless."$iface".disabled 2>/dev/null || true)"
+			if [ "$current" != '1' ]; then
+				uci -q set wireless."$iface".disabled='1'
+				changed=1
+			fi
+
+			# mac80211 discovery may emit an explicit empty key. Remove only
+			# that unsafe placeholder; preserve any non-empty owner value.
+			key_line="$(uci -q show wireless."$iface".key 2>/dev/null || true)"
+			if [ -n "$key_line" ] &&
+				[ -z "$(uci -q get wireless."$iface".key 2>/dev/null || true)" ]; then
+				delete_if_present wireless."$iface".key
+				changed=1
+			fi
+		done
+	done
+
+	[ "$changed" -eq 0 ] || uci -q commit wireless
+}
+
 apply_ap_common() {
 	local iface="$1"
 
@@ -118,8 +144,9 @@ apply_policy() {
 
 	for radio in $(radios_for_band 6g); do
 		uci -q set wireless."$radio".country='US'
+		uci -q set wireless."$radio".band='6g'
 		uci -q set wireless."$radio".channel='37'
-		uci -q set wireless."$radio".htmode='EHT320'
+		uci -q set wireless."$radio".htmode='EHT160'
 		uci -q set wireless."$radio".txpower='28'
 		uci -q set wireless."$radio".eht_su_beamformer='1'
 		uci -q set wireless."$radio".eht_mu_beamformer='1'
@@ -128,6 +155,7 @@ apply_policy() {
 		uci -q set wireless."$radio".he_bss_color='1'
 		for iface in $(ifaces_for_radio "$radio"); do
 			uci -q set wireless."$iface".mode='mesh'
+			uci -q set wireless."$iface".network='lan'
 			delete_if_present wireless."$iface".ssid
 			delete_if_present wireless."$iface".owe_groups
 			uci -q set wireless."$iface".mesh_id='XR1710G-6G-BACKHAUL'
@@ -163,6 +191,11 @@ while :; do
 	if command -v wifi >/dev/null 2>&1; then
 		wifi config >/dev/null 2>&1 || true
 	fi
+
+	# Fail closed even if mt7996 discovery is only partly complete.  A newly
+	# discovered 6 GHz OWE AP must never remain enabled while another band is
+	# still missing and the full policy is waiting to retry.
+	safeguard_discovered_6g
 
 	if wireless_is_complete; then
 		apply_policy

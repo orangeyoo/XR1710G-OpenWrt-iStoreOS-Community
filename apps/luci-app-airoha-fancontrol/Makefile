@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-airoha-fancontrol
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_MAINTAINER:=XR1710G Maintainer
 PKG_LICENSE:=GPL-2.0-or-later
@@ -30,6 +30,10 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./root/etc/init.d/fan $(1)/etc/init.d/
 
+	# Install the single checked stepped-curve controller
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_BIN) ./root/usr/sbin/xr1710g-fan-control $(1)/usr/sbin/
+
 	# Install RPC backend script (executable)
 	$(INSTALL_DIR) $(1)/usr/libexec/rpcd
 	$(INSTALL_BIN) ./root/usr/libexec/rpcd/luci.fan $(1)/usr/libexec/rpcd/
@@ -45,17 +49,25 @@ endef
 
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
-[ -n "$${IPKG_INSTROOT}" ] && exit 0
 
-# Enable and start the fan service
-/etc/init.d/fan enable 2>/dev/null
-/etc/init.d/fan start 2>/dev/null
+# The AN7581 base files also ship a one-shot airoha_fan service. This package
+# is the sole owner of the NCT7802 once installed, including while a firmware
+# image is assembled. Remove only its startup links; retain the script for
+# diagnostics and package ownership.
+rm -f "$${IPKG_INSTROOT}"/etc/rc.d/S??airoha_fan
+rm -f "$${IPKG_INSTROOT}"/etc/rc.d/K??airoha_fan
+
+[ -n "$${IPKG_INSTROOT}" ] && exit 0
 
 # Disable and stop the conflicting airoha_fan service if present
 if [ -f /etc/init.d/airoha_fan ]; then
 	/etc/init.d/airoha_fan stop 2>/dev/null
 	/etc/init.d/airoha_fan disable 2>/dev/null
 fi
+
+# Enable and start the authoritative fan service
+/etc/init.d/fan enable 2>/dev/null
+/etc/init.d/fan start 2>/dev/null
 
 # Reload rpcd to register the new luci.fan backend
 /etc/init.d/rpcd reload 2>/dev/null
