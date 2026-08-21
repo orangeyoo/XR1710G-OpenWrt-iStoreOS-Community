@@ -125,13 +125,13 @@ return view.extend({
 		var m, s, o;
 
 		m = new form.Map('fan', null,
-			_('Configure fan control mode and speed curves.'));
+			_('Configure fan control mode and stepped speed curves. Automatic mode uses hysteresis to avoid rapid speed changes near a threshold.'));
 
 		s = m.section(form.NamedSection, 'settings', 'fancontrol', _('Control Mode'));
 		s.anonymous = true;
 
 		o = s.option(form.ListValue, 'mode', _('Mode'));
-		o.value('auto', _('Automatic (Follow Curve)'));
+		o.value('auto', _('Automatic (Stepped Curve)'));
 		o.value('manual', _('Manual (Fixed Speed)'));
 		o.default = 'auto';
 
@@ -158,7 +158,7 @@ return view.extend({
 		};
 
 		s = m.section(form.NamedSection, 'custom', 'curve', _('Custom Curve Editor'),
-			_('Define temperature thresholds and corresponding fan speeds.'));
+			_('Define the temperature threshold at which each fan speed step starts.'));
 		s.anonymous = true;
 		s.addremove = false;
 
@@ -181,7 +181,7 @@ return view.extend({
 			o.rmempty = false;
 		}
 
-		m.render().then(function(node) {
+		return m.render().then(function(node) {
 			requestAnimationFrame(function() {
 				var preset = uci.get('fan', 'settings', 'curve_preset') || 'balanced';
 				drawCurveCanvas('curve-canvas', curves, preset);
@@ -194,7 +194,5 @@ return view.extend({
 			});
 			return node;
 		});
-
-		return m.render();
 	}
 });

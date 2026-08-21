@@ -157,7 +157,7 @@ return view.extend({
 
 	getModeText: function(uciMode) {
 		if (uciMode === 'manual') return _('Manual (Fixed Speed)');
-		return _('Automatic (Follow Curve)');
+		return _('Automatic (Stepped Curve)');
 	},
 
 	getPresetText: function(uciMode, uciPreset) {

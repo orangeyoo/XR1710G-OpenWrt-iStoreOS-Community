@@ -1,5 +1,11 @@
-# Pin every feed so the image can be reproduced.  These five revisions are the
-# exact heads resolved from feeds.conf.default for the validated local build.
+# Pin every feed so the image can be reproduced. PassWall2 and its companion
+# runtime feed are deliberately listed first: both provide newer xray-core,
+# sing-box and helper packages that must stay aligned with PassWall2 26.8.20.
+src-git passwall_packages https://github.com/Openwrt-Passwall/openwrt-passwall-packages.git^50de2d79993447258b1bc15a667a6fb1cd6e7222
+src-git passwall2 https://github.com/Openwrt-Passwall/openwrt-passwall2.git^bb547ac49d845305a9df2d808c1d2f23ed7eaed3
+
+# These official revisions are the exact heads resolved from
+# feeds.conf.default for the validated local build.
 src-git packages https://git.openwrt.org/feed/packages.git^bd08229d5e93b7753a384a49fa0258847988fc53
 src-git luci https://git.openwrt.org/project/luci.git^fb6b224af5c4456c5d863e47f6647645384b1677
 src-git routing https://git.openwrt.org/feed/routing.git^c7872431105f69894201dc522b7560e47d1e8ba9

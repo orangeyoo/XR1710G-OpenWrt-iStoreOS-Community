@@ -33,18 +33,21 @@ LINUX_DIR="$(find "$KERNEL_DIR" -mindepth 1 -maxdepth 1 -type d \
 	exit 1
 }
 
-# The ordinary image target receives adguardhome and dockerd in prepare_rootfs'
-# disabled service list. The separate recovery ramdisk is generated directly
-# from root-airoha, whose package post-install phase may still have created
-# these links. Remove only their generated service links before regenerating
-# the RAM image; the init scripts and LuCI applications remain installed so
-# users can explicitly enable them after configuration.
+# The ordinary image target receives adguardhome, dockerd and the legacy
+# airoha_fan controller in prepare_rootfs' disabled service list. The separate
+# recovery ramdisk is generated directly from root-airoha, whose package
+# post-install phase may still have created these links. Remove only their
+# generated service links before regenerating the RAM image; the init scripts
+# and LuCI applications remain installed. The authoritative checked `fan`
+# service stays enabled while the competing legacy controller stays disabled.
 find "$ROOT_DIR/etc/rc.d" -maxdepth 1 -type l \
 	\( -name 'S??adguardhome' -o -name 'K??adguardhome' \
-	-o -name 'S??dockerd' -o -name 'K??dockerd' \) -delete
+	-o -name 'S??dockerd' -o -name 'K??dockerd' \
+	-o -name 'S??airoha_fan' -o -name 'K??airoha_fan' \) -delete
 if find "$ROOT_DIR/etc/rc.d" -maxdepth 1 -type l \
 	\( -name 'S??adguardhome' -o -name 'K??adguardhome' \
-	-o -name 'S??dockerd' -o -name 'K??dockerd' \) -print |
+	-o -name 'S??dockerd' -o -name 'K??dockerd' \
+	-o -name 'S??airoha_fan' -o -name 'K??airoha_fan' \) -print |
 	grep -q .; then
 	echo "Unable to disable optional services in the recovery rootfs" >&2
 	exit 1

@@ -16,7 +16,6 @@ env:
   ARCHITECTURE: xr1710g
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
-  UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
   DIY_P2_DIR: diy-part2.d
   TARGET: openwrt
@@ -86,11 +85,15 @@ jobs:
         cp -a files/. openwrt/files/
         chmod 0755 openwrt/files/etc/uci-defaults/99-custom.sh
         chmod 0755 openwrt/files/etc/uci-defaults/41_uhttpd_proxy_linkease
+        chmod 0755 openwrt/files/etc/uci-defaults/50-root-passwd
         chmod 0755 openwrt/files/etc/uci-defaults/zz-xr1710g-services.sh
         chmod 0755 openwrt/files/etc/init.d/xr1710g-bootlog
         chmod 0755 openwrt/files/etc/init.d/xr1710g-cpufreq
         chmod 0755 openwrt/files/usr/sbin/xr1710g-role
         chmod 0755 openwrt/files/usr/sbin/xr1710g-wireless-defaults
+        chmod 0755 openwrt/files/usr/sbin/xr1710g-lan-cidr-guard
+        chmod 0755 openwrt/files/etc/init.d/xr1710g-lan-cidr-guard
+        chmod 0755 openwrt/files/etc/hotplug.d/iface/05-xr1710g-lan-cidr-guard
         chmod 0755 openwrt/files/usr/sbin/xr1710g-mesh-diag
         chmod 0755 openwrt/files/etc/openclash/core/clash_meta
         echo "✅ 文件准备完成"
@@ -108,6 +111,7 @@ jobs:
       run: |
         cd openwrt
         ./scripts/feeds update -a
+        ./scripts/feeds uninstall -a >/dev/null 2>&1 || true
         chmod +x "$GITHUB_WORKSPACE/scripts/prepare-istore-feed.sh"
         "$GITHUB_WORKSPACE/scripts/prepare-istore-feed.sh"
         XR_ISTORE_FIXTURE="$PWD/feeds/istore/luci/luci-app-store/root/bin/is-opkg" \
@@ -150,7 +154,9 @@ jobs:
       run: |
         cd openwrt
         make defconfig
-        make download -j8
+        BUILD_JOBS="$(sh "$GITHUB_WORKSPACE/scripts/detect-build-jobs.sh")"
+        echo "Using $BUILD_JOBS parallel build jobs (override with XR_BUILD_JOBS)"
+        make download -j"$BUILD_JOBS"
         find dl -maxdepth 1 -type f -size -1024c -exec ls -l {} \;
         find dl -maxdepth 1 -type f -size -1024c -exec rm -f {} \;
 
@@ -158,10 +164,16 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        echo "$(nproc) thread compile"
+        BUILD_JOBS="$(sh "$GITHUB_WORKSPACE/scripts/detect-build-jobs.sh")"
+        echo "$(nproc) host threads, $BUILD_JOBS parallel build jobs"
         make defconfig
         if ! make olddefconfig; then
           yes "" | make oldconfig
+        fi
+        grep -qx 'CONFIG_PACKAGE_luci-theme-argon=y' .config
+        if grep -Eq '^CONFIG_(DEFAULT|PACKAGE)_luci-(theme-glass|i18n-glass-zh-cn)=y$' .config; then
+          echo 'GlassTheme unexpectedly remains selected after defconfig' >&2
+          exit 1
         fi
         for xr_package in \
           luci-app-airoha-fancontrol \
@@ -171,15 +183,15 @@ jobs:
           xr1710g-status-core; do
           make "package/$xr_package/clean"
         done
-        make -j$(nproc) || make -j1 || make -j1 V=s
+        make -j"$BUILD_JOBS" || make -j1 || make -j1 V=s
         chmod +x "$GITHUB_WORKSPACE/scripts/rebuild-initramfs-recovery.sh"
         "$GITHUB_WORKSPACE/scripts/rebuild-initramfs-recovery.sh" "$PWD"
         chmod +x "$GITHUB_WORKSPACE/scripts/verify-xr1710g-build.sh"
         "$GITHUB_WORKSPACE/scripts/verify-xr1710g-build.sh" "$PWD"
         cp "$GITHUB_WORKSPACE/RELEASE-NOTES.md" \
           bin/targets/airoha/an7581/RELEASE-NOTES.md
-        cp "$GITHUB_WORKSPACE/UBOOT-FLASH-GUIDE.md" \
-          bin/targets/airoha/an7581/UBOOT-FLASH-GUIDE.md
+        cp "$GITHUB_WORKSPACE/FLASHING-GUIDE.md" \
+          bin/targets/airoha/an7581/FLASHING-GUIDE.md
         # 去掉了 %H%M，仅保留年月日
         echo "FILE_DATE=_$(date +'%Y%m%d')" >> $GITHUB_ENV
         echo "COMPILED=true" >> $GITHUB_ENV
@@ -200,59 +212,47 @@ jobs:
       id: organize
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        cd openwrt/bin/targets/*/*
-        rm -rf packages
-        shopt -s globstar nullglob
+        target_dir="$GITHUB_WORKSPACE/openwrt/bin/targets/airoha/an7581"
+        public_dir="$GITHUB_WORKSPACE/xr1710g-v1.4.0-public-assets"
+        rm -rf "$public_dir"
+        mkdir -p "$public_dir"
 
-        # Keep upstream filenames unchanged so sha256sums stays valid.
-        for f in **/*; do
-          [ -f "$f" ] || continue
-          case "$f" in
-            config.buildinfo|\
-            feeds.buildinfo|\
-            profiles.json|\
-            RELEASE-NOTES.md|\
-            UBOOT-FLASH-GUIDE.md|\
-            sha256sums|\
-            version.buildinfo|\
-            *xr1710g-ubi.manifest|\
-            *xr1710g-ubi-initramfs-recovery.itb|\
-            *xr1710g-ubi-squashfs-sysupgrade.itb) continue ;;
-            *) rm -f "$f" ;;
-          esac
-        done
+        mapfile -t recovery_images < <(
+          find "$target_dir" -maxdepth 1 -type f \
+            -name '*-v1.4.0-*-econet_xr1710g-ubi-initramfs-recovery.itb'
+        )
+        mapfile -t sysupgrade_images < <(
+          find "$target_dir" -maxdepth 1 -type f \
+            -name '*-v1.4.0-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb'
+        )
+        [ "${#recovery_images[@]}" -eq 1 ]
+        [ "${#sysupgrade_images[@]}" -eq 1 ]
 
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        cp "${recovery_images[0]}" \
+          "$public_dir/xr1710g-community-v1.4.0-recovery.itb"
+        cp "${sysupgrade_images[0]}" \
+          "$public_dir/xr1710g-community-v1.4.0-sysupgrade.itb"
+        cp "$GITHUB_WORKSPACE/FLASHING-GUIDE.md" "$public_dir/"
+        (
+          cd "$public_dir"
+          sha256sum \
+            xr1710g-community-v1.4.0-recovery.itb \
+            xr1710g-community-v1.4.0-sysupgrade.itb \
+            > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+        )
+
+        # Official Releases are curated manually so only the verified U-Boot
+        # slot image is added beside these four generated public assets.
+        echo "FIRMWARE=$public_dir" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: 生成发布标签
-      id: tag
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
-      run: |
-        # 仅保留年月日作为标签
-        echo "release_tag=$(date +'%Y.%m.%d')" >> $GITHUB_OUTPUT
-        
-        # 写入发行说明文件
-        printf '%s\n' \
-          "设备: XR1710G (Airoha AN7581)" \
-          "发行版: iStoreOS-XR1710G-Community" \
-          "编译时间: $(date +'%Y年%m月%d日')" \
-          "登录IP: 以底座首次启动配置为准" \
-          "用户名: root" \
-          "默认密码: 空（首次登录后立即设置）" \
-          "警告: 本固件是 UBI 2.0；必须先确认匹配的 XR1710G chainloader/U-Boot，并从 Recovery 完整重建 UBI。禁止从未知或旧布局直接保留配置 sysupgrade。" \
-          "请先阅读附件 RELEASE-NOTES.md。" > release.txt
-
-        echo "status=success" >> $GITHUB_OUTPUT
-
-    - name: 发布到 Releases
-      uses: softprops/action-gh-release@v2
-      if: steps.tag.outputs.status == 'success' && !cancelled()
+    - name: 上传固件
+      uses: actions/upload-artifact@v4
+      if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        tag_name: ${{ env.TARGET }}_${{ steps.tag.outputs.release_tag }}
-        name: iStoreOS-XR1710G-Community ${{ steps.tag.outputs.release_tag }}
-        body_path: release.txt
-        files: ${{ env.FIRMWARE }}/*
+        name: XR1710G-v1.4.0-public-assets
+        path: ${{ env.FIRMWARE }}/*
 
     - name: 清理运行记录
       env:
@@ -260,13 +260,3 @@ jobs:
       run: |
         gh run list --workflow="Build Airoha_an7581-Wrt" --limit 30 --json databaseId --jq '.[].databaseId' | \
           tail -n +2 | xargs -I {} gh run delete {} --yes || true
-
-    - name: 清理旧 Release
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh release list --limit 100 --json tagName,publishedAt --jq '.[] | "\(.tagName)"' | \
-          grep "^${{ env.TARGET }}_" | \
-          tail -n +5 | \
-          xargs -I {} gh release delete {} --yes --cleanup-tag || true

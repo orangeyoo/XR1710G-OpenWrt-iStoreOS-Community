@@ -1,41 +1,137 @@
-# XR1710G Community Firmware v1.2.0 Pre-release Changes / v1.2.0 预发布版变更
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.4.0 — Changes
 
-> Unofficial community build for Gemtek XR1710G only. / 非官方社区构建，仅适用于 Gemtek XR1710G。
+> Unofficial community firmware for Gemtek XR1710G only. / 非官方社区固件，仅适用于 Gemtek XR1710G。
 
 ## 中文
 
-- 平台：Linux 6.18.41及新版AN7581以太网、PCIe、PHY、PPE底座，保留NAND/UBI 2.0与默认管理地址 `192.168.50.1`。
-- 无线底层：hostapd 2026-07-09加WDS事件修复；mt76 `b2704cf5` 加NSS operating-mode传递和XR1710G无线线程分配。
-- 无线默认：2.4GHz HE20/自动信道/请求28dBm；5GHz channel36/EHT80/请求29dBm，并固化inactivity/low-ACK修复；6GHz channel37/EHT320/请求28dBm模板。
-- 首次安全：2.4/5GHz不预置密码；6GHz SAE空密钥模板默认禁用，用户设置两端相同密钥后再开启。
-- 界面：PPPoE/VLAN关闭时显示“未启用或未配置”；普通端口页隐藏内部eth0；恢复页保留iStoreOS恢复出厂，并在旧YYH U-Boot不支持可靠一次性触发时整块隐藏无效的软件Recovery入口。
-- 性能：干净首启默认使用内核performance governor；Airoha页面选择的其他可用策略会持久保存并在后续启动重放。
-- 无线：固定mt76/MT7996适配 `b2704cf5`；支持802.11s/WPA3-SAE、EHT320和补充AP-WDS；MLO默认关闭。
-- 监管：标准US/AU不变；增加默认关闭的XZ组合实验档，并在LuCI显示共享PHY和无AFC合规警告。
-- 状态页：统一缓存、锁、超时恢复和失败降级；移除RPC热路径中的原始寄存器访问；PPE快照限制64项。
-- 端口状态：以物理carrier为准，修复空网口误报连接和速率。
-- iStore：安装、升级、自更新和APK事务先模拟，依赖失败时零修改退出。
-- Docker：预装OpenWrt上游Moby/containerd/runc/compose/Dockerman；默认关闭，统一使用 `/overlay/docker/`。
-- 网络角色：WAN检测前拉起物理口；主路由激活恢复dnsmasq自启动；角色工具不自动切网或重启。
-- 界面：保留iStoreOS风格、iStore/QuickStart/Argon、OpenClash和中英文界面。
+### v1.4.0 新增
 
-既有实机证据：两台XR1710G在约5米、木质楼梯和水泥楼板间的客厅摆位，以XZ/channel37/EHT320完成约10分钟双向满载；20次均超过400Mbps，中位数约715/720Mbps，空闲双向600 Ping均0%丢包，无Mesh断链、设备重启或关键驱动错误。本轮各项功能也已通过运行态热修验收；最终ITB通过完整离线镜像门禁，但按维护者决定未再次刷入实机复验，因此v1.2.0标记为Pre-release。
+#### 网络与 LuCI
+
+- 修复 LAN 编辑页对稀疏 IPv4 数据调用 `.match()` / `.split()` 引发的异常。
+- LAN 静态地址保存时接受裸 IPv4，并默认规范化为 `/24`；保留用户明确输入的合法 CIDR。
+- 后端 CIDR guard 将旧式 `ipaddr + netmask` 转换为 CIDR，拒绝非法值，并在 LAN 接口事件后保证配置一致。
+- `xr1710g-role` 统一写入 CIDR，不再生成旧式独立 netmask。
+- iStoreX/QuickStart 首页路由与服务启动状态解耦，首页不再错误跳转到“状态 → 概况”。
+
+#### 风扇与 Docker
+
+- 删除重复的风扇控制入口，只保留一个控制器。
+- 加入低温最低稳定档、阶梯升速、迟滞、异常温度/传感器读取失败保护。
+- Dockerman 兼容 Moby 29 的嵌套信息结构。
+- Docker 未运行时显示明确提示和启用动作；iStore、Dockerman 与命令行继续控制同一上游 OpenWrt Docker 套件。
+
+#### 主题与首次无线模板
+
+- 从 XR1710G 设备包与最终镜像中移除 GlassTheme 及其中文包。
+- Argon 在干净首启成为默认主题；Sysupgrade 不覆盖用户已有主题。
+- 6GHz 首次模板固定为 US、PSC channel 37、EHT160、WPA3-SAE 802.11s、`network=lan` 和 Mesh forwarding。
+- 6GHz 不预置 SAE 密钥，因此首次默认禁用；2.4/5GHz 也不预置 Wi-Fi 密码。
+
+#### NPU、PPE 与 10G
+
+- MT7996 NPU RX 路径设置正确的入口 `skb->dev`，为 PPE 缓存未命中后的 bridge/FDB 软件回退保留上下文。
+- 有线 Airoha PPE 硬件 flow offload 与 MT7996 Wi-Fi NPU 队列继续启用。
+- 802.11s Mesh Header 仍由 mac80211 生成；没有加入未经证明的端到端 PPE 直通。
+- bridge 拒绝本地 FDB 作为普通 forward path；Airoha PPE 回退同时拒绝路由器本机目标和同入口回注，避免本机管理流被错误绑定回 10G GDM4。
+- 普通有线转发与 NAT/PPE 卸载保持可用。
+
+#### Full Cone 与 PassWall2
+
+- 加入 `kmod-nft-fullcone`、libnftnl、nftables、firewall4 与 LuCI 的匹配支持。
+- Full Cone NAT 默认关闭，不绕过 CGNAT 或双重 NAT，也不承诺 NAT Type 1。
+- 预装 PassWall2 `26.8.20`、Xray `26.7.28`、sing-box `1.13.19`、ChinaDNS-NG、geoview、tcping 和固定 GeoIP/GeoSite。
+- PassWall2 使用 firewall4 原生 nftables 路径并默认关闭；不要与 OpenClash 同时启用。
+
+#### 构建与发布门禁
+
+- Recovery 与 Sysupgrade 同时检查 Argon/Glass、LAN CIDR、Dockerman Moby 29、Full Cone、PassWall2、无线模板、首次凭据与 MT7996 NPU 修复。
+- 构建脚本按 CPU 与可用内存计算安全并发；feeds 重装和 PassWall2 依赖清理可在复用工作树中保持固定版本。
+- 初始管理员密码为 `password`；最终镜像门禁检查其存在，并检查 2.4/5GHz 没有预置 Wi-Fi 密码、6GHz 空密钥模板保持禁用。
+
+### v1.4.0 实机证据
+
+- `wan` 协商 10Gbps Full，`lan1` 与测试 NAS 协商 5Gbps Full。
+- 15 秒、4 并发 TCP：XR → NAS 约 3.85Gbps，NAS → XR 约 1.69Gbps。
+- 两端口最终 `rx/tx errors=0`；无新增 Link Down、watchdog、DMA/NPU timeout、firmware crash 或 kernel panic。
+- 该证据限于本次线材、对端和直连本机端点，不应扩展成所有交换机、运营商、路由/NAT 或异构桥接拓扑的保证。
+
+### 从既有版本延续的基线
+
+以下能力不是 v1.4.0 新增，继续由当前镜像保留：
+
+- Linux 6.18.41、hostapd 2026-07-09 `f08f2749`、mt76/MT7996 适配 `b2704cf5`。
+- 5GHz channel 36/EHT80/请求 29dBm、`max_inactivity=86400`、`disassoc_low_ack=0`。
+- 2.4GHz HE20/自动信道/请求 28dBm；6GHz 请求 28dBm。
+- 普通端口状态隐藏内部 `eth0`，PPPoE/VLAN 关闭状态使用准确文案。
+- Linux `performance` governor 首次默认及用户策略持久化。
+- Airoha 状态页缓存/锁/失败降级、物理 carrier 真值、iStore APK 事务预检。
+- OpenWrt 上游 Moby/containerd/runc/docker-compose/Dockerman 默认安装但停止。
+- 默认管理地址 `192.168.50.1/24`、NAND/UBI 2.0、iStoreOS 风格导航、iStore、QuickStart、OpenClash、Nikki 与 EqosPlus。
 
 ## English
 
-- Platform: Linux 6.18.41 with the refreshed AN7581 Ethernet, PCIe, PHY, and PPE baseline, while retaining NAND/UBI 2.0 and default management address `192.168.50.1`.
-- Wireless core: hostapd 2026-07-09 plus the WDS event fix; mt76 `b2704cf5` plus operating-mode/NSS propagation and XR1710G worker distribution.
-- Wireless defaults: 2.4GHz HE20/automatic channel/requested 28dBm; 5GHz channel36/EHT80/requested 29dBm with inactivity/low-ACK fixes; 6GHz channel37/EHT320/requested 28dBm template.
-- First-boot security: no preset 2.4/5GHz password; the empty-key 6GHz SAE template remains disabled until the owner configures both nodes.
-- UI: accurate disabled PPPoE/VLAN wording and internal eth0 hidden from ordinary port status. The recovery page keeps iStoreOS factory reset and completely hides the invalid software-Recovery section when the installed YYH U-Boot lacks a reliable one-shot trigger.
-- Performance: a clean install defaults to the kernel performance governor; another available policy selected on the Airoha page is persisted and replayed on later boots.
-- Wireless: pinned mt76/MT7996 adaptation `b2704cf5`; 802.11s/WPA3-SAE, EHT320, and supplementary AP-WDS support; MLO remains disabled by default.
-- Regulatory: standard US/AU entries remain unchanged. An opt-in XZ composite laboratory profile includes prominent shared-PHY and no-AFC warnings.
-- Status pages: shared cache, locking, stale-lock recovery, and per-component fallback; no raw-register access in RPC hot paths; PPE samples are capped at 64 entries.
-- Physical ports: carrier is the source of truth, fixing unplugged ports incorrectly showing links and speeds.
-- iStore: install, upgrade, self-update, and direct APK transactions are simulated before any package database mutation.
-- Docker: upstream OpenWrt Moby/containerd/runc/compose/Dockerman are preinstalled but disabled by default and share `/overlay/docker/`.
-- Network roles: WAN carrier checks first bring up the physical interface; main-role activation restores dnsmasq autostart; role tools do not switch the network or reboot automatically.
-- UI: iStoreOS-style navigation, iStore/QuickStart/Argon, OpenClash, and Chinese/English UI remain included.
+### New in v1.4.0
 
-Existing hardware evidence: two XR1710G units approximately 5 metres apart across a wooden staircase and concrete floor completed about ten minutes of bidirectional XZ/channel 37/EHT320 load. All 20 runs exceeded 400Mbps, medians were about 715/720Mbps, two post-load 600-packet idle Ping tests had 0% loss, and no Mesh disconnect, reboot, or critical driver error occurred. The current changes were also accepted as runtime hot fixes. The final ITB files passed the complete offline image gate but, by the maintainer's decision, were not reflashed for another post-flash run; v1.2.0 is therefore marked as a Pre-release.
+#### Network and LuCI
+
+- Fixes LAN editor exceptions caused by calling `.match()` / `.split()` on sparse IPv4 data.
+- Accepts a bare static LAN IPv4 address and safely normalizes it to `/24`, while preserving an explicitly valid CIDR.
+- Adds a back-end CIDR guard that converts legacy `ipaddr + netmask`, rejects invalid values, and keeps the configuration consistent after LAN interface events.
+- Makes `xr1710g-role` write CIDR values instead of a separate legacy netmask.
+- Decouples iStoreX/QuickStart home routes from service-start state, preventing the home page from redirecting to **Status → Overview**.
+
+#### Fan and Docker
+
+- Removes duplicate fan-control entry points and keeps one controller.
+- Adds a low-temperature minimum stable step, staged speed increases, hysteresis, and invalid-temperature/sensor-read fallback.
+- Makes Dockerman compatible with the nested Moby 29 information structure.
+- Shows a clear stopped-state message and enable action. iStore, Dockerman, and the CLI continue to control the same upstream OpenWrt Docker stack.
+
+#### Theme and first-boot wireless template
+
+- Removes GlassTheme and its Chinese package from the XR1710G device packages and final images.
+- Uses Argon on a clean first boot without replacing a theme already selected by the owner during Sysupgrade.
+- Sets the 6GHz first-boot template to US, PSC channel 37, EHT160, WPA3-SAE 802.11s, `network=lan`, and Mesh forwarding.
+- No 6GHz SAE key is preset, so the interface remains disabled initially. No 2.4/5GHz Wi-Fi password is preset either.
+
+#### NPU, PPE, and 10G
+
+- Sets the correct ingress `skb->dev` on the MT7996 NPU RX path so bridge/FDB software fallback retains context after a PPE cache miss.
+- Keeps wired Airoha PPE hardware flow offload and MT7996 Wi-Fi NPU queues enabled.
+- mac80211 still builds the 802.11s Mesh Header; no unverified end-to-end PPE bypass is included.
+- Rejects a local FDB as an ordinary bridge forward path and makes Airoha PPE fallback reject router-local destinations and same-ingress reinjection, preventing local management flows from being rebound to 10G GDM4.
+- Ordinary wired forwarding and NAT/PPE offload remain available.
+
+#### Full Cone and PassWall2
+
+- Adds matching `kmod-nft-fullcone`, libnftnl, nftables, firewall4, and LuCI support.
+- Full Cone NAT is disabled by default. It cannot bypass CGNAT or double NAT and does not promise NAT Type 1.
+- Preinstalls PassWall2 `26.8.20`, Xray `26.7.28`, sing-box `1.13.19`, ChinaDNS-NG, geoview, tcping, and pinned GeoIP/GeoSite data.
+- PassWall2 uses the firewall4-native nftables path and is disabled by default. Do not enable it together with OpenClash.
+
+#### Build and release gates
+
+- Both Recovery and Sysupgrade are checked for Argon/Glass, LAN CIDR, Dockerman Moby 29, Full Cone, PassWall2, the wireless template, initial credentials, and the MT7996 NPU fix.
+- Build scripts calculate safe parallelism from CPU and available memory; feed reinstallation and PassWall2 dependency cleanup preserve pinned revisions in a reused work tree.
+- The initial administrator password is `password`. Final-image gates verify it, verify that 2.4/5GHz have no preset Wi-Fi password, and verify that the empty-key 6GHz template remains disabled.
+
+### v1.4.0 physical evidence
+
+- `wan` negotiated 10Gbps Full and `lan1` negotiated 5Gbps Full with the test NAS.
+- A 15-second, four-stream TCP test measured about 3.85Gbps from XR to NAS and 1.69Gbps from NAS to XR.
+- Both ports ended at `rx/tx errors=0`, with no new Link Down, watchdog, DMA/NPU timeout, firmware crash, or kernel panic.
+- This evidence is limited to the tested cable, peer, and direct local endpoints. It must not be extended into a guarantee for every switch, ISP, routed/NAT, or heterogeneous bridge topology.
+
+### Baseline carried forward from earlier releases
+
+The following capabilities are preserved but are not new in v1.4.0:
+
+- Linux 6.18.41, hostapd 2026-07-09 `f08f2749`, and mt76/MT7996 adaptation `b2704cf5`.
+- 5GHz channel 36/EHT80/requested 29dBm, `max_inactivity=86400`, and `disassoc_low_ack=0`.
+- 2.4GHz HE20/automatic channel/requested 28dBm and 6GHz requested 28dBm.
+- Internal `eth0` hidden from ordinary port status and accurate wording for disabled PPPoE/VLAN offload.
+- Clean-install Linux `performance` governor and persistence of a later user-selected policy.
+- Airoha page cache/lock/fallback handling, physical-carrier truth, and iStore APK transaction preflight.
+- Upstream OpenWrt Moby/containerd/runc/docker-compose/Dockerman installed but stopped by default.
+- Default management address `192.168.50.1/24`, NAND/UBI 2.0, iStoreOS-style navigation, iStore, QuickStart, OpenClash, Nikki, and EqosPlus.

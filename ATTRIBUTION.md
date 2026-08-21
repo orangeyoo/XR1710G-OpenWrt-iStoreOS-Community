@@ -13,7 +13,7 @@
 | [YYH2913/openwrt](https://github.com/YYH2913/openwrt) | XR1710G DTS、AN7581 target、UBI 2.0、网口、PPE、NPU/MT7996支持及无线线程分配 | `99598e539d47aa9f137baff43f0c2f77becc2e50` | 以仓库内各组件许可证为准，OpenWrt核心主要为GPL-2.0 |
 | [OpenWrt](https://github.com/openwrt/openwrt) | Linux 路由系统、构建系统、软件包框架 | 由 YYH2913 分支及固定 feeds 提供 | GPL-2.0 及各软件包自身许可证 |
 | [ImmortalWrt](https://github.com/immortalwrt/immortalwrt) | 配置兼容与社区生态参考 | `configs/immortalwrt.config` | 以各文件/软件包声明为准 |
-| [naoki66/ImmortalWrt-for-Gemtek-XR1710G](https://github.com/naoki66/ImmortalWrt-for-Gemtek-XR1710G) | `luci-app-airoha-fancontrol`、`luci-app-airoha-flowsense`、`luci-app-airoha-npu` 初始来源 | 同步工作流明确记录来源 | 应用 Makefile 声明 GPL-2.0-or-later 或 Apache-2.0 |
+| [naoki66/ImmortalWrt-for-Gemtek-XR1710G](https://github.com/naoki66/ImmortalWrt-for-Gemtek-XR1710G) | LuCI 初始来源与XR1710G底层对照；AN7581 RX-lock诊断；MT7996 NPU RX入口网卡修复 | 最新复核快照 `131c62d`；当前窄范围补丁在 `patches/kernel/0923` 与 `patches/mt76/0103`，未保留强制SDS/重复RTL826x初始化实验 | 应用 Makefile 声明 GPL-2.0-or-later 或 Apache-2.0；补丁保留原作者信息 |
 
 ## 无线、Mesh 与网络补丁
 
@@ -21,6 +21,7 @@
 |---|---|---|---|
 | [OpenWrt mt76](https://github.com/openwrt/mt76) | MT7996 Wi-Fi 7 驱动 | `b2704cf5a4068b672bf47ad5bf6b4802b6770a90`，叠加 YYH2913 AN7581/NPU 补丁 | ISC/GPL 兼容声明以源码文件为准 |
 | [hostapd/wpa_supplicant](https://w1.fi/hostapd/) | WPA3-SAE、802.11s Mesh、AP/STA-WDS | `f08f2749aa696c4e47c5c0f591dda99951bf9fac`；新版 YYH/OpenWrt 底座自带多 BSS WDS 事件路由修复 | BSD-3-Clause |
+| [fullcone-nat-nftables/nft-fullcone](https://github.com/fullcone-nat-nftables/nft-fullcone) | 可选 `kmod-nft-fullcone` 内核表达式；默认关闭 | `07d93b626ce5ea885cd16f9ab07fac3213c355d9`；libnftnl/nftables/firewall4 接口补丁保留原作者信息 | GPL-2.0-only；不能绕过 CGNAT 或双重 NAT |
 | OpenWrt uhttpd / iStoreOS backports | `/apps` raw proxy、后端关闭及 forwarded headers | 来自 iStoreOS `istoreos-24.10` 的公开补丁，源码内保留版权文本 | uhttpd 的 ISC 许可及补丁原声明 |
 
 ## iStoreOS、LuCI 与应用生态
@@ -33,6 +34,8 @@
 | [LinkEase NAS LuCI](https://github.com/linkease/nas-packages-luci) | NAS 应用 LuCI feed | `a2f8a871477c79744051f4fdc7f703a23b91c227` |
 | [jjm2473/openwrt-third](https://github.com/jjm2473/openwrt-third) | iStoreOS 第三方聚合 feed | `02355a3eb0c58b4d2747e1ec0fc78ac2cd0f8519` |
 | [OpenClash](https://github.com/vernesong/OpenClash) | `luci-app-openclash` 与标准 UI 路径 | `a9e5d98cd664917724dbfb0a31440e512ab45a1b` |
+| [Openwrt-Passwall/openwrt-passwall2](https://github.com/Openwrt-Passwall/openwrt-passwall2) | 预装 PassWall2 LuCI 与 firewall4/nftables 透明代理集成；默认关闭 | `bb547ac49d845305a9df2d808c1d2f23ed7eaed3`（PassWall2 `26.8.20`）；GPL-3.0 |
+| [Openwrt-Passwall/openwrt-passwall-packages](https://github.com/Openwrt-Passwall/openwrt-passwall-packages) | PassWall2 的 Xray、sing-box、ChinaDNS-NG 等运行组件 | `50de2d79993447258b1bc15a667a6fb1cd6e7222`（Xray `26.7.28`、sing-box `1.13.19`）；各组件继续适用其各自许可证 |
 | [kenzok8/openwrt-clashoo](https://github.com/kenzok8/openwrt-clashoo) | Clash 相关依赖 feed | `3f88fbc93d3c6c83a148f2bd9aaed71409f78325` |
 | [Nikki](https://github.com/nikkinikki-org/OpenWrt-nikki) | 可选代理应用 feed | `f06b6b448928501e7511bdfb3497b1186d919316` |
 | [sirpdboy/luci-app-poweroffdevice](https://github.com/sirpdboy/luci-app-poweroffdevice) | sirpdboy feed 锚点；EqosPlus 另按其仓库许可证分发 | `8f53359c3234c7c398b846b5425f9b0b017c03ec` |

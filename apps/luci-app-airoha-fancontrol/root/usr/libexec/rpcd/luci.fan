@@ -1,5 +1,7 @@
 #!/bin/sh
 # Airoha Fan Control RPC backend for LuCI
+STATE_FILE="${XR_FAN_STATE_FILE:-/var/run/xr1710g-fan-control.state}"
+
 # Dynamically find NCT7802 fan controller hwmon device
 find_nct7802() {
 	for hwmon in /sys/class/hwmon/hwmon*; do
@@ -66,9 +68,21 @@ read_value() {
 	fi
 }
 
+read_state_uint() {
+	local key="$1"
+	local value
+
+	value=$(sed -n "s/^${key}=//p" "$STATE_FILE" 2>/dev/null | head -n 1)
+	case "$value" in
+		''|*[!0-9]*) echo 0 ;;
+		*) echo "$value" ;;
+	esac
+}
+
 get_status() {
 	local temp_cpu temp_board temp_phy1 temp_phy2
-	local fan_rpm fan_pwm fan_mode fan_percentage
+	local fan_rpm fan_pwm fan_mode fan_hw_mode fan_percentage
+	local control_temp fan_step
 
 	temp_cpu=$(read_temp "/sys/class/thermal/thermal_zone0/temp")
 	temp_board=$(read_temp "${HWMON}/temp1_input")
@@ -80,8 +94,10 @@ get_status() {
 
 	fan_rpm=$(read_value "${HWMON}/fan1_input")
 	fan_pwm=$(read_value "${HWMON}/pwm1")
-	fan_mode=$(read_value "${HWMON}/pwm1_enable")
+	fan_hw_mode=$(read_value "${HWMON}/pwm1_enable")
 	fan_percentage=$((fan_pwm * 100 / 255))
+	control_temp=$(read_state_uint control_temp)
+	fan_step=$(read_state_uint step)
 
 	local wifi_24g=0 wifi_5g=0 wifi_6g=0
 	local wifi_24g_hwmon=$(find_mt7996_hwmon 0)
@@ -96,18 +112,22 @@ get_status() {
 	local uci_manual_pwm=$(uci -q get fan.settings.manual_pwm || echo "127")
 
 	local mode_desc="Unknown"
-	case "$fan_mode" in
-		0) mode_desc="Full Speed" ;;
-		1) mode_desc="Manual" ;;
-		2) mode_desc="Automatic" ;;
-		3) mode_desc="Auto (Closed Loop)" ;;
-	esac
+	if [ "$uci_mode" = "auto" ]; then
+		# The authoritative controller implements the stepped curve in
+		# software, so pwm1_enable is deliberately 1 (hardware manual). Expose
+		# the user's logical mode separately to avoid a false "Manual" status.
+		fan_mode=2
+		mode_desc="Automatic (Stepped Curve)"
+	else
+		fan_mode=1
+		mode_desc="Manual (Fixed Speed)"
+	fi
 
-	printf '{"temp_cpu":%d,"temp_board":%d,"temp_phy1":%d,"temp_phy2":%d,"wifi_24g":%d,"wifi_5g":%d,"wifi_6g":%d,"fan_rpm":%d,"fan_pwm":%d,"fan_percentage":%d,"fan_mode":%d,"fan_mode_desc":"%s","uci_mode":"%s","uci_preset":"%s","uci_manual_pwm":%d}' \
+	printf '{"temp_cpu":%d,"temp_board":%d,"temp_phy1":%d,"temp_phy2":%d,"wifi_24g":%d,"wifi_5g":%d,"wifi_6g":%d,"fan_rpm":%d,"fan_pwm":%d,"fan_percentage":%d,"fan_mode":%d,"fan_hw_mode":%d,"fan_mode_desc":"%s","control_temp":%d,"fan_step":%d,"uci_mode":"%s","uci_preset":"%s","uci_manual_pwm":%d}' \
 		"$temp_cpu" "$temp_board" "$temp_phy1" "$temp_phy2" \
 		"$wifi_24g" "$wifi_5g" "$wifi_6g" \
 		"$fan_rpm" "$fan_pwm" "$fan_percentage" \
-		"$fan_mode" "$mode_desc" \
+		"$fan_mode" "$fan_hw_mode" "$mode_desc" "$control_temp" "$fan_step" \
 		"$uci_mode" "$uci_preset" "$uci_manual_pwm"
 }
 

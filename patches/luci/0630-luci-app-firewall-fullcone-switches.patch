@@ -1,0 +1,89 @@
+From 1d9d2af889d52c5c48fd987cce1bfad5afdb6705 Mon Sep 17 00:00:00 2001
+From: XR1710G Community <xr1710g-community@users.noreply.github.com>
+Date: Thu, 20 Aug 2026 23:50:00 +0800
+Subject: [PATCH] luci-app-firewall: expose optional full cone NAT switches
+
+Keep IPv4 and IPv6 controls independent and disabled by default.  The
+controls are global because firewall4 applies them only to zones that already
+enable masquerading for the corresponding address family.
+
+Warn that Full Cone NAT weakens NAT filtering and cannot bypass CGNAT or
+double NAT.  This deliberately does not promise a particular game-console NAT
+classification.
+---
+ .../resources/view/firewall/zones.js          | 16 +++++++++
+ .../luci-app-firewall/po/zh_Hans/firewall.po  | 33 +++++++++++++++++++
+ 2 files changed, 49 insertions(+)
+
+diff --git a/applications/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js b/applications/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
+index ae78fb1..50460da 100644
+--- a/applications/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
++++ b/applications/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
+@@ -95,6 +95,22 @@ return view.extend({
+ 			};
+ 		}
+ 
++		if (fw4) {
++			s = m.section(form.TypedSection, 'defaults', _('Full Cone NAT'),
++				_('Full Cone NAT may improve peer-to-peer connectivity but reduces NAT filtering. It cannot bypass CGNAT or double NAT.'));
++
++			s.anonymous = true;
++			s.addremove = false;
++
++			o = s.option(form.Flag, 'fullcone', _('Enable IPv4 Full Cone NAT'),
++				_('Replace IPv4 masquerading on every zone where IPv4 masquerading is enabled.'));
++			o.default = '0';
++
++			o = s.option(form.Flag, 'fullcone6', _('Enable IPv6 Full Cone NAT'),
++				_('Replace IPv6 masquerading on every zone where IPv6 masquerading is enabled. IPv6 NAT is usually unnecessary.'));
++			o.default = '0';
++		}
++
+ 
+ 		s = m.section(form.GridSection, 'zone', _('Zones'));
+ 		s.addremove = true;
+diff --git a/applications/luci-app-firewall/po/zh_Hans/firewall.po b/applications/luci-app-firewall/po/zh_Hans/firewall.po
+index 5417c29..f92c62b 100644
+--- a/applications/luci-app-firewall/po/zh_Hans/firewall.po
++++ b/applications/luci-app-firewall/po/zh_Hans/firewall.po
+@@ -1545,5 +1545,38 @@ msgstr "最多 65536 个条目。"
+ msgid "valid firewall mark"
+ msgstr "有效的防火墙标记"
+ 
++#: applications/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
++msgid "Full Cone NAT"
++msgstr "全锥形 NAT"
++
++#: applications/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
++msgid ""
++"Full Cone NAT may improve peer-to-peer connectivity but reduces NAT "
++"filtering. It cannot bypass CGNAT or double NAT."
++msgstr ""
++"全锥形 NAT 可能改善点对点连接，但会降低 NAT 过滤强度；它无法绕过 "
++"CGNAT 或双重 NAT。"
++
++#: applications/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
++msgid "Enable IPv4 Full Cone NAT"
++msgstr "启用 IPv4 全锥形 NAT"
++
++#: applications/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
++msgid ""
++"Replace IPv4 masquerading on every zone where IPv4 masquerading is enabled."
++msgstr "在所有已启用 IPv4 地址伪装的区域中，以 IPv4 全锥形 NAT 替代普通地址伪装。"
++
++#: applications/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
++msgid "Enable IPv6 Full Cone NAT"
++msgstr "启用 IPv6 全锥形 NAT"
++
++#: applications/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
++msgid ""
++"Replace IPv6 masquerading on every zone where IPv6 masquerading is enabled. "
++"IPv6 NAT is usually unnecessary."
++msgstr ""
++"在所有已启用 IPv6 地址伪装的区域中，以 IPv6 全锥形 NAT 替代普通地址伪装。"
++"通常不需要使用 IPv6 NAT。"
++
+ #~ msgid "Forward"
+ #~ msgstr "转发"
+-- 
+2.51.0.windows.1

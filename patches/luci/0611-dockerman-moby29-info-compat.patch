@@ -1,0 +1,183 @@
+diff --git a/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js b/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+index ef97763fb..a8d31e7b5 100644
+--- a/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
++++ b/applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js
+@@ -1,5 +1,4 @@
+ 'use strict';
+-'require form';
+ 'require fs';
+ 'require uci';
+ 'require dockerman.common as dm2';
+@@ -62,6 +61,55 @@ function getVolumesInUseByContainers(containers) {
+ 	return inUse;
+ }
+ 
++function scalarOrDash(value) {
++	if (value === undefined || value === null || value === '' ||
++	    typeof value === 'object')
++		return '-';
++
++	return String(value);
++}
++
++function formatMemory(value) {
++	const bytes = Number(value);
++
++	return Number.isFinite(bytes) && bytes > 0
++		? '%1024.2m'.format(bytes)
++		: '-';
++}
++
++function stringifyNestedDockerValue(value) {
++	try {
++		const json = JSON.stringify(value, null, 2);
++		return json === undefined ? String(value) : json;
++	}
++	catch (e) {
++		return String(value);
++	}
++}
++
++function renderNestedDockerInfo(info) {
++	const nested = Object.entries(info || {})
++		.filter(([, value]) => value !== null && typeof value === 'object')
++		.sort(([left], [right]) => left.localeCompare(right));
++
++	if (nested.length === 0)
++		return null;
++
++	return E('details', { 'class': 'cbi-section dockerman-advanced-info' }, [
++		E('summary', {}, [_('Advanced Docker information')]),
++		E('p', { 'class': 'cbi-map-descr' }, [
++			_('Nested Docker API values are collapsed by default and formatted for safe viewing.')
++		]),
++		...nested.map(([key, value]) => E('details', {
++			'class': 'dockerman-advanced-entry'
++		}, [
++			E('summary', {}, [key]),
++			E('pre', {
++				'style': 'white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; max-height: 32em; overflow: auto;'
++			}, [stringifyNestedDockerValue(value)])
++		]))
++	]);
++}
+ 
+ return dm2.dv.extend({
+ 	load() {
+@@ -135,10 +183,6 @@ return dm2.dv.extend({
+ 			volume_list,
+ 			mounts,
+ 		]) {
+-		const version_headers = [];
+-		const version_body = [];
+-		const info_body = [];
+-		// const df_body = [];
+ 		const docker_ep = uci.get('dockerd', 'globals', 'hosts');
+ 		let isLocal = false;
+ 		if (!docker_ep || docker_ep.length === 0 || docker_ep.map(e => e.includes('.sock')).filter(Boolean).length == 1)
+@@ -170,12 +214,17 @@ return dm2.dv.extend({
+ 			return unavailableContainer;
+ 		}
+ 
+-		this.parseHeaders(version_response.headers, version_headers);
+-		this.parseBody(version_response.body, version_body);
+-		this.parseBody(info_response.body, info_body);
+-		// this.parseBody(df_response.body, df_body);
+ 		const view = this;
+-		const info = info_response.body;
++		const version = version_response?.body || {};
++		const info = info_response?.body || {};
++
++		container_list = Array.isArray(container_list) ? container_list : [];
++		image_list = Array.isArray(image_list) ? image_list : [];
++		network_list = Array.isArray(network_list) ? network_list : [];
++		volume_list = volume_list && typeof volume_list === 'object'
++			? volume_list
++			: {};
++		mounts = Array.isArray(mounts) ? mounts : [];
+ 
+ 		this.concount = info?.Containers || 0;
+ 		this.conactivecount = info?.ContainersRunning || 0;
+@@ -188,10 +237,10 @@ return dm2.dv.extend({
+ 		this.netcount = network_list.length;
+ 		this.netactivecount = getNetworksInUseByContainers(container_list)?.size || 0;
+ 
+-		this.volcount = volume_list?.Volumes?.length;
++		this.volcount = Array.isArray(volume_list?.Volumes) ? volume_list.Volumes.length : 0;
+ 		this.volactivecount = getVolumesInUseByContainers(container_list)?.size || 0;
+ 
+-		this.freespace = isLocal ? mounts.find(m => m.mount === info?.DockerRootDir)?.avail || 0 : 0;
++		this.freespace = isLocal ? mounts.find(m => m?.mount === info?.DockerRootDir)?.avail || 0 : 0;
+ 		if (isLocal && this.freespace !== 0)
+ 			this.freespace = '(' + '%1024.2m'.format(this.freespace) + ' ' + _('Available') + ')';
+ 
+@@ -221,13 +270,17 @@ return dm2.dv.extend({
+ 		);
+ 
+ 		summaryTable.update([
+-			[ _('Docker Version'), version_response.body.Version ],
+-			[ _('Api Version'), version_response.body.ApiVersion ],
+-			[ _('CPUs'), info_response.body.NCPU ],
+-			[ _('Total Memory'), '%1024.2m'.format(info_response.body.MemTotal) ],
+-			[ _('Docker Root Dir'), `${info_response.body.DockerRootDir} ${ (isLocal && this.freespace) ? this.freespace : '' }` ],
+-			[ _('Index Server Address'), info_response.body.IndexServerAddress ],
+-			[ _('Registry Mirrors'), info_response.body.RegistryConfig?.Mirrors || '-' ],
++			[ _('Docker Version'), scalarOrDash(version.Version || info.ServerVersion) ],
++			[ _('Api Version'), scalarOrDash(version.ApiVersion) ],
++			[ _('Name'), scalarOrDash(info.Name) ],
++			[ _('Operating System'), scalarOrDash(info.OperatingSystem) ],
++			[ _('Architecture'), scalarOrDash(info.Architecture) ],
++			[ _('Kernel Version'), scalarOrDash(info.KernelVersion) ],
++			[ _('Storage Driver'), scalarOrDash(info.Driver) ],
++			[ _('CPUs'), scalarOrDash(info.NCPU) ],
++			[ _('Total Memory'), formatMemory(info.MemTotal) ],
++			[ _('Docker Root Dir'), `${scalarOrDash(info.DockerRootDir)} ${ (isLocal && this.freespace) ? this.freespace : '' }` ],
++			[ _('Index Server Address'), scalarOrDash(info.IndexServerAddress) ],
+ 		]);
+ 
+ 		// Wrap the table in a cbi-section
+@@ -283,36 +336,14 @@ return dm2.dv.extend({
+ 		// Add badges section
+ 		mainContainer.appendChild(statusContainer);
+ 
+-		const m = new form.JSONMap({
+-			// df: df_body,
+-			vb: version_body,
+-			ib: info_body
+-		});
+-		m.readonly = true;
+-		m.tabbed = false;
+-
+-		let s;
+-
+-		// Add Version and Environment tables
+-		s = m.section(form.TableSection, 'vb', _('Version'));
+-		s.anonymous = true;
+-
+-		s.option(form.DummyValue, 'entry', _('Name'));
+-		s.option(form.DummyValue, 'value', _('Value'));
+-
+-		s = m.section(form.TableSection, 'ib', _('Environment'));
+-		s.anonymous = true;
+-		s.filterrow = true;
+-
+-		s.option(form.DummyValue, 'entry', _('Entry'));
+-		s.option(form.DummyValue, 'value', _('Value'));
+-
+-		// Render the form sections and append them
+-		return m.render()
+-			.then(fe => {
+-				mainContainer.appendChild(fe);
+-				return mainContainer;
+-			});
++		/* Moby 29 adds nested objects to /info. Keep the overview scalar-only
++		 * and put every object/array behind a collapsed, wrapping details block
++		 * instead of feeding JSON strings into a normal LuCI table. */
++		const advancedInfo = renderNestedDockerInfo(info);
++		if (advancedInfo)
++			mainContainer.appendChild(advancedInfo);
++
++		return mainContainer;
+ 	},
+ 
+ 	overviewBadge(url, resource_div, caption, total_caption, total_count, active_caption, active_count) {

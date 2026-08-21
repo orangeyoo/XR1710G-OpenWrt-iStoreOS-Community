@@ -1,0 +1,73 @@
+#!/bin/sh
+#
+# Apply the board-supplied first-login credential only while root still has an
+# empty hash. A failure must keep this uci-default for the next boot instead
+# of silently leaving an unauthenticated device.
+
+# OpenWrt's jshn.sh intentionally reads a number of unset namespace
+# variables while initialising its state.  Keep errexit, but do not enable
+# nounset here: doing so makes json_init fail before the board credential can
+# be read on a real first boot.
+set -e
+
+BOARD_JSON="${XR_ROOT_PASSWD_BOARD_JSON:-/etc/board.json}"
+SHADOW_FILE="${XR_ROOT_PASSWD_SHADOW:-/etc/shadow}"
+JSHN_LIB="${XR_ROOT_PASSWD_JSHN_LIB:-/usr/share/libubox/jshn.sh}"
+PASSWD_BIN="${XR_ROOT_PASSWD_PASSWD_BIN:-passwd}"
+
+root_password_hash() {
+	awk -F: '$1 == "root" { print $2; exit }' "$SHADOW_FILE" 2>/dev/null
+}
+
+root_entry_exists() {
+	grep -q '^root:' "$SHADOW_FILE" 2>/dev/null
+}
+
+root_password_is_empty() {
+	root_entry_exists && [ -z "$(root_password_hash)" ]
+}
+
+fail() {
+	printf '%s\n' "XR1710G first-login password: $*" >&2
+	exit 1
+}
+
+[ -r "$SHADOW_FILE" ] || fail 'shadow file is unavailable'
+root_entry_exists || fail 'root shadow entry is missing'
+
+# A password restored by sysupgrade or already chosen by the owner always wins.
+root_password_is_empty || exit 0
+
+[ -r "$BOARD_JSON" ] || fail 'board metadata is unavailable'
+[ -r "$JSHN_LIB" ] || fail 'JSON parser is unavailable'
+. "$JSHN_LIB"
+
+json_init
+board_json="$(cat "$BOARD_JSON")" || fail 'cannot read board metadata'
+json_load "$board_json" || fail 'board metadata is invalid'
+json_is_a credentials object || fail 'board credentials are missing'
+
+json_select credentials || fail 'cannot read board credentials'
+# Missing optional members are normal. Pass an explicit empty default so
+# jshn returns success under errexit when board.json supplies only one form.
+json_get_var root_password_hash root_password_hash ''
+json_get_var root_password_plain root_password_plain ''
+json_select .. || true
+
+if [ -n "${root_password_hash:-}" ] && root_password_is_empty; then
+	escaped_hash="$(printf '%s' "$root_password_hash" | sed 's/[&|]/\\&/g')" ||
+		fail 'cannot encode the root password hash'
+	sed -i "s|^root:[^:]*|root:$escaped_hash|" "$SHADOW_FILE" ||
+		fail 'cannot write the root password hash'
+fi
+
+if [ -n "${root_password_plain:-}" ] && root_password_is_empty; then
+	(printf '%s\n' "$root_password_plain"; sleep 1; printf '%s\n' "$root_password_plain") |
+		"$PASSWD_BIN" root ||
+		fail 'passwd rejected the board credential'
+fi
+
+root_password_is_empty &&
+	fail 'root password remained empty after applying the board credential'
+
+exit 0

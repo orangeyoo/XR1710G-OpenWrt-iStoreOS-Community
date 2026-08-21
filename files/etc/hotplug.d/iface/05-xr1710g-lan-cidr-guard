@@ -1,0 +1,9 @@
+#!/bin/sh
+
+[ "${INTERFACE:-}" = 'lan' ] || exit 0
+case "${ACTION:-}" in
+	ifup|ifupdate) ;;
+	*) exit 0 ;;
+esac
+
+/usr/sbin/xr1710g-lan-cidr-guard --hotplug
