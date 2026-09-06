@@ -6,7 +6,7 @@
 
 ### v1.5.0 新增
 
-- 5GHz 改用前台 CAC，规避 EHT160 后台 CAC 无可用临时信道时 AP 初始化失败；保留 DFS 与用户频宽、信道、SSID、安全设置，首次仍为 EHT80。
+- 5GHz 改用前台 CAC，规避 EHT160 后台 CAC 无可用临时信道时 AP 初始化失败。保留 DFS 与用户频宽、信道、SSID、安全设置，首次仍为 EHT80。
 - 对应源码：`files/usr/sbin/xr1710g-wireless-defaults`、`files/etc/uci-defaults/98-xr1710g-5g-foreground-cac`；后者仅对 XR1710G 的 5GHz 执行一次性迁移。
 - 出厂 root 密码公开默认为 `password`，通过 `patches/openwrt/0102-xr1710g-factory-root-password.patch` 预置哈希。保留配置升级不覆盖已有密码。
 - `patches/luci/0640-xr1710g-password-community-note.patch` 在管理员密码页增加交流群 1061612207 的中英文提示。

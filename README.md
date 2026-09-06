@@ -12,7 +12,7 @@
 
 [下载最新 v1.5.0 固件](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.5.0) · [完整中英文说明](RELEASE-NOTES.md)
 
-- 5GHz EHT160 改用前台 CAC，规避后台检测无临时可用信道时 AP 启动失败；保留 DFS，保留用户频宽和信道，首次仍为 EHT80。检测期间需等待 5GHz 开始广播。
+- 5GHz EHT160 改用前台 CAC，规避后台检测无临时可用信道时 AP 启动失败。保留 DFS，保留用户频宽和信道，首次仍为 EHT80。检测期间需等待 5GHz 开始广播。
 - 出厂镜像直接预置公开管理员密码 `password` 的哈希；保留配置升级不覆盖已有密码。
 - 修改管理员密码页面增加“本固件交流群 1061612207”，含英文翻译。
 - 内核、设备树、wpad、mt76/MT7996 关键二进制与 1.4 相同，未升级驱动、插件或 U-Boot；6GHz、10G/NPU、Docker 和风扇策略不变。
