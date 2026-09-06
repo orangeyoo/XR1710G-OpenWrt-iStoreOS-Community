@@ -7,7 +7,8 @@
 | 文件 | 用途 |
 |---|---|
 | `xr1710g-community-v1.5.0-sysupgrade.itb` | 唯一系统固件 |
-| `SHA256SUMS.txt` | 刷前核对，不刷入 |
+| `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | 可选 U-Boot，仅在“更新 U-Boot / Update U-Boot”入口使用 |
+| `SHA256SUMS.txt` | 系统与 U-Boot 校验，不刷入 |
 | `FLASHING-GUIDE.md` | 本说明，不刷入 |
 
 ### 已有兼容 OpenWrt / iStoreOS
@@ -32,7 +33,7 @@
 ### U-Boot 是否必须升级
 
 **不需要为了系统升级到 1.5 而重刷已有兼容 U-Boot。**
-需要更换时，到独立的 [Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) 下载并按该页操作。
+本次下载区已附原样验证的 `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin`。需要更换时按 [Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) 专页操作；上游署名、许可证和对应源码书面提供承诺保持不变。
 只有对应的 flash-slot.bin 能进入 **更新 U-Boot / Update U-Boot**；系统 ITB 和裸 u-boot.bin 不能混刷。
 
 ### 初始账号与无线
@@ -67,7 +68,7 @@ Wait for **100% in the page, a solid green LED and a reachable installed system*
 
 If DHCP is unavailable, temporarily set the computer to `192.168.255.2/24`, open `http://192.168.255.1/`, choose **Firmware → UBI 2.0 - 439 MiB**, and upload the same sysupgrade ITB. Restore computer DHCP after installation.
 
-A compatible U-Boot does **not** need updating for firmware 1.5. The optional [Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) is separate. Never upload a system ITB or raw u-boot.bin to **Update U-Boot**.
+A compatible U-Boot does **not** need updating for firmware 1.5. The unchanged optional `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` is included in the same download area. See [Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) for the U-Boot procedure, upstream credits, licenses and written corresponding-source offer. U-Boot retains its v1.0.0 version. Never upload a system ITB or raw u-boot.bin to **Update U-Boot**.
 
 ### First boot
 

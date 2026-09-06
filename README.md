@@ -19,7 +19,7 @@
 
 无线热修复已在两台设备分别通过 EHT160 软件重启测试，镜像通过离线内容校验。按维护者确认发布；新镜像完整刷后验收尚无记录，不把下方历史测速当作 1.5 新增验收。
 
-U-Boot 另见 [Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)，已有兼容版本不必重刷。
+U-Boot 另见 [Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)的原始已验证文件也已放入 1.5 下载区，已有兼容版本不必重刷；署名、许可证和对应源码承诺见该专页。
 
 ## v1.4.0 历史更新
 
@@ -116,6 +116,7 @@ xr1710g-role node 192.168.50.2/24 192.168.50.1
 | 文件 | 用途 |
 |---|---|
 | `xr1710g-community-v1.5.0-sysupgrade.itb` | 后台升级及兼容 HTTP U-Boot 的永久系统安装，普通用户优先使用 |
+| `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | 可选 U-Boot，只能在 **更新 U-Boot / Update U-Boot** 入口刷入 |
 | `SHA256SUMS.txt` | 文件完整性校验，不刷入路由器 |
 | `FLASHING-GUIDE.md` | 中英文刷机路径与文件用途 |
 

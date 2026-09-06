@@ -19,7 +19,7 @@ This project is not an official release from LinkEase/iStoreOS, OpenWrt, Gemtek,
 
 The live fix passed an EHT160 software reboot on each of two devices; the image passed offline content checks. Published with maintainer approval; a complete post-flash acceptance record for the new image has not been supplied. Historical benchmarks below are not new v1.5 acceptance results.
 
-[Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) remains a separate release; an existing compatible version does not need reflashing.
+[Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) is also included unchanged in the v1.5.0 download area; an existing compatible version does not need reflashing. Its licenses and written corresponding-source offer remain on the dedicated release page.
 
 ## Historical changes in v1.4.0
 
@@ -116,6 +116,7 @@ The formal Release contains only the required files:
 | File | Purpose |
 |---|---|
 | `xr1710g-community-v1.5.0-sysupgrade.itb` | Preferred image for compatible web upgrades and permanent installation through compatible HTTP U-Boot |
+| `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | Optional U-Boot; use only **Update U-Boot**, not the system firmware form |
 | `SHA256SUMS.txt` | Integrity checks; never flash this file |
 | `FLASHING-GUIDE.md` | Bilingual file-purpose and flashing guide |
 
