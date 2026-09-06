@@ -1,100 +1,80 @@
-# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.4.0
-
-**Release type: Stable / Latest.**
-
-Gemtek XR1710G（Airoha AN7581 + MediaTek MT7996）非官方社区固件。This is an unofficial community build and is not an official release from iStoreOS, OpenWrt, Gemtek, Airoha, or MediaTek.
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.5.0
 
 ## 中文
 
-### v1.4.0 新增与修复
+Gemtek XR1710G（Airoha AN7581 + MediaTek MT7996）非官方社区固件。本次是基于 v1.4.0 的小范围修复，**没有升级内核、网卡/Wi-Fi 驱动、插件或 U-Boot**。
 
-- 修复 LAN 编辑页报错和静态 IPv4 CIDR 保存：裸地址按 `/24` 规范化，旧式 `ipaddr + netmask` 自动转换，降低重启后 LAN/DHCP 配置失效风险。
-- 修复首页错误跳转到“状态 → 概况”；iStoreX/QuickStart 首页路由不再依赖服务启动时序。
-- 风扇合并为单一控制器，加入低温最低稳定档、阶梯升速、迟滞和传感器异常兜底。
-- 修复 Dockerman 对 Moby 29 信息结构的兼容；Docker 未启动时显示明确提示和启用入口。
-- 删除 GlassTheme 及其中文包；干净首启默认 Argon，Sysupgrade 保留用户已有主题。
-- 6GHz 首次模板设为 `US / channel 37 / EHT160 / 802.11s / network=lan`；空 SAE 密钥时默认禁用。
-- 修复 MT7996 NPU RX 入口网卡信息，让 PPE 缓存未命中后的 bridge/FDB 软件回退保留正确上下文。
-- 加入 10G bridge/PPE 本机流量保护，拒绝将本地 FDB、路由器本机目标和同入口回注流错误绑定回 10G GDM4。
-- 预装 `kmod-nft-fullcone` 与配套 libnftnl/nftables/firewall4/LuCI 支持，默认关闭。
-- 预装 PassWall2 `26.8.20`、Xray `26.7.28`、sing-box `1.13.19`和 firewall4 原生 nftables 透明代理路径，默认关闭；不要与 OpenClash 同时启用。
-- 初始管理员密码为 `password`；2.4/5GHz 不预置 Wi-Fi 密码，6GHz 空密钥 Mesh 模板保持禁用。
+### 本次只改了什么
 
-### 加速边界
+1. **5GHz 160MHz 启动修复**：后台 CAC 找不到临时可用信道时可能导致 AP 初始化失败，现改用前台 CAC，保留 DFS/雷达检测。首次默认仍为 channel 36 / EHT80 / 请求 29dBm；手动选择 EHT160 后，迁移不会强制改回 EHT80，也不修改用户信道、SSID 或无线密码。DFS 检测期间 5GHz 可能暂时没有信号，应等待检测完成；本次 channel 36 实测约 60 秒。
+2. **修正出厂管理员密码**：直接在出厂镜像预置公开默认密码 `password` 的哈希，不再只依赖首次启动脚本。保留配置升级继续使用原密码，不覆盖已有密码。
+3. **密码页交流群提示**：增加“本固件交流群 1061612207”，同时提供英文说明，保持 Argon 主题及密码提交逻辑不变。
 
-有线路由/转发使用 Airoha PPE 硬件 flow offload，MT7996 使用 Airoha NPU 队列。802.11s Mesh Header 仍由 mac80211 生成；本版没有加入未经证明的 802.11s 端到端 PPE 直通。
+6GHz 默认模板仍为 channel 37 / EHT160 / 802.11s，空密钥时禁用；2.4GHz、10G/PPE/NPU、Full Cone、Docker、iStore、PassWall2、OpenClash及风扇策略保持 v1.4 基线。
 
-### 实机与镜像验证
-
-- Recovery 与 Sysupgrade 均通过最终内容门禁，关键 rootfs 内容一致。
-- XR1710G `wan` 与测试对端协商 10Gbps Full，`lan1` 与 NAS 协商 5Gbps Full。
-- 15 秒、4 并发 TCP：XR → NAS 约 3.85Gbps，NAS → XR 约 1.69Gbps。
-- 两端口最终 `rx/tx errors=0`，压力期间没有新增 Link Down、watchdog、DMA/NPU timeout、firmware crash 或 kernel panic。
-
-该结果证明本次线材、对端和直连本机端点条件下的载波与传输稳定性，不代表所有交换机、运营商、路由/NAT 或异构桥接拓扑。
-
-既有两台 XR1710G 在约 5 米、隔木质楼梯和水泥楼板的摆位中，手动使用 XZ/channel 37/EHT320 完成约 10 分钟、20 次双向回程测试：中位数约 715/720Mbps，最低约 678/671Mbps，满载后双向各 600 Ping 均 0% 丢包。该数据是特定环境和手动 EHT320 配置的结果，不是默认 EHT160 的保证。
-
-### 下载文件
+### 普通用户只需这三个文件
 
 | 文件 | 用途 |
 |---|---|
-| `xr1710g-community-v1.4.0-sysupgrade.itb` | 后台升级，或兼容 HTTP U-Boot 的 **Firmware + UBI 2.0 - 439 MiB** 永久安装；普通用户优先使用 |
-| `xr1710g-community-v1.4.0-recovery.itb` | 临时救援/恢复镜像，不代替永久 Sysupgrade 安装 |
-| `xr1710g-uboot-flash-slot.bin` | 基于 YYH2913 HTTP U-Boot 的实机验证兼容版，加入大文件上传节流与安全中断处理；只有需要更新 U-Boot 时才刷 |
-| `SHA256SUMS.txt` | 刷写前校验，不刷入路由器 |
-| `FLASHING-GUIDE.md` | 中英文刷机说明 |
+| `xr1710g-community-v1.5.0-sysupgrade.itb` | 唯一系统固件；兼容系统后台升级或兼容 U-Boot 的系统刷写入口 |
+| `SHA256SUMS.txt` | 核对文件完整性，不刷入 |
+| `FLASHING-GUIDE.md` | 中英文刷机教程，不刷入 |
 
-首次管理地址为 `192.168.50.1`，用户名 `root`，初始密码为 `password`。2.4/5GHz 初始密码为空，属于开放网络；请先用有线单独连接，立即修改管理员密码并设置无线加密。6GHz Mesh 默认禁用，需先为两端设置相同的 Mesh ID 和 SAE 密钥。
+**已有兼容 U-Boot 不必再次更新。** 如确实需要 U-Boot，请到独立的 [Wiro U-Boot v1.0.0 Release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) 下载；它不是 1.5 系统镜像，不能混刷入口。
 
-<!-- Future releases: keep this donation block immediately below the Chinese section. -->
-### 赞赏
+- 后台升级：系统 → 备份/升级，上传上述 sysupgrade ITB。
+- Wiro Recovery：使用“系统固件双清”入口；会清除旧配置及 overlay 数据，先备份。红灯通常闪烁约三分钟，必须等待页面 100%、绿灯常亮并能进入系统，不要中途断电。
+- 旧兼容 HTTP U-Boot：Firmware → UBI 2.0 - 439 MiB，上传同一个 sysupgrade ITB。
+- 干净安装：`192.168.50.1`，用户名 `root`，密码 `password`。2.4/5GHz Wi-Fi 无预设密码，6GHz 空密钥 Mesh 默认关闭。先单独有线连接，立即设置管理员与无线密码。
+- 保留配置升级：沿用原管理地址和密码；两台干净设备不要同时接入同一网络。
 
-如果这套固件帮你省下了折腾时间，欢迎请我喝杯奶茶。赞赏完全自愿，不影响固件的下载、使用或开源许可。
+SHA-256：
+```text
+ad44bd363957d8b7a893f09fc411a6ce6f0fd4ff2872e0b60f0b1fa11872ea0d  xr1710g-community-v1.5.0-sysupgrade.itb
+```
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/public-first-release/docs/assets/zs.png" alt="太烧 Token 求打赏" width="520">
-</p>
+### 验证说明
+
+5GHz 修复已在两台 XR1710G 上分别通过 EHT160 无线重载及软件重启验证。1.5 镜像通过完整离线内容、版本、密码和翻译校验；内核、设备树、wpad、mt76/MT7996 等关键二进制与 1.4 逐字节相同。维护者确认后发布；这些证据不等于对所有环境的零故障承诺，也不能替代尚未记录的新镜像刷后完整验收。此前 10G 与 Mesh 吞吐数据属于历史 1.4 测试，不作为本版新增测速结果。
+
+源码改动及上游署名见 [CHANGES-v1.md](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/blob/public-first-release/CHANGES-v1.md) 和 [ATTRIBUTION.md](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/blob/public-first-release/ATTRIBUTION.md)。各组件继续遵守原许可证。本项目不是 OpenWrt、iStoreOS 或硬件厂商的官方发布。
+
+### 交流群与赞赏
+
+本固件交流群：**1061612207**。
+
+![Wiro 交流群二维码](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/wiro-qq-group.jpg)
+
+赞赏自愿，不影响下载、使用或开源许可。
+
+![赞赏码](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/support-qr.png)
 
 ## English
 
-### New and fixed in v1.4.0
+Unofficial OpenWrt / iStoreOS community firmware for **Gemtek XR1710G (Airoha AN7581 + MediaTek MT7996)**.
 
-- Fixes the LAN editor exception and static IPv4 CIDR persistence. Bare addresses are normalized to `/24`, while legacy `ipaddr + netmask` data is converted automatically.
-- Fixes the home page redirecting to **Status → Overview**. iStoreX/QuickStart home routes no longer depend on service-start timing.
-- Uses one fan controller with a low-temperature minimum stable step, staged increases, hysteresis, and sensor-failure fallback.
-- Makes Dockerman compatible with the Moby 29 information structure and provides a clear stopped-state message and enable action.
-- Removes GlassTheme and its Chinese package. Clean installations default to Argon; Sysupgrade preserves the owner's current theme.
-- Sets the clean 6GHz template to `US / channel 37 / EHT160 / 802.11s / network=lan`; it remains disabled while the SAE key is empty.
-- Preserves the ingress netdev on MT7996 NPU RX so bridge/FDB software fallback retains the correct context after a PPE cache miss.
-- Adds 10G bridge/PPE local-flow protection for local-FDB, router-destination, and same-ingress reinjection traffic.
-- Preinstalls `kmod-nft-fullcone` and matching libnftnl/nftables/firewall4/LuCI support, disabled by default.
-- Preinstalls PassWall2 `26.8.20`, Xray `26.7.28`, sing-box `1.13.19`, and the firewall4-native nftables transparent-proxy path, disabled by default. Do not enable PassWall2 together with OpenClash.
-- Sets the initial administrator password to `password`; 2.4/5GHz have no preset Wi-Fi password, while the empty-key 6GHz Mesh template remains disabled.
+### Changes from v1.4.0
 
-### Acceleration boundary
+1. **5GHz EHT160 startup:** use foreground CAC to avoid AP initialization failure when background CAC cannot find an available temporary channel. DFS/radar detection remains enabled. The factory setting remains channel 36 / EHT80 / requested 29dBm; migration preserves the selected width, channel, SSID and security. The 5GHz AP may be unavailable during CAC; channel 36 took approximately 60 seconds in our test.
+2. **Factory administrator password:** seed the hash for the public default `password` directly in the image rather than relying solely on a first-boot script. Preserved upgrades keep the owner's password.
+3. **Password-page notice:** add “Firmware community QQ group: 1061612207” with Chinese translation; no change to Argon styling or password submission.
 
-Wired routing and forwarding use Airoha PPE hardware flow offload, while MT7996 uses Airoha NPU queues. mac80211 still builds the 802.11s Mesh Header; this release does not include an unverified end-to-end 802.11s PPE bypass.
+No kernel, Ethernet/Wi-Fi driver, plugin or U-Boot update. The 2.4GHz and 6GHz settings, 10G/PPE/NPU behavior, Docker, iStore, Full Cone, PassWall2, OpenClash and fan policies retain the v1.4 baseline. The 6GHz template remains channel 37 / EHT160 / 802.11s, disabled with an empty key.
 
-### Physical and image validation
+### Download and install
 
-- Both Recovery and Sysupgrade passed the final image-content gate with matching critical rootfs content.
-- XR1710G `wan` negotiated 10Gbps Full with the test peer, while `lan1` negotiated 5Gbps Full with the NAS.
-- A 15-second, four-stream TCP test measured about 3.85Gbps from XR to NAS and 1.69Gbps from NAS to XR.
-- Both ports ended at `rx/tx errors=0`, with no new Link Down, watchdog, DMA/NPU timeout, firmware crash, or kernel panic during the load.
+Only three files are needed: the **sysupgrade ITB** (system firmware), **SHA256SUMS.txt** (integrity check) and **FLASHING-GUIDE.md** (bilingual instructions). GitHub's automatically generated source archives are not flashable firmware.
 
-This establishes carrier and direct local-endpoint transfer stability with the tested cable and peer. It is not a guarantee for every switch, ISP, routed/NAT, or heterogeneous bridge topology.
+Use **System → Backup / Flash Firmware**, Wiro Recovery **System Firmware Double-Clean**, or compatible legacy HTTP U-Boot **Firmware → UBI 2.0 - 439 MiB**. Never upload a system ITB to **Update U-Boot**. An existing compatible U-Boot does not need updating; the optional [Wiro U-Boot release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) is separate.
 
-An earlier two-unit test at approximately five metres across a wooden staircase and concrete floor used XZ/channel 37/EHT320 manually. Twenty bidirectional backhaul tests over about ten minutes had medians near 715/720Mbps and minima near 678/671Mbps; two post-load 600-packet Ping runs had 0% loss. This is a result for that environment and manual EHT320 configuration, not a guarantee for the default EHT160 template.
+Wiro double-clean erases old configuration and overlay data: back up first. Wait for the page to reach 100%, a solid green LED and a reachable system. The red LED commonly blinks for about three minutes. Never interrupt power.
 
-### Downloads
+Clean-install login: `192.168.50.1`, user `root`, password `password`. Initial 2.4/5GHz Wi-Fi is open; the empty-key 6GHz Mesh template is disabled. Connect one unit by Ethernet and immediately set administrator and Wi-Fi passwords. Preserved upgrades retain the existing address and password.
 
-| File | Purpose |
-|---|---|
-| `xr1710g-community-v1.4.0-sysupgrade.itb` | Preferred image for compatible web upgrades and permanent installation through compatible HTTP U-Boot **Firmware + UBI 2.0 - 439 MiB** |
-| `xr1710g-community-v1.4.0-recovery.itb` | Temporary rescue/recovery image; it does not replace permanent Sysupgrade installation |
-| `xr1710g-uboot-flash-slot.bin` | Hardware-validated compatible build based on YYH2913 HTTP U-Boot, with paced large uploads and safe interrupted-upload cleanup; flash only when a U-Boot update is needed |
-| `SHA256SUMS.txt` | Verify before flashing; never flash this file |
-| `FLASHING-GUIDE.md` | Bilingual flashing guide |
+The initial UI is Chinese. Open **System → System → Language and Style** (系统 → 系统 → 语言和界面), select **English**, and click **Save & Apply** (保存并应用).
 
-The initial address is `192.168.50.1`, the user is `root`, and the initial password is `password`. The initial 2.4/5GHz networks have no password and are open; connect one unit by Ethernet and immediately replace the administrator password and configure wireless encryption. The 6GHz Mesh template is disabled until both nodes have matching Mesh IDs and SAE keys.
+### Validation and attribution
+
+The live Wi-Fi fix passed EHT160 reload and software-reboot checks on two XR1710G units. The 1.5 image passed offline content/version/credential/translation checks; kernel, device tree, wpad and mt76/MT7996 binaries match v1.4 byte for byte. Publication is approved by the maintainer; a complete post-flash acceptance record for this new image has not been supplied. Previous 10G/Mesh results are historical v1.4 evidence, not new v1.5 benchmarks or a guarantee for every environment.
+
+See [changes](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/blob/public-first-release/CHANGES-v1.md) and [attribution](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/blob/public-first-release/ATTRIBUTION.md) for source modifications and upstream credits. Original component licenses remain applicable.

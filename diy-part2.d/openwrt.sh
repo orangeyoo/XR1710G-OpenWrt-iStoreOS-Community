@@ -128,6 +128,25 @@ luci_zh_hans_po="$luci_feed/modules/luci-base/po/zh_Hans/base.po"
 luci_regulatory_patch="$GITHUB_WORKSPACE/patches/luci/0600-xr1710g-per-radio-regulatory-guidance.patch"
 luci_static_cidr_patch="$GITHUB_WORKSPACE/patches/luci/0620-xr1710g-normalize-lan-ipv4-cidr.patch"
 luci_firewall_fullcone_patch="$GITHUB_WORKSPACE/patches/luci/0630-luci-app-firewall-fullcone-switches.patch"
+# Bake the documented public factory credential into the base-files package.
+# Account creation by other packages still runs normally; sysupgrade restores
+# an owner's /etc/shadow over this ROM default. Never apply this to other builds.
+grep -qx 'CONFIG_TARGET_airoha_an7581_DEVICE_econet_xr1710g-ubi=y' .config || {
+	echo 'Factory credential patch is restricted to the XR1710G image' >&2
+	exit 1
+}
+git apply --check "$GITHUB_WORKSPACE/patches/openwrt/0102-xr1710g-factory-root-password.patch"
+git apply "$GITHUB_WORKSPACE/patches/openwrt/0102-xr1710g-factory-root-password.patch"
+git -C "$luci_feed" apply --check "$GITHUB_WORKSPACE/patches/luci/0640-xr1710g-password-community-note.patch"
+git -C "$luci_feed" apply "$GITHUB_WORKSPACE/patches/luci/0640-xr1710g-password-community-note.patch"
+if ! grep -Fq 'msgid "Firmware community QQ group: 1061612207"' "$luci_zh_hans_po"; then
+	cat >> "$luci_zh_hans_po" <<'EOF'
+
+#: modules/luci-mod-system/htdocs/luci-static/resources/view/system/password.js
+msgid "Firmware community QQ group: 1061612207"
+msgstr "本固件交流群 1061612207"
+EOF
+fi
 [ -f "$luci_wireless_js" ] || {
 	echo "Missing pinned LuCI wireless configuration view" >&2
 	exit 1
@@ -995,7 +1014,7 @@ sed -i -E \
 cat >> .config <<'CONFIGEOF'
 CONFIG_VERSIONOPT=y
 CONFIG_VERSION_DIST="iStoreOS-XR1710G-Community"
-CONFIG_VERSION_NUMBER="v1.4.0"
+CONFIG_VERSION_NUMBER="v1.5.0"
 CONFIG_VERSION_MANUFACTURER="XR1710G Community"
 CONFIG_VERSION_PRODUCT="XR1710G iStoreOS Community Port"
 CONFIG_VERSION_HOME_URL="https://doc.linkease.com/zh/guide/istoreos/"

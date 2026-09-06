@@ -1,8 +1,17 @@
-# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.4.0 — Changes
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.5.0 — Changes
 
 > Unofficial community firmware for Gemtek XR1710G only. / 非官方社区固件，仅适用于 Gemtek XR1710G。
 
 ## 中文
+
+### v1.5.0 新增
+
+- 5GHz 改用前台 CAC，规避 EHT160 后台 CAC 无可用临时信道时 AP 初始化失败；保留 DFS 与用户频宽、信道、SSID、安全设置，首次仍为 EHT80。
+- 对应源码：`files/usr/sbin/xr1710g-wireless-defaults`、`files/etc/uci-defaults/98-xr1710g-5g-foreground-cac`；后者仅对 XR1710G 的 5GHz 执行一次性迁移。
+- 出厂 root 密码公开默认为 `password`，通过 `patches/openwrt/0102-xr1710g-factory-root-password.patch` 预置哈希。保留配置升级不覆盖已有密码。
+- `patches/luci/0640-xr1710g-password-community-note.patch` 在管理员密码页增加交流群 1061612207 的中英文提示。
+- 内部版本、构建校验和文件名统一为 v1.5.0；增加默认凭据、翻译、频宽保留及镜像版本测试。没有升级内核、驱动、插件或 U-Boot。
+- 两台设备热修复及 EHT160 软件重启通过，完整离线镜像检查通过；新镜像完整刷后验收尚无记录，历史 1.4 数据不作为本版新增测速。
 
 ### v1.4.0 新增
 
@@ -70,6 +79,15 @@
 - 默认管理地址 `192.168.50.1/24`、NAND/UBI 2.0、iStoreOS 风格导航、iStore、QuickStart、OpenClash、Nikki 与 EqosPlus。
 
 ## English
+
+### New in v1.5.0
+
+- Use foreground CAC to avoid EHT160 AP initialization failure when background CAC has no available temporary channel. Retain DFS and owner width/channel/SSID/security; factory width remains EHT80.
+- Source: `files/usr/sbin/xr1710g-wireless-defaults` and the board-gated, one-time `files/etc/uci-defaults/98-xr1710g-5g-foreground-cac` migration.
+- Seed the public factory root password `password` as a hash via `patches/openwrt/0102-xr1710g-factory-root-password.patch`; preserve existing passwords on retained-configuration upgrades.
+- Add the bilingual QQ group 1061612207 password-page notice via `patches/luci/0640-xr1710g-password-community-note.patch`.
+- Align embedded version, image names and build checks to v1.5.0; add credential, translation, width-preservation and embedded-version regression checks. No kernel, driver, plugin or U-Boot upgrade.
+- The live fix passed EHT160 software-reboot checks on two units and the image passed offline checks; complete new-image post-flash acceptance is not recorded. Historical v1.4 benchmarks are not new v1.5 results.
 
 ### New in v1.4.0
 

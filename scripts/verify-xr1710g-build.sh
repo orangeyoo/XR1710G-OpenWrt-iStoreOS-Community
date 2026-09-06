@@ -123,7 +123,7 @@ require_config 'CONFIG_TARGET_PREINIT_IP="192.168.50.1"'
 require_config 'CONFIG_TARGET_PREINIT_NETMASK="255.255.255.0"'
 require_config 'CONFIG_TARGET_PREINIT_BROADCAST="192.168.50.255"'
 require_config 'CONFIG_VERSION_DIST="iStoreOS-XR1710G-Community"'
-require_config 'CONFIG_VERSION_NUMBER="v1.4.0"'
+require_config 'CONFIG_VERSION_NUMBER="v1.5.0"'
 
 # Keep the current OpenWrt CIDR-list model as the source of truth. The
 # XR1710G-specific guards normalize legacy input around this baseline; they
@@ -573,16 +573,16 @@ mt76_manifest_line="$(grep -hE '^kmod-mt7996e[[:space:]]+-[[:space:]]+' \
 printf '%s\n' "$mt76_manifest_line" | grep -Fq '2026.08.01~b2704cf5-r6' ||
 	fail "manifest does not identify the A/B-tested mt76 build"
 
-recovery_pattern='*-v1.4.0-*-econet_xr1710g-ubi-initramfs-recovery.itb'
-sysupgrade_pattern='*-v1.4.0-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb'
+recovery_pattern='*-v1.5.0-*-econet_xr1710g-ubi-initramfs-recovery.itb'
+sysupgrade_pattern='*-v1.5.0-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb'
 recovery_count="$(find "$TARGET_DIR" -maxdepth 1 -type f \
 	-name "$recovery_pattern" -print | wc -l)"
 sysupgrade_count="$(find "$TARGET_DIR" -maxdepth 1 -type f \
 	-name "$sysupgrade_pattern" -print | wc -l)"
 [ "$recovery_count" -eq 1 ] ||
-	fail "expected exactly one v1.4.0 XR1710G recovery image, found $recovery_count"
+	fail "expected exactly one v1.5.0 XR1710G recovery image, found $recovery_count"
 [ "$sysupgrade_count" -eq 1 ] ||
-	fail "expected exactly one v1.4.0 XR1710G sysupgrade image, found $sysupgrade_count"
+	fail "expected exactly one v1.5.0 XR1710G sysupgrade image, found $sysupgrade_count"
 recovery="$(find "$TARGET_DIR" -maxdepth 1 -type f \
 	-name "$recovery_pattern" -print -quit)"
 sysupgrade="$(find "$TARGET_DIR" -maxdepth 1 -type f \
@@ -874,6 +874,11 @@ for installed in \
 	'squashfs-root/etc/uci-defaults/99-custom.sh' \
 	'squashfs-root/etc/uci-defaults/41_uhttpd_proxy_linkease' \
 	'squashfs-root/etc/uci-defaults/50-root-passwd' \
+	'squashfs-root/etc/shadow' \
+	'squashfs-root/etc/openwrt_release' \
+	'squashfs-root/usr/lib/os-release' \
+	'squashfs-root/www/luci-static/resources/view/system/password.js' \
+	'squashfs-root/usr/lib/lua/luci/i18n/base.zh-cn.lmo' \
 	'squashfs-root/etc/uci-defaults/zz-xr1710g-services.sh' \
 	'squashfs-root/usr/sbin/xr1710g-role' \
 	'squashfs-root/usr/sbin/xr1710g-wan-carrier' \
@@ -985,8 +990,14 @@ mkdir "$VERIFY_TMP/core-root"
 		'etc/apk/repositories.d/distfeeds.list' \
 		'etc/uci-defaults/30_luci-theme-argon' \
 		'etc/uci-defaults/99-custom.sh' \
+		'etc/uci-defaults/98-xr1710g-5g-foreground-cac' \
 		'etc/uci-defaults/41_uhttpd_proxy_linkease' \
 		'etc/uci-defaults/50-root-passwd' \
+		'etc/shadow' \
+		'etc/openwrt_release' \
+		'usr/lib/os-release' \
+		'www/luci-static/resources/view/system/password.js' \
+		'usr/lib/lua/luci/i18n/base.zh-cn.lmo' \
 		'etc/uci-defaults/zz-xr1710g-services.sh' \
 		'etc/init.d/xr1710g-cpufreq' \
 		'etc/init.d/xr1710g-uboot-recovery-restore' \
@@ -1073,8 +1084,14 @@ unsquashfs -d "$VERIFY_TMP/permanent-root" "$VERIFY_TMP/sysupgrade.rootfs" \
 	etc/apk/repositories.d/distfeeds.list \
 	etc/uci-defaults/30_luci-theme-argon \
 	etc/uci-defaults/99-custom.sh \
+	etc/uci-defaults/98-xr1710g-5g-foreground-cac \
 	etc/uci-defaults/41_uhttpd_proxy_linkease \
 	etc/uci-defaults/50-root-passwd \
+	etc/shadow \
+	etc/openwrt_release \
+	usr/lib/os-release \
+	www/luci-static/resources/view/system/password.js \
+	usr/lib/lua/luci/i18n/base.zh-cn.lmo \
 	etc/uci-defaults/zz-xr1710g-services.sh \
 	etc/init.d/xr1710g-cpufreq \
 	etc/init.d/xr1710g-uboot-recovery-restore \
@@ -1375,8 +1392,14 @@ for critical in \
 	etc/apk/repositories.d/distfeeds.list \
 	etc/uci-defaults/30_luci-theme-argon \
 	etc/uci-defaults/99-custom.sh \
+	etc/uci-defaults/98-xr1710g-5g-foreground-cac \
 	etc/uci-defaults/41_uhttpd_proxy_linkease \
 	etc/uci-defaults/50-root-passwd \
+	etc/shadow \
+	etc/openwrt_release \
+	usr/lib/os-release \
+	www/luci-static/resources/view/system/password.js \
+	usr/lib/lua/luci/i18n/base.zh-cn.lmo \
 	etc/uci-defaults/zz-xr1710g-services.sh \
 	etc/init.d/xr1710g-cpufreq \
 	etc/init.d/xr1710g-uboot-recovery-restore \
@@ -1735,7 +1758,7 @@ grep -Fq "mesh_id='XR1710G-6G-BACKHAUL'" "$wireless_defaults" ||
 	fail "first-boot defaults do not set the 6 GHz mesh ID"
 grep -Fq "htmode='EHT80'" "$wireless_defaults" ||
 	fail "5 GHz first-boot defaults do not use the hardware-tested EHT80 baseline"
-if grep -Eqi '5.?GHz.*EHT160|EHT160.*5.?GHz|5g.*EHT160|EHT160.*5g|5.?GHz.*30.?dBm|30.?dBm.*5.?GHz|5g.*30.?dBm|30.?dBm.*5g' \
+if ! python3 "$VERIFY_SCRIPT_DIR/test-wireless-doc-defaults.py" \
 	"$BUILDER_ROOT/README.md" "$BUILDER_ROOT/README-EN.md" \
 	"$BUILDER_ROOT/RELEASE-NOTES.md" "$BUILDER_ROOT/CHANGES-v1.md"; then
 	fail "public documentation contains a stale 5 GHz EHT160/30dBm default"
@@ -1903,6 +1926,16 @@ fi
 sh "$ROOT_DEFAULT_TEST" "$root_default" "$custom_defaults" \
 	"$real_jshn_lib" "$host_jshn_bin" ||
 	fail "final image fails the first-login password regression test"
+sh "$VERIFY_SCRIPT_DIR/test-factory-image-credentials.sh" "$VERIFY_TMP/core-root" ||
+	fail "final image lacks the factory credential or translated community note"
+grep -Fxq "DISTRIB_RELEASE='v1.5.0'" "$VERIFY_TMP/core-root/etc/openwrt_release" ||
+	fail "embedded OpenWrt release is not v1.5.0"
+grep -Fxq 'VERSION_ID="v1.5.0"' "$VERIFY_TMP/core-root/usr/lib/os-release" ||
+	fail "embedded OS version is not v1.5.0"
+"$TOPDIR/staging_dir/host/bin/fwtool" -i "$VERIFY_TMP/version-metadata.json" "$sysupgrade" ||
+	fail "cannot read firmware version metadata"
+python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["version"]["version"] == "v1.5.0"' \
+	"$VERIFY_TMP/version-metadata.json" || fail "sysupgrade metadata is not v1.5.0"
 
 dockerd_config="$VERIFY_TMP/core-root/etc/config/dockerd"
 dockerd_init="$VERIFY_TMP/core-root/etc/init.d/dockerd"

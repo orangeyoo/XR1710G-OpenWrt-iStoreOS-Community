@@ -124,7 +124,10 @@ apply_policy() {
 		uci -q set wireless."$radio".eht_su_beamformer='1'
 		uci -q set wireless."$radio".eht_mu_beamformer='1'
 		uci -q set wireless."$radio".he_bss_color='2'
-		uci -q set wireless."$radio".background_radar='1'
+		# Background CAC needs an already available same-width temporary
+		# channel. A cold EHT160 start can have none and hostapd disables
+		# the AP. Foreground CAC waits safely on the selected DFS channel.
+		uci -q set wireless."$radio".background_radar='0'
 		for iface in $(ifaces_for_radio "$radio"); do
 			[ "$(uci -q get wireless."$iface".mode 2>/dev/null || true)" = 'ap' ] || continue
 			uci -q set wireless."$iface".ssid='XR1710G-5G'

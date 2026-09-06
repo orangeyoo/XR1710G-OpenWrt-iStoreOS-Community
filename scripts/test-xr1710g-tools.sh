@@ -768,7 +768,7 @@ for expected in \
 	'wireless.radio1.htmode=EHT80' \
 	'wireless.radio1.txpower=29' \
 	'wireless.radio1.he_bss_color=2' \
-	'wireless.radio1.background_radar=1' \
+	'wireless.radio1.background_radar=0' \
 	'wireless.default_radio1.ssid=XR1710G-5G' \
 	'wireless.default_radio1.encryption=none' \
 	'wireless.default_radio1.uapsd=0' \
@@ -795,7 +795,9 @@ done
 if grep -Eq '^wireless\.default_radio[012]\.key=' "$XR_TEST_STATE/uci.db"; then
 	fail 'factory wireless policy contains a preconfigured key'
 fi
-if grep -Eqi '5.?GHz.*EHT160|EHT160.*5.?GHz|5g.*EHT160|EHT160.*5g|5.?GHz.*30.?dBm|30.?dBm.*5.?GHz|5g.*30.?dBm|30.?dBm.*5g' \
+# Describing an EHT160 bugfix is not declaring EHT160 as the factory default.
+# Check actual default claims per sentence, retaining negative regression cases.
+if ! python3 "$BUILDER/scripts/test-wireless-doc-defaults.py" \
 	"$BUILDER/README.md" "$BUILDER/README-EN.md" \
 	"$BUILDER/RELEASE-NOTES.md" "$BUILDER/CHANGES-v1.md"; then
 	fail 'public documentation still contains a stale 5 GHz EHT160/30dBm default'

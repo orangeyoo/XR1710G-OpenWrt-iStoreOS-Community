@@ -18,7 +18,7 @@ fail() {
 
 cat > "$TMP/bin/board_name" <<'EOF'
 #!/bin/sh
-echo econet,xr1710g-ubi
+echo "${XR_TEST_BOARD:-econet,xr1710g-ubi}"
 EOF
 
 cat > "$TMP/bin/sleep" <<'EOF'
@@ -162,6 +162,7 @@ assert_line 'wireless.default_radio0.disabled=0'
 assert_line 'wireless.default_radio1.mode=ap'
 assert_line 'wireless.default_radio1.encryption=none'
 assert_line 'wireless.default_radio1.disabled=0'
+assert_line 'wireless.radio1.background_radar=0'
 assert_line 'wireless.radio2.band=6g'
 assert_line 'wireless.radio2.channel=37'
 assert_line 'wireless.radio2.htmode=EHT160'
@@ -184,8 +185,10 @@ fi
 
 # The completion marker protects owner changes on later boots.
 uci -q set wireless.default_radio1.ssid=OWNER-5G
+uci -q set wireless.radio1.htmode=EHT160
 XR1710G_WIFI_WAIT_ATTEMPTS=1 XR_TEST_WIFI_MODE=complete sh "$POLICY"
 assert_line 'wireless.default_radio1.ssid=OWNER-5G'
+assert_line 'wireless.radio1.htmode=EHT160'
 
 # An absent 6 GHz radio must fail without accepting a partial configuration.
 reset_state
@@ -240,5 +243,31 @@ assert_line 'wireless.default_radio2.encryption=sae'
 assert_line 'wireless.default_radio2.disabled=1'
 assert_line 'system.@system[0].xr1710g_wireless_defaults=1'
 assert_no_key default_radio2
+
+# An upgrade must migrate existing settings without resetting owner choices.
+migration="$(dirname "$POLICY")/../../etc/uci-defaults/98-xr1710g-5g-foreground-cac"
+[ -f "$migration" ] || fail 'foreground CAC migration missing'
+reset_state
+uci set wireless.owner5.band=5g
+uci set wireless.owner5.htmode=EHT160
+uci set wireless.owner5.channel=100
+uci set wireless.owner5.background_radar=1
+uci set wireless.radio0.band=2g
+uci set wireless.radio0.background_radar=1
+uci set wireless.radio2.band=6g
+uci set wireless.radio2.background_radar=1
+uci set wireless.owner_ap.ssid=OWNER-5G
+XR_TEST_BOARD=other,board sh "$migration"
+assert_line 'wireless.owner5.background_radar=1'
+[ ! -s "$XR_TEST_STATE/commits" ] || fail 'wrong board committed changes'
+sh "$migration"
+assert_line 'wireless.owner5.background_radar=0'
+assert_line 'wireless.owner5.htmode=EHT160'
+assert_line 'wireless.owner5.channel=100'
+assert_line 'wireless.owner_ap.ssid=OWNER-5G'
+assert_line 'wireless.radio0.background_radar=1'
+assert_line 'wireless.radio2.background_radar=1'
+sh "$migration"
+[ "$(wc -l < "$XR_TEST_STATE/commits")" -eq 1 ] || fail 'migration not idempotent'
 
 echo 'WIRELESS DEFAULT TEST PASSED'

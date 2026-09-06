@@ -1,145 +1,78 @@
-# XR1710G v1.4.0 Flashing Guide / XR1710G v1.4.0 刷机说明
+# XR1710G v1.5.0 刷机指南 / Flashing Guide
 
 ## 中文
 
-### Release 文件
+仅适用于 Gemtek XR1710G。下载 [v1.5.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.5.0)。
 
-Release 只保留以下必要文件：
+| 文件 | 用途 |
+|---|---|
+| `xr1710g-community-v1.5.0-sysupgrade.itb` | 唯一系统固件 |
+| `SHA256SUMS.txt` | 刷前核对，不刷入 |
+| `FLASHING-GUIDE.md` | 本说明，不刷入 |
 
-| 文件 | 用途 | 是否刷入 |
-|---|---|---|
-| `xr1710g-community-v1.4.0-sysupgrade.itb` | 后台升级及兼容 HTTP U-Boot 的永久系统安装；普通用户优先使用 | 是 |
-| `xr1710g-community-v1.4.0-recovery.itb` | 临时救援、恢复或诊断，不代替永久系统安装 | 仅在救援流程明确要求时临时使用 |
-| `xr1710g-uboot-flash-slot.bin` | 基于 YYH2913 HTTP U-Boot 的实机验证兼容版，加入大文件上传节流与安全中断处理 | 只有需要更新 U-Boot 时才刷 |
-| `SHA256SUMS.txt` | 校验下载文件是否完整 | 否 |
-| `FLASHING-GUIDE.md` | 本说明 | 否 |
+### 已有兼容 OpenWrt / iStoreOS
 
-### 刷机前
+备份需要的配置 → 系统 → 备份/升级 → 上传 sysupgrade ITB → 确认并等待重启。
+同系列保留配置升级继续使用原地址和密码；跨发行版或排查旧配置问题时建议不保留配置。
+不要把系统 ITB 上传至 Update U-Boot。
 
-1. 确认设备型号为 **Gemtek XR1710G**。
-2. 使用 `SHA256SUMS.txt` 核对准备刷写的文件。
-3. 备份需要保留的设置。跨发行版升级或排查旧配置问题时，不要保留旧配置。
-4. 只连接当前目标设备，保证供电稳定，刷写过程中不要断电。
-5. 不要修改或复制其他设备的 Factory、EEPROM、caldata、MAC 或无线校准数据。
+### Wiro U-Boot Recovery
 
-### 路径 A：已运行兼容 OpenWrt/iStoreOS
+1. 只连接目标设备，进入 Recovery；电脑设为自动获取 IP，打开 `http://192.168.255.1/`。
+2. 选择 **系统固件双清 / System Firmware Double-Clean**，上传上述 sysupgrade ITB。
+3. 双清会删除旧配置、overlay 和其中的 Docker 数据，必须提前备份。
+4. 红灯通常闪烁约三分钟，必须等待 **页面 100%、绿灯常亮且系统可访问**。全程不要断电、复位或拔线。
 
-1. 打开 **系统 → 备份/升级**。
-2. 上传 `xr1710g-community-v1.4.0-sysupgrade.itb`。
-3. 确认文件和目标设备无误后开始升级。
-4. 等待写入和重启完成，不要断电。
+### 旧版兼容 HTTP U-Boot
 
-这是正常后台升级的优先路径。不要把 Recovery 镜像或 U-Boot 文件上传到系统升级入口。
+若旧版没有自动 DHCP，直连电脑手动设为 `192.168.255.2/24`，打开 `http://192.168.255.1/`。
+选择 **Firmware → UBI 2.0 - 439 MiB**，上传同一个 sysupgrade ITB，等待写入和重启。
+结束后将电脑恢复自动获取 IP。
 
-### 路径 B：兼容 HTTP U-Boot 永久安装
+### U-Boot 是否必须升级
 
-1. 断电后按设备对应方式进入 U-Boot Recovery。
-2. 将直连电脑手动设置为：
+**不需要为了系统升级到 1.5 而重刷已有兼容 U-Boot。**
+需要更换时，到独立的 [Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) 下载并按该页操作。
+只有对应的 flash-slot.bin 能进入 **更新 U-Boot / Update U-Boot**；系统 ITB 和裸 u-boot.bin 不能混刷。
 
-   - IPv4：`192.168.255.2`
-   - 子网掩码：`255.255.255.0`
-   - 网关：留空
-
-3. 打开 `http://192.168.255.1/`。
-4. 选择 **Firmware**。
-5. 布局选择 **UBI 2.0 - 439 MiB**。
-6. 上传 `xr1710g-community-v1.4.0-sysupgrade.itb`。
-7. 等待擦除、写入和重启全部完成，不要中途断电或关闭页面。
-
-兼容 HTTP U-Boot 的 **Firmware + UBI 2.0 - 439 MiB** 路径同样优先使用 Sysupgrade。不要把系统 ITB 刷入 **Update U-Boot**。
-
-### Recovery 镜像什么时候用
-
-`xr1710g-community-v1.4.0-recovery.itb` 是临时救援/恢复镜像，用于无法正常启动系统时的诊断或恢复流程。它不是普通用户的永久系统镜像。
-
-只有当 Recovery 页面或明确的救援步骤要求“临时启动/加载 Recovery”时才使用它。临时系统启动后，仍使用 `xr1710g-community-v1.4.0-sysupgrade.itb` 完成永久安装。不要把 Recovery ITB 刷入 U-Boot 槽位。
-
-### U-Boot 更新
-
-`xr1710g-uboot-flash-slot.bin` 是基于 YYH2913 HTTP U-Boot 的实机验证兼容版，加入大文件上传节流与安全中断处理；不需要因为系统升级到 v1.4.0 而重复刷写。进入 Recovery 后仍按上文手动设置电脑为 `192.168.255.2/24`。
-
-只有设备尚未使用兼容 U-Boot、或明确需要更新 U-Boot 时，才在 **Update U-Boot** 页面上传该文件。不要把系统 ITB、Recovery ITB、裸 `u-boot.bin` 或独立 FIT 刷入 U-Boot 槽位。
-
-### 首次启动
+### 初始账号与无线
 
 - 管理地址：`192.168.50.1`
 - 用户名：`root`
-- 初始管理员密码：`password`
-- 2.4/5GHz Wi-Fi：没有预置密码，首次为开放网络
-- 6GHz：空 SAE 密钥的 802.11s 模板，默认禁用
+- 管理员初始密码：`password`（保留配置升级不覆盖原密码）
+- 2.4/5GHz：无默认 Wi-Fi 密码，初始开放；应立即设置加密。
+- 6GHz：无预设 SAE 密钥，802.11s 模板默认禁用。
+- 5GHz 首次默认 EHT80；可手动选择 EHT160。DFS 检测期间暂时不广播，等待检测完成再判断是否失败。
+- 交流群：1061612207。
 
-请先用网线单独连接一台设备，立即修改管理员密码并为 2.4/5GHz 设置无线加密，再接入家庭网络。两台新刷设备不要同时接入同一网络，以免 `192.168.50.1` 和 DHCP 冲突。
-
-首次界面默认简体中文。切换英文：进入 **系统 → 系统 → 语言和界面**，选择 **English**，然后点击 **保存并应用**。
+两台新刷设备不要同时连入同一网络，以免初始地址与 DHCP 冲突。
+不要复制另一台设备的 Factory、EEPROM、caldata 或 MAC。
+首次界面是中文：**系统 → 系统 → 语言和界面 → English → 保存并应用**。
 
 ## English
 
-### Release files
+For Gemtek XR1710G only. Use the **sysupgrade ITB** as the system firmware, **SHA256SUMS.txt** to verify integrity, and this guide for instructions. GitHub source archives are not flashable firmware.
 
-The Release contains only the required files:
+### Compatible running system
 
-| File | Purpose | Flash it? |
-|---|---|---|
-| `xr1710g-community-v1.4.0-sysupgrade.itb` | Compatible web upgrades and permanent installation through compatible HTTP U-Boot; preferred for normal use | Yes |
-| `xr1710g-community-v1.4.0-recovery.itb` | Temporary rescue, recovery, or diagnostics; not a permanent system replacement | Only when a rescue procedure explicitly requests it |
-| `xr1710g-uboot-flash-slot.bin` | Hardware-validated compatible build based on YYH2913 HTTP U-Boot, with paced large uploads and safe interrupted-upload cleanup | Only when a U-Boot update is needed |
-| `SHA256SUMS.txt` | Download integrity checks | No |
-| `FLASHING-GUIDE.md` | This guide | No |
+Back up settings, open **System → Backup / Flash Firmware**, upload `xr1710g-community-v1.5.0-sysupgrade.itb`, confirm, and wait for reboot. Preserved upgrades retain the existing address and password. Avoid preserving settings across distributions or when eliminating stale configuration issues.
 
-### Before flashing
+### Wiro Recovery
 
-1. Confirm that the device is a **Gemtek XR1710G**.
-2. Verify the selected file against `SHA256SUMS.txt`.
-3. Back up any settings you need. Do not preserve settings when changing distributions or eliminating an old configuration problem.
-4. Connect only the target device, provide stable power, and never interrupt a write.
-5. Never modify or copy Factory, EEPROM, caldata, MAC addresses, or wireless calibration data from another unit.
+Enter Recovery with only the target router connected. Set the computer to DHCP and open `http://192.168.255.1/`. Choose **System Firmware Double-Clean** and upload the same sysupgrade ITB. This erases configuration, overlay and Docker data stored there; back up first.
 
-### Path A: compatible OpenWrt/iStoreOS is running
+Wait for **100% in the page, a solid green LED and a reachable installed system**. The red LED typically blinks for about three minutes. Never remove power, reset or unplug during writing.
 
-1. Open **System → Backup / Flash Firmware**.
-2. Upload `xr1710g-community-v1.4.0-sysupgrade.itb`.
-3. Confirm the file and target device, then start the upgrade.
-4. Wait for writing and reboot to finish. Do not remove power.
+### Legacy compatible HTTP U-Boot
 
-This is the preferred web-upgrade path. Never upload the Recovery image or U-Boot file to the system-upgrade form.
+If DHCP is unavailable, temporarily set the computer to `192.168.255.2/24`, open `http://192.168.255.1/`, choose **Firmware → UBI 2.0 - 439 MiB**, and upload the same sysupgrade ITB. Restore computer DHCP after installation.
 
-### Path B: permanent installation through compatible HTTP U-Boot
-
-1. Power off and enter U-Boot Recovery using the procedure for the device.
-2. Configure the directly connected computer manually:
-
-   - IPv4: `192.168.255.2`
-   - Netmask: `255.255.255.0`
-   - Gateway: leave empty
-
-3. Open `http://192.168.255.1/`.
-4. Select **Firmware**.
-5. Select **UBI 2.0 - 439 MiB**.
-6. Upload `xr1710g-community-v1.4.0-sysupgrade.itb`.
-7. Wait for erase, write, and reboot to complete. Do not remove power or close the page during the operation.
-
-The compatible HTTP U-Boot **Firmware + UBI 2.0 - 439 MiB** path also prefers Sysupgrade. Never upload a system ITB to **Update U-Boot**.
-
-### When to use the Recovery image
-
-`xr1710g-community-v1.4.0-recovery.itb` is a temporary rescue/recovery image for diagnosis or recovery when the installed system cannot boot. It is not the normal permanent system image.
-
-Use it only when a Recovery page or an explicit rescue procedure asks for a temporary Recovery boot/load. After the temporary system starts, use `xr1710g-community-v1.4.0-sysupgrade.itb` for permanent installation. Never flash the Recovery ITB into the U-Boot slot.
-
-### Updating U-Boot
-
-`xr1710g-uboot-flash-slot.bin` is a hardware-validated compatible build based on YYH2913 HTTP U-Boot, with paced large uploads and safe interrupted-upload cleanup. A v1.4.0 system upgrade does not require flashing it again. Continue to configure the computer manually as `192.168.255.2/24` after entering Recovery.
-
-Upload it on **Update U-Boot** only when the device does not already have compatible U-Boot or when a U-Boot update is explicitly required. Never flash a system ITB, Recovery ITB, raw `u-boot.bin`, or standalone FIT into the U-Boot slot.
+A compatible U-Boot does **not** need updating for firmware 1.5. The optional [Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) is separate. Never upload a system ITB or raw u-boot.bin to **Update U-Boot**.
 
 ### First boot
 
-- Management address: `192.168.50.1`
-- User: `root`
-- Initial administrator password: `password`
-- 2.4/5GHz Wi-Fi: no preset password, initially open
-- 6GHz: empty-key 802.11s SAE template, disabled by default
+Address `192.168.50.1`, user `root`, password `password`. Preserved upgrades keep existing credentials. Initial 2.4/5GHz networks are open; set encryption and change the administrator password immediately. The empty-key 6GHz 802.11s template is disabled. The factory 5GHz width remains EHT80; EHT160 is selectable and may require a foreground DFS/CAC wait before the AP becomes available.
 
-Connect one unit by Ethernet, immediately replace the administrator password, and configure 2.4/5GHz encryption before attaching it to the home network. Do not attach two clean units at the same time, because both start at `192.168.50.1` with DHCP enabled.
+Configure clean units individually to prevent duplicate addresses and DHCP servers. Do not copy another device's Factory, EEPROM, caldata or MAC.
 
-The first-boot UI is Simplified Chinese. Open **System → System → Language and Style**, select **English**, and click **Save & Apply**.
+The initial UI is Chinese. Open **System → System → Language and Style** (系统 → 系统 → 语言和界面), select **English**, and click **Save & Apply** (保存并应用).

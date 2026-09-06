@@ -1,0 +1,17 @@
+#!/bin/sh
+# One-time migration for retained v1.4 configurations. No reload here:
+# normal boot will start wireless after uci-defaults. Keep user radio choices.
+board="$(cat /tmp/sysinfo/board_name 2>/dev/null)"
+[ -n "$board" ] || board="$(board_name 2>/dev/null)"
+[ "$board" = 'econet,xr1710g-ubi' ] || exit 0
+
+changed=0
+for radio in $(uci -q show wireless | sed -n \
+	-e "s/^wireless\.\([^.=]*\)\.band='5g'$/\1/p" \
+	-e 's/^wireless\.\([^.=]*\)\.band=5g$/\1/p'); do
+	[ "$(uci -q get wireless."$radio".background_radar)" = '1' ] || continue
+	uci -q set wireless."$radio".background_radar='0' || exit 1
+	changed=1
+done
+[ "$changed" = 0 ] || uci -q commit wireless || exit 1
+exit 0

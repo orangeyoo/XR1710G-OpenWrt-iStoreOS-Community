@@ -1,4 +1,4 @@
-# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.4.0
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.5.0
 
 **Languages:** [English (this page)](README-EN.md) | [中文](README.md) | [Bilingual Flashing Guide](FLASHING-GUIDE.md)
 
@@ -8,7 +8,20 @@ This is an unofficial community port for the **Econet/Gemtek XR1710G (Airoha AN7
 
 This project is not an official release from LinkEase/iStoreOS, OpenWrt, Gemtek, Airoha, or MediaTek. It is only for the XR1710G and must not be flashed to visually similar devices or other Airoha/MediaTek hardware.
 
-## What is new in v1.4.0
+## New in v1.5.0
+
+[Download v1.5.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.5.0) · [Bilingual release notes](RELEASE-NOTES.md)
+
+- Use foreground CAC for 5GHz EHT160 to avoid AP startup failure when background CAC cannot find a temporary channel. DFS remains active; owner width/channel are preserved and the factory width remains EHT80. Wait for CAC before expecting the AP to broadcast.
+- Seed the public factory root password `password` as a hash in the image; preserved upgrades keep existing credentials.
+- Add the translated administrator-password-page note “Firmware community QQ group: 1061612207”.
+- Kernel, device tree, wpad and mt76/MT7996 binaries match v1.4. No driver, plugin or U-Boot upgrade; 6GHz, 10G/NPU, Docker and fan policies are unchanged.
+
+The live fix passed an EHT160 software reboot on each of two devices; the image passed offline content checks. Published with maintainer approval; a complete post-flash acceptance record for the new image has not been supplied. Historical benchmarks below are not new v1.5 acceptance results.
+
+[Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) remains a separate release; an existing compatible version does not need reflashing.
+
+## Historical changes in v1.4.0
 
 - Fixes the LAN editor crash and static IPv4 CIDR persistence. A bare LAN address is safely normalized to `/24`; the back-end guard also converts legacy `ipaddr + netmask` data so LAN and DHCP do not disappear after a reboot.
 - Fixes the home page being redirected to **Status → Overview**. iStoreX/QuickStart home routes no longer depend on service-start timing.
@@ -102,13 +115,11 @@ The formal Release contains only the required files:
 
 | File | Purpose |
 |---|---|
-| `xr1710g-community-v1.4.0-sysupgrade.itb` | Preferred image for compatible web upgrades and permanent installation through compatible HTTP U-Boot |
-| `xr1710g-community-v1.4.0-recovery.itb` | Temporary rescue/recovery image; it does not replace permanent Sysupgrade installation |
-| `xr1710g-uboot-flash-slot.bin` | Hardware-validated compatible build based on YYH2913 HTTP U-Boot, with paced large uploads and safe interrupted-upload cleanup; flash only when a U-Boot update is needed |
+| `xr1710g-community-v1.5.0-sysupgrade.itb` | Preferred image for compatible web upgrades and permanent installation through compatible HTTP U-Boot |
 | `SHA256SUMS.txt` | Integrity checks; never flash this file |
 | `FLASHING-GUIDE.md` | Bilingual file-purpose and flashing guide |
 
-Read [FLASHING-GUIDE.md](FLASHING-GUIDE.md) before flashing. Prefer `xr1710g-community-v1.4.0-sysupgrade.itb` from a compatible OpenWrt/iStoreOS system or from the compatible HTTP U-Boot **Firmware + UBI 2.0 - 439 MiB** page. Never flash a system ITB into the U-Boot slot.
+Read [FLASHING-GUIDE.md](FLASHING-GUIDE.md) before flashing. Prefer `xr1710g-community-v1.5.0-sysupgrade.itb` from a compatible OpenWrt/iStoreOS system or from the compatible HTTP U-Boot **Firmware + UBI 2.0 - 439 MiB** page. Never flash a system ITB into the U-Boot slot.
 
 The initial address is `192.168.50.1`, the user is `root`, and the initial password is `password`. Connect one unit by Ethernet and immediately replace the administrator password and configure wireless encryption.
 

@@ -213,37 +213,34 @@ jobs:
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
         target_dir="$GITHUB_WORKSPACE/openwrt/bin/targets/airoha/an7581"
-        public_dir="$GITHUB_WORKSPACE/xr1710g-v1.4.0-public-assets"
+        public_dir="$GITHUB_WORKSPACE/xr1710g-v1.5.0-public-assets"
         rm -rf "$public_dir"
         mkdir -p "$public_dir"
 
         mapfile -t recovery_images < <(
           find "$target_dir" -maxdepth 1 -type f \
-            -name '*-v1.4.0-*-econet_xr1710g-ubi-initramfs-recovery.itb'
+            -name '*-v1.5.0-*-econet_xr1710g-ubi-initramfs-recovery.itb'
         )
         mapfile -t sysupgrade_images < <(
           find "$target_dir" -maxdepth 1 -type f \
-            -name '*-v1.4.0-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb'
+            -name '*-v1.5.0-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb'
         )
         [ "${#recovery_images[@]}" -eq 1 ]
         [ "${#sysupgrade_images[@]}" -eq 1 ]
 
-        cp "${recovery_images[0]}" \
-          "$public_dir/xr1710g-community-v1.4.0-recovery.itb"
         cp "${sysupgrade_images[0]}" \
-          "$public_dir/xr1710g-community-v1.4.0-sysupgrade.itb"
+          "$public_dir/xr1710g-community-v1.5.0-sysupgrade.itb"
         cp "$GITHUB_WORKSPACE/FLASHING-GUIDE.md" "$public_dir/"
         (
           cd "$public_dir"
           sha256sum \
-            xr1710g-community-v1.4.0-recovery.itb \
-            xr1710g-community-v1.4.0-sysupgrade.itb \
+            xr1710g-community-v1.5.0-sysupgrade.itb \
             > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
         )
 
-        # Official Releases are curated manually so only the verified U-Boot
-        # slot image is added beside these four generated public assets.
+        # Only system ITB, checksum and guide are public system assets.
+        # U-Boot stays in its independent release.
         echo "FIRMWARE=$public_dir" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
@@ -251,7 +248,7 @@ jobs:
       uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: XR1710G-v1.4.0-public-assets
+        name: XR1710G-v1.5.0-public-assets
         path: ${{ env.FIRMWARE }}/*
 
     - name: 清理运行记录
