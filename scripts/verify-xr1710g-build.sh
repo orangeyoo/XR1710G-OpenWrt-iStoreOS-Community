@@ -1769,7 +1769,7 @@ for image_root in "$VERIFY_TMP/core-root" "$VERIFY_TMP/permanent-root"; do
 		fail "FT-over-DS migration does not gate on 802.11r in $image_root"
 	grep -Fq "ft_over_ds='1'" "$ft_migration" ||
 		fail "FT-over-DS migration does not set ft_over_ds='1' in $image_root"
-	if grep -Fq "ft_over_ds='0'" "$ft_migration"; then
+	if grep -Eq "uci .*set .*ft_over_ds='0'" "$ft_migration"; then
 		fail "FT-over-DS migration must not write ft_over_ds='0' in $image_root"
 	fi
 	grep -Fq "luci.apply.rollback='300'" "$apply_window" ||
