@@ -18,9 +18,11 @@ RX-lock recovery behavior itself are unchanged.
 
 Signed-off-by: naoki66 <naoki66@qq.com>
 ---
- drivers/net/pcs/airoha/pcs-airoha-common.c | 16 ++++++++++++++++---
- drivers/net/pcs/airoha/pcs-airoha.h | 5 +++++
- drivers/net/pcs/airoha/pcs-an7581.c | 40 ++++++++++++++++++++++++++++++++++++++++--
+ drivers/net/pcs/airoha/pcs-airoha-common.c | 13 +++++++++++++
+ drivers/net/pcs/airoha/pcs-airoha.h | 4 ++++
+ drivers/net/pcs/airoha/pcs-an7581.c | 42 ++++++++++++++++++++++++++++++++++++++++--
+ 3 files changed, 57 insertions(+), 2 deletions(-)
+
 
 --- a/drivers/net/pcs/airoha/pcs-airoha-common.c
 +++ b/drivers/net/pcs/airoha/pcs-airoha-common.c
@@ -44,29 +46,9 @@ Signed-off-by: naoki66 <naoki66@qq.com>
  }
  
  static void airoha_pcs_get_state_10gbaser(struct airoha_pcs_priv *priv, int index,
-@@ -1326,8 +1339,8 @@
- 		return dev_err_probe(dev, PTR_ERR(priv->xfi_rst), "failed to get xfi reset lines\n");
- 
- 	/* For Ethernet PCS, read the AN7581 SoC revision to check if
--	 * manual rx calibration is needed. This is only limited to
--	 * any SoC revision before E2.
-+	 * manual rx calibration is needed. Extend the manual-calibration
-+	 * threshold to include E2 silicon.
- 	 */
- 	if (device_is_compatible(dev, "airoha,an7581-pcs-eth")) {
- 		u32 val;
-@@ -1336,7 +1349,7 @@
- 		if (ret)
- 			return ret;
- 
--		if (FIELD_GET(AIROHA_SCU_PRODUCT_ID, val) < 0x2)
-+		if (FIELD_GET(AIROHA_SCU_PRODUCT_ID, val) < 0x3)
- 			priv->manual_rx_calib = true;
- 	}
- 
 --- a/drivers/net/pcs/airoha/pcs-airoha.h
 +++ b/drivers/net/pcs/airoha/pcs-airoha.h
-@@ -1657,9 +1657,14 @@
+@@ -1657,6 +1657,10 @@
  	struct reset_control *xfi_rst;
  	struct reset_control_bulk_data rsts[AIROHA_PCS_MAX_NUM_RSTS];
  
@@ -77,10 +59,6 @@ Signed-off-by: naoki66 <naoki66@qq.com>
  	struct phy *phy;
  
  	bool manual_rx_calib;
-+	bool needs_full_init[2];
- };
- 
- struct airoha_pcs_port {
 --- a/drivers/net/pcs/airoha/pcs-an7581.c
 +++ b/drivers/net/pcs/airoha/pcs-an7581.c
 @@ -2116,9 +2116,34 @@
