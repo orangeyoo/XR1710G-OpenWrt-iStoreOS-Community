@@ -1,8 +1,8 @@
 # v1.6.1 Wi-Fi 稳定性修复说明 / Wi-Fi stability fixes for v1.6.1
 
-状态 Status：源码已完成，离线门禁通过；**尚未构建镜像、尚未实机验收**。
-Source complete and offline-checked; **no image built, no on-device
-acceptance yet**.
+状态 Status：完整构建已完成，源码门禁 + 镜像 VERIFY PASSED + 严格 delta PASS；**尚未实机刷写验收**（先楼上节点，再主路由）。
+Full build complete, all offline gates passed; **not yet flashed**
+(upstairs node first, then main router).
 
 ## 背景 Background
 
