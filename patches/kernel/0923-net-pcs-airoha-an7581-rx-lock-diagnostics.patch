@@ -3,53 +3,87 @@ Subject: [PATCH] net: pcs: airoha: add AN7581 RX-lock diagnostics
 
 Some Gemtek XR1710G units report a valid copper-side link from the
 RTL8261BE while the AN7581 Ethernet PCS never reports USXGMII carrier.
-Add rate-limited diagnostics for the relevant PCS, Base-R,
-autonegotiation, SigDet, FreqDet and reset registers. Distinguish a
-missing SerDes signal from a CDR recovery reset and track the reset
-count per PCS port. The existing RX-lock recovery behavior remains
-unchanged.
+Add diagnostics for the relevant PCS, Base-R, autonegotiation, SigDet,
+FreqDet and reset registers. Distinguish a missing SerDes signal from a
+CDR recovery reset and track the reset count per PCS port. The existing
+RX-lock recovery behavior remains unchanged.
+
+XR1710G community modification (v1.6.1): report the "AN down" and
+"no-signal" diagnostics once per link/no-signal period instead of on
+every poll. On a bridge node whose WAN port stays idle the previous
+version flooded the kernel log at the ratelimit ceiling (about two
+lines per second), rotating every other kernel and hostapd message out
+of the log within minutes. The per-event "cdr-reset" diagnostic and the
+RX-lock recovery behavior itself are unchanged.
 
 Signed-off-by: naoki66 <naoki66@qq.com>
 ---
- drivers/net/pcs/airoha/pcs-airoha-common.c |  5 +++++
- drivers/net/pcs/airoha/pcs-airoha.h        |  2 ++
- drivers/net/pcs/airoha/pcs-an7581.c        | 32 +++++++++++++++++++++--
- 3 files changed, 39 insertions(+), 3 deletions(-)
+ drivers/net/pcs/airoha/pcs-airoha-common.c | 16 ++++++++++++++++---
+ drivers/net/pcs/airoha/pcs-airoha.h | 5 +++++
+ drivers/net/pcs/airoha/pcs-an7581.c | 40 ++++++++++++++++++++++++++++++++++++++++--
 
-diff --git a/drivers/net/pcs/airoha/pcs-airoha-common.c b/drivers/net/pcs/airoha/pcs-airoha-common.c
-index ba1aa2050fc..dc9c06fec9c 100644
 --- a/drivers/net/pcs/airoha/pcs-airoha-common.c
 +++ b/drivers/net/pcs/airoha/pcs-airoha-common.c
-@@ -427,6 +427,11 @@ static void airoha_pcs_get_state_usxgmii(struct airoha_pcs_priv *priv, int index
+@@ -427,6 +427,19 @@
  	state->an_complete = !!(an_done & AIROHA_PCS_USXGMII_PCS_AN_COMPLETE);
  
  	phylink_decode_usxgmii_word(state, lpa);
 +
-+	if (data->rxlock_workaround && !state->link)
-+		dev_info_ratelimited(priv->dev,
-+				     "port %d USXGMII AN down: stats0=%#010x stats2=%#010x\n",
-+				     index, lpa, an_done);
++	/* Report link-down once per down period; an idle port with no
++	 * cable would otherwise flood the kernel log on every poll.
++	 */
++	if (state->link) {
++		priv->rxlock_link_down_reported[index] = false;
++	} else if (data->rxlock_workaround &&
++		   !priv->rxlock_link_down_reported[index]) {
++		priv->rxlock_link_down_reported[index] = true;
++		dev_info(priv->dev,
++			 "port %d USXGMII AN down: stats0=%#010x stats2=%#010x\n",
++			 index, lpa, an_done);
++	}
  }
  
  static void airoha_pcs_get_state_10gbaser(struct airoha_pcs_priv *priv, int index,
-diff --git a/drivers/net/pcs/airoha/pcs-airoha.h b/drivers/net/pcs/airoha/pcs-airoha.h
-index e079955c82f..0c823c1f8b7 100644
+@@ -1326,8 +1339,8 @@
+ 		return dev_err_probe(dev, PTR_ERR(priv->xfi_rst), "failed to get xfi reset lines\n");
+ 
+ 	/* For Ethernet PCS, read the AN7581 SoC revision to check if
+-	 * manual rx calibration is needed. This is only limited to
+-	 * any SoC revision before E2.
++	 * manual rx calibration is needed. Extend the manual-calibration
++	 * threshold to include E2 silicon.
+ 	 */
+ 	if (device_is_compatible(dev, "airoha,an7581-pcs-eth")) {
+ 		u32 val;
+@@ -1336,7 +1349,7 @@
+ 		if (ret)
+ 			return ret;
+ 
+-		if (FIELD_GET(AIROHA_SCU_PRODUCT_ID, val) < 0x2)
++		if (FIELD_GET(AIROHA_SCU_PRODUCT_ID, val) < 0x3)
+ 			priv->manual_rx_calib = true;
+ 	}
+ 
 --- a/drivers/net/pcs/airoha/pcs-airoha.h
 +++ b/drivers/net/pcs/airoha/pcs-airoha.h
-@@ -1657,6 +1657,8 @@ struct airoha_pcs_priv {
+@@ -1657,9 +1657,14 @@
  	struct reset_control *xfi_rst;
  	struct reset_control_bulk_data rsts[AIROHA_PCS_MAX_NUM_RSTS];
  
 +	u32 rxlock_reset_count[2];
++	bool rxlock_link_down_reported[2];
++	bool rxlock_no_signal_reported[2];
 +
  	struct phy *phy;
  
  	bool manual_rx_calib;
-diff --git a/drivers/net/pcs/airoha/pcs-an7581.c b/drivers/net/pcs/airoha/pcs-an7581.c
-index 6deb95331ab..fb0888d2d85 100644
++	bool needs_full_init[2];
+ };
+ 
+ struct airoha_pcs_port {
 --- a/drivers/net/pcs/airoha/pcs-an7581.c
 +++ b/drivers/net/pcs/airoha/pcs-an7581.c
-@@ -2117,9 +2117,34 @@ static bool an7581_pcs_have_rx_signal(struct airoha_pcs_priv *priv, int index)
+@@ -2116,9 +2116,34 @@
  	return count >= 4;
  }
  
@@ -84,7 +118,7 @@ index 6deb95331ab..fb0888d2d85 100644
  	u32 val;
  
  	/* Check if PCS is UP or Down */
-@@ -2127,14 +2152,18 @@ int an7581_pcs_rxlock_workaround(struct airoha_pcs_priv *priv, int index)
+@@ -2126,13 +2151,26 @@
  	if (val & AIROHA_PCS_USXGMII_PCS_RX_LINK_STATUS_UP)
  		return 0;
  
@@ -92,19 +126,24 @@ index 6deb95331ab..fb0888d2d85 100644
 -	if (!an7581_pcs_have_rx_signal(priv, index))
 +	signal = an7581_pcs_have_rx_signal(priv, index);
 +	if (!signal) {
-+		an7581_pcs_report_rxlock(priv, index, val, false, "no-signal");
++		/* An idle port with no peer reports no signal on every poll;
++		 * keep the diagnostic value without flooding the kernel log.
++		 */
++		if (!priv->rxlock_no_signal_reported[index]) {
++			priv->rxlock_no_signal_reported[index] = true;
++			an7581_pcs_report_rxlock(priv, index, val, false,
++						 "no-signal");
++		}
  		return 0;
 +	}
++
++	priv->rxlock_no_signal_reported[index] = false;
  
  	/* If PCS is down but RX SigDet module detected signal,
  	 * trigger CDR reset.
  	 */
--	an7581_pcs_cdr_reset(priv, index, PHY_INTERFACE_MODE_NA, false);
 +	priv->rxlock_reset_count[index]++;
 +	an7581_pcs_report_rxlock(priv, index, val, true, "cdr-reset");
-+	an7581_pcs_cdr_reset(priv, index, PHY_INTERFACE_MODE_NA, false);
+ 	an7581_pcs_cdr_reset(priv, index, PHY_INTERFACE_MODE_NA, false);
  
  	/* Report there is an error with Link Detection and we
- 	 * should test again later.
--- 
-2.51.0

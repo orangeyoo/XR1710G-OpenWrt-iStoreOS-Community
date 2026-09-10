@@ -145,6 +145,9 @@ git -C "$luci_feed" apply --check "$GITHUB_WORKSPACE/patches/luci/0640-xr1710g-p
 git -C "$luci_feed" apply "$GITHUB_WORKSPACE/patches/luci/0640-xr1710g-password-community-note.patch"
 git -C "$luci_feed" apply --recount --check "$GITHUB_WORKSPACE/patches/luci/0650-xr1710g-detached-sysupgrade.patch"
 git -C "$luci_feed" apply --recount "$GITHUB_WORKSPACE/patches/luci/0650-xr1710g-detached-sysupgrade.patch"
+# The MLO editor must never offer the 802.11s mesh backhaul for AP/STA editing.
+git -C feeds/base apply --check "$GITHUB_WORKSPACE/patches/luci/0660-xr1710g-mlo-hide-mesh-ifaces.patch"
+git -C feeds/base apply "$GITHUB_WORKSPACE/patches/luci/0660-xr1710g-mlo-hide-mesh-ifaces.patch"
 if ! grep -Fq 'msgid "Firmware community QQ group: 1061612207"' "$luci_zh_hans_po"; then
 	cat >> "$luci_zh_hans_po" <<'EOF'
 
@@ -1023,7 +1026,7 @@ sed -i -E \
 cat >> .config <<'CONFIGEOF'
 CONFIG_VERSIONOPT=y
 CONFIG_VERSION_DIST="iStoreOS-XR1710G-Community"
-CONFIG_VERSION_NUMBER="v1.6.0"
+CONFIG_VERSION_NUMBER="v1.6.1"
 CONFIG_VERSION_MANUFACTURER="XR1710G Community"
 CONFIG_VERSION_PRODUCT="XR1710G iStoreOS Community Port"
 CONFIG_VERSION_HOME_URL="https://doc.linkease.com/zh/guide/istoreos/"

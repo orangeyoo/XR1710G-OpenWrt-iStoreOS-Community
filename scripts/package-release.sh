@@ -10,16 +10,16 @@ TARGET_DIR="$TOPDIR/bin/targets/airoha/an7581"
 	exit 1
 }
 
-release_dir="$OUTPUT_DIR/XR1710G-OpenWrt-iStoreOS-v1.6.0"
+release_dir="$OUTPUT_DIR/XR1710G-OpenWrt-iStoreOS-v1.6.1"
 public_dir="$release_dir/public-assets"
 
 rm -rf "$release_dir"
 mkdir -p "$release_dir"
 
 find "$TARGET_DIR" -maxdepth 1 -type f \
-	\( -name '*-v1.6.0-*-econet_xr1710g-ubi-initramfs-recovery.itb' \
-	-o -name '*-v1.6.0-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb' \
-	-o -name '*-v1.6.0-*-econet_xr1710g-ubi.manifest' \
+	\( -name '*-v1.6.1-*-econet_xr1710g-ubi-initramfs-recovery.itb' \
+	-o -name '*-v1.6.1-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb' \
+	-o -name '*-v1.6.1-*-econet_xr1710g-ubi.manifest' \
 	-o -name 'config.buildinfo' \
 	-o -name 'feeds.buildinfo' \
 	-o -name 'profiles.json' \
@@ -27,18 +27,18 @@ find "$TARGET_DIR" -maxdepth 1 -type f \
 	-exec cp -f {} "$release_dir/" \;
 
 [ "$(find "$release_dir" -maxdepth 1 -type f \
-	-name '*-v1.6.0-*-econet_xr1710g-ubi-initramfs-recovery.itb' | wc -l)" -eq 1 ] || {
-	echo "Release does not contain exactly one v1.6.0 Recovery image" >&2
+	-name '*-v1.6.1-*-econet_xr1710g-ubi-initramfs-recovery.itb' | wc -l)" -eq 1 ] || {
+	echo "Release does not contain exactly one v1.6.1 Recovery image" >&2
 	exit 1
 }
 [ "$(find "$release_dir" -maxdepth 1 -type f \
-	-name '*-v1.6.0-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb' | wc -l)" -eq 1 ] || {
-	echo "Release does not contain exactly one v1.6.0 Sysupgrade image" >&2
+	-name '*-v1.6.1-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb' | wc -l)" -eq 1 ] || {
+	echo "Release does not contain exactly one v1.6.1 Sysupgrade image" >&2
 	exit 1
 }
 [ "$(find "$release_dir" -maxdepth 1 -type f \
-	-name '*-v1.6.0-*-econet_xr1710g-ubi.manifest' | wc -l)" -eq 1 ] || {
-	echo "Release does not contain exactly one v1.6.0 manifest" >&2
+	-name '*-v1.6.1-*-econet_xr1710g-ubi.manifest' | wc -l)" -eq 1 ] || {
+	echo "Release does not contain exactly one v1.6.1 manifest" >&2
 	exit 1
 }
 if find "$release_dir" -maxdepth 1 -type f -name '*snapshot*' -print | grep -q .; then
@@ -47,18 +47,18 @@ if find "$release_dir" -maxdepth 1 -type f -name '*snapshot*' -print | grep -q .
 fi
 
 recovery_image="$(find "$release_dir" -maxdepth 1 -type f \
-	-name '*-v1.6.0-*-econet_xr1710g-ubi-initramfs-recovery.itb')"
+	-name '*-v1.6.1-*-econet_xr1710g-ubi-initramfs-recovery.itb')"
 sysupgrade_image="$(find "$release_dir" -maxdepth 1 -type f \
-	-name '*-v1.6.0-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb')"
+	-name '*-v1.6.1-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb')"
 manifest="$(find "$release_dir" -maxdepth 1 -type f \
-	-name '*-v1.6.0-*-econet_xr1710g-ubi.manifest')"
+	-name '*-v1.6.1-*-econet_xr1710g-ubi.manifest')"
 
 mv "$recovery_image" \
-	"$release_dir/xr1710g-community-v1.6.0-recovery.itb"
+	"$release_dir/xr1710g-community-v1.6.1-recovery.itb"
 mv "$sysupgrade_image" \
-	"$release_dir/xr1710g-community-v1.6.0-sysupgrade.itb"
+	"$release_dir/xr1710g-community-v1.6.1-sysupgrade.itb"
 mv "$manifest" \
-	"$release_dir/xr1710g-community-v1.6.0.manifest"
+	"$release_dir/xr1710g-community-v1.6.1.manifest"
 
 cp -f /builder/RELEASE-NOTES.md /builder/FLASHING-GUIDE.md \
 	/builder/ATTRIBUTION.md "$release_dir/"
@@ -79,20 +79,20 @@ cp -f /work/verify.txt "$release_dir/verify.txt"
 		feeds.buildinfo \
 		profiles.json \
 		version.buildinfo \
-		xr1710g-community-v1.6.0-recovery.itb \
-		xr1710g-community-v1.6.0-sysupgrade.itb \
-		xr1710g-community-v1.6.0.manifest \
+		xr1710g-community-v1.6.1-recovery.itb \
+		xr1710g-community-v1.6.1-sysupgrade.itb \
+		xr1710g-community-v1.6.1.manifest \
 		> sha256sums
 	sha256sum -c sha256sums >&2
 	sha256sum \
-		xr1710g-community-v1.6.0-recovery.itb \
-		xr1710g-community-v1.6.0-sysupgrade.itb \
+		xr1710g-community-v1.6.1-recovery.itb \
+		xr1710g-community-v1.6.1-sysupgrade.itb \
 		> XR1710G-FLASH-FILES.sha256
 )
 
 mkdir -p "$public_dir"
 cp -f \
-	"$release_dir/xr1710g-community-v1.6.0-sysupgrade.itb" \
+	"$release_dir/xr1710g-community-v1.6.1-sysupgrade.itb" \
 	/builder/FLASHING-GUIDE.md \
 	"$public_dir/"
 
@@ -100,7 +100,7 @@ cp -f \
 
 (
 	cd "$public_dir"
-	set -- xr1710g-community-v1.6.0-sysupgrade.itb
+	set -- xr1710g-community-v1.6.1-sysupgrade.itb
 	sha256sum "$@" > SHA256SUMS.txt
 	sha256sum -c SHA256SUMS.txt >&2
 )

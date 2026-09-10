@@ -123,7 +123,7 @@ require_config 'CONFIG_TARGET_PREINIT_IP="192.168.50.1"'
 require_config 'CONFIG_TARGET_PREINIT_NETMASK="255.255.255.0"'
 require_config 'CONFIG_TARGET_PREINIT_BROADCAST="192.168.50.255"'
 require_config 'CONFIG_VERSION_DIST="iStoreOS-XR1710G-Community"'
-require_config 'CONFIG_VERSION_NUMBER="v1.6.0"'
+require_config 'CONFIG_VERSION_NUMBER="v1.6.1"'
 
 # Keep the current OpenWrt CIDR-list model as the source of truth. The
 # XR1710G-specific guards normalize legacy input around this baseline; they
@@ -579,16 +579,16 @@ mt76_manifest_line="$(grep -hE '^kmod-mt7996e[[:space:]]+-[[:space:]]+' \
 printf '%s\n' "$mt76_manifest_line" | grep -Fq '2026.08.01~b2704cf5-r7' ||
 	fail "manifest does not identify the A/B-tested mt76 build"
 
-recovery_pattern='*-v1.6.0-*-econet_xr1710g-ubi-initramfs-recovery.itb'
-sysupgrade_pattern='*-v1.6.0-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb'
+recovery_pattern='*-v1.6.1-*-econet_xr1710g-ubi-initramfs-recovery.itb'
+sysupgrade_pattern='*-v1.6.1-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb'
 recovery_count="$(find "$TARGET_DIR" -maxdepth 1 -type f \
 	-name "$recovery_pattern" -print | wc -l)"
 sysupgrade_count="$(find "$TARGET_DIR" -maxdepth 1 -type f \
 	-name "$sysupgrade_pattern" -print | wc -l)"
 [ "$recovery_count" -eq 1 ] ||
-	fail "expected exactly one v1.6.0 XR1710G recovery image, found $recovery_count"
+	fail "expected exactly one v1.6.1 XR1710G recovery image, found $recovery_count"
 [ "$sysupgrade_count" -eq 1 ] ||
-	fail "expected exactly one v1.6.0 XR1710G sysupgrade image, found $sysupgrade_count"
+	fail "expected exactly one v1.6.1 XR1710G sysupgrade image, found $sysupgrade_count"
 recovery="$(find "$TARGET_DIR" -maxdepth 1 -type f \
 	-name "$recovery_pattern" -print -quit)"
 sysupgrade="$(find "$TARGET_DIR" -maxdepth 1 -type f \
@@ -997,6 +997,9 @@ mkdir "$VERIFY_TMP/core-root"
 		'etc/uci-defaults/30_luci-theme-argon' \
 		'etc/uci-defaults/99-custom.sh' \
 		'etc/uci-defaults/98-xr1710g-5g-foreground-cac' \
+		'etc/uci-defaults/98-xr1710g-ft-over-ds' \
+		'etc/uci-defaults/98-xr1710g-luci-apply-window' \
+		'www/luci-static/resources/view/mlo.js' \
 		'etc/uci-defaults/41_uhttpd_proxy_linkease' \
 		'etc/uci-defaults/50-root-passwd' \
 		'etc/shadow' \
@@ -1091,6 +1094,9 @@ unsquashfs -d "$VERIFY_TMP/permanent-root" "$VERIFY_TMP/sysupgrade.rootfs" \
 	etc/uci-defaults/30_luci-theme-argon \
 	etc/uci-defaults/99-custom.sh \
 	etc/uci-defaults/98-xr1710g-5g-foreground-cac \
+	etc/uci-defaults/98-xr1710g-ft-over-ds \
+	etc/uci-defaults/98-xr1710g-luci-apply-window \
+	www/luci-static/resources/view/mlo.js \
 	etc/uci-defaults/41_uhttpd_proxy_linkease \
 	etc/uci-defaults/50-root-passwd \
 	etc/shadow \
@@ -1399,6 +1405,9 @@ for critical in \
 	etc/uci-defaults/30_luci-theme-argon \
 	etc/uci-defaults/99-custom.sh \
 	etc/uci-defaults/98-xr1710g-5g-foreground-cac \
+	etc/uci-defaults/98-xr1710g-ft-over-ds \
+	etc/uci-defaults/98-xr1710g-luci-apply-window \
+	www/luci-static/resources/view/mlo.js \
 	etc/uci-defaults/41_uhttpd_proxy_linkease \
 	etc/uci-defaults/50-root-passwd \
 	etc/shadow \
@@ -1748,10 +1757,28 @@ grep -Fq "ieee80211r='1'" "$wireless_defaults" ||
 	fail "5 GHz defaults do not enable 802.11r"
 grep -Fq "mobility_domain='6616'" "$wireless_defaults" ||
 	fail "5 GHz defaults do not set the shared mobility domain"
-grep -Fq "ft_over_ds='0'" "$wireless_defaults" ||
-	fail "5 GHz defaults do not use over-the-air FT"
+grep -Fq "ft_over_ds='1'" "$wireless_defaults" ||
+	fail "5 GHz defaults do not advertise FT over the distribution system"
 grep -Fq "ft_psk_generate_local='1'" "$wireless_defaults" ||
 	fail "5 GHz defaults do not generate FT PSK locally"
+for image_root in "$VERIFY_TMP/core-root" "$VERIFY_TMP/permanent-root"; do
+	ft_migration="$image_root/etc/uci-defaults/98-xr1710g-ft-over-ds"
+	apply_window="$image_root/etc/uci-defaults/98-xr1710g-luci-apply-window"
+	mlo_view="$image_root/www/luci-static/resources/view/mlo.js"
+	grep -Fq "ieee80211r='1'" "$ft_migration" ||
+		fail "FT-over-DS migration does not gate on 802.11r in $image_root"
+	grep -Fq "ft_over_ds='1'" "$ft_migration" ||
+		fail "FT-over-DS migration does not set ft_over_ds='1' in $image_root"
+	if grep -Fq "ft_over_ds='0'" "$ft_migration"; then
+		fail "FT-over-DS migration must not write ft_over_ds='0' in $image_root"
+	fi
+	grep -Fq "luci.apply.rollback='300'" "$apply_window" ||
+		fail "LuCI apply-window migration does not set the 300 s rollback in $image_root"
+	grep -Fq "'90')" "$apply_window" ||
+		fail "LuCI apply-window migration must only replace the stock 90 s value"
+	grep -Fq "optionValue(section_id, 'mode') != 'mesh'" "$mlo_view" ||
+		fail "MLO editor still lists 802.11s mesh interfaces in $image_root"
+done
 grep -Fq "mode='mesh'" "$wireless_defaults" ||
 	fail "first-boot defaults do not select 802.11s for 6 GHz"
 grep -Fq "wireless.\"\$radio\".band='6g'" "$wireless_defaults" ||
@@ -1934,14 +1961,14 @@ sh "$ROOT_DEFAULT_TEST" "$root_default" "$custom_defaults" \
 	fail "final image fails the first-login password regression test"
 sh "$VERIFY_SCRIPT_DIR/test-factory-image-credentials.sh" "$VERIFY_TMP/core-root" ||
 	fail "final image lacks the factory credential or translated community note"
-grep -Fxq "DISTRIB_RELEASE='v1.6.0'" "$VERIFY_TMP/core-root/etc/openwrt_release" ||
-	fail "embedded OpenWrt release is not v1.6.0"
-grep -Fxq 'VERSION_ID="v1.6.0"' "$VERIFY_TMP/core-root/usr/lib/os-release" ||
-	fail "embedded OS version is not v1.6.0"
+grep -Fxq "DISTRIB_RELEASE='v1.6.1'" "$VERIFY_TMP/core-root/etc/openwrt_release" ||
+	fail "embedded OpenWrt release is not v1.6.1"
+grep -Fxq 'VERSION_ID="v1.6.1"' "$VERIFY_TMP/core-root/usr/lib/os-release" ||
+	fail "embedded OS version is not v1.6.1"
 "$TOPDIR/staging_dir/host/bin/fwtool" -i "$VERIFY_TMP/version-metadata.json" "$sysupgrade" ||
 	fail "cannot read firmware version metadata"
-python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["version"]["version"] == "v1.6.0"' \
-	"$VERIFY_TMP/version-metadata.json" || fail "sysupgrade metadata is not v1.6.0"
+python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["version"]["version"] == "v1.6.1"' \
+	"$VERIFY_TMP/version-metadata.json" || fail "sysupgrade metadata is not v1.6.1"
 
 dockerd_config="$VERIFY_TMP/core-root/etc/config/dockerd"
 dockerd_init="$VERIFY_TMP/core-root/etc/init.d/dockerd"

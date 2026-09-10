@@ -1,0 +1,38 @@
+From: XR1710G Community
+Subject: [PATCH] luci-app-mlo: keep 802.11s mesh backhaul out of the MLO editor
+
+The MLO page lists every wifi-iface in an editable AP/STA grid. A mesh
+backhaul interface selected there can be overwritten by the generic
+AP/STA form, silently breaking the 6 GHz 802.11s backhaul. Hide mesh
+mode interfaces from the grid and show a notice pointing to
+Network -> Wireless, which is the only supported editor for the mesh
+backhaul.
+
+--- a/luci-app-mlo/htdocs/luci-static/resources/view/mlo.js
++++ b/luci-app-mlo/htdocs/luci-static/resources/view/mlo.js
+@@ -450,6 +450,13 @@
+ 				section_id;
+ 		};
+ 
++		/* 802.11s mesh backhaul interfaces are managed exclusively
++		 * from Network -> Wireless; never expose them to the AP/STA
++		 * editor on this page. */
++		s.filter = function(section_id) {
++			return optionValue(section_id, 'mode') != 'mesh';
++		};
++
+ 		quickAdd = function(mode) {
+ 			let selectedRadios = radios.slice(0, 2).map(r => r['.name']);
+ 			let sid;
+@@ -681,6 +688,11 @@
+ 				function() { return refreshRuntime(nodes); }),
+ 			nodes.firstChild);
+ 
++			if (uci.sections('wireless', 'wifi-iface').some(w => w.mode == 'mesh'))
++				nodes.insertBefore(E('div', { 'class': 'alert-message notice' },
++					E('p', _('802.11s mesh backhaul interfaces are hidden on this page. Manage them from Network - Wireless.'))),
++					nodes.firstChild);
++
+ 			return refreshRuntime(nodes).then(function() {
+ 				poll.add(function() {
+ 					return refreshRuntime(nodes);

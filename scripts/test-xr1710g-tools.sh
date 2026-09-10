@@ -261,6 +261,22 @@ grep -Fq 'XZ laboratory profile is enabled by default' "$REGULATORY_VERIFY" ||
 grep -Fq 'action=%s resets=%u' \
 	"$PHY_PATCH_DIR/0923-net-pcs-airoha-an7581-rx-lock-diagnostics.patch" ||
 	fail 'AN7581 RX-lock diagnostics are missing'
+# The v1.6.1 revision must report idle ports on state change only; the
+# unconditional per-poll print flooded bridge-node kernel logs at ~2 lines/s.
+grep -Fq 'rxlock_link_down_reported[index]' \
+	"$PHY_PATCH_DIR/0923-net-pcs-airoha-an7581-rx-lock-diagnostics.patch" ||
+	fail 'AN7581 diagnostics lack link-down transition gating'
+grep -Fq 'rxlock_no_signal_reported[index]' \
+	"$PHY_PATCH_DIR/0923-net-pcs-airoha-an7581-rx-lock-diagnostics.patch" ||
+	fail 'AN7581 diagnostics lack no-signal transition gating'
+# The AN down report must be a plain one-shot print, and only the event-style
+# RX report may remain rate-limited (exactly one dev_info_ratelimited call).
+grep -Fq 'dev_info(priv->dev,' \
+	"$PHY_PATCH_DIR/0923-net-pcs-airoha-an7581-rx-lock-diagnostics.patch" ||
+	fail 'AN7581 link-down report is not a single-shot print'
+[ "$(grep -Fc 'dev_info_ratelimited' \
+	"$PHY_PATCH_DIR/0923-net-pcs-airoha-an7581-rx-lock-diagnostics.patch")" -eq 1 ] ||
+	fail 'AN7581 diagnostics must keep exactly one rate-limited event report'
 [ -f "$PPE_LOCAL_GUARD" ] ||
 	fail 'Airoha PPE local-flow guard is missing'
 [ "$(sha256sum "$PPE_LOCAL_GUARD" | awk '{print $1}')" = \
@@ -372,6 +388,15 @@ grep -Fq "o.default = '0'" "$LUCI_FIREWALL_FULLCONE_PATCH" ||
 	fail 'LuCI Full Cone NAT switches are not explicitly disabled by default'
 grep -Fq 'It cannot bypass CGNAT or double NAT.' "$LUCI_FIREWALL_FULLCONE_PATCH" ||
 	fail 'LuCI Full Cone NAT safety boundary is missing'
+MLO_MESH_GUARD_PATCH="$BUILDER/patches/luci/0660-xr1710g-mlo-hide-mesh-ifaces.patch"
+[ -f "$MLO_MESH_GUARD_PATCH" ] ||
+	fail 'MLO mesh-interface guard patch is missing'
+grep -Fq "optionValue(section_id, 'mode') != 'mesh'" "$MLO_MESH_GUARD_PATCH" ||
+	fail 'MLO editor does not hide 802.11s mesh interfaces'
+grep -Fq 'mesh backhaul interfaces are hidden on this page' "$MLO_MESH_GUARD_PATCH" ||
+	fail 'MLO editor lacks the mesh-management notice'
+grep -Fq '0660-xr1710g-mlo-hide-mesh-ifaces.patch' "$BUILDER/diy-part2.d/openwrt.sh" ||
+	fail 'MLO mesh guard is not wired into the feed patch stage'
 grep -Fqx 'CONFIG_PACKAGE_phytool=y' "$PACKAGE_CONFIG" ||
 	fail 'phytool is not selected for explicit MDIO diagnostics'
 grep -Fqx 'CONFIG_PACKAGE_kmod-nft-fullcone=y' "$PACKAGE_CONFIG" ||
@@ -777,6 +802,7 @@ for expected in \
 	'wireless.default_radio1.max_inactivity=86400' \
 	'wireless.default_radio1.ieee80211r=1' \
 	'wireless.default_radio1.mobility_domain=6616' \
+	'wireless.default_radio1.ft_over_ds=1' \
 	'wireless.default_radio1.ft_psk_generate_local=1' \
 	'wireless.radio2.country=US' \
 	'wireless.radio2.band=6g' \

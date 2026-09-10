@@ -75,6 +75,8 @@ cp -a /builder/files/. files/
 cp -a /builder/apps/. package/
 chmod 0755 files/etc/uci-defaults/99-custom.sh
 chmod 0755 files/etc/uci-defaults/98-xr1710g-5g-foreground-cac
+chmod 0755 files/etc/uci-defaults/98-xr1710g-ft-over-ds
+chmod 0755 files/etc/uci-defaults/98-xr1710g-luci-apply-window
 chmod 0755 files/etc/uci-defaults/41_uhttpd_proxy_linkease
 chmod 0755 files/etc/uci-defaults/50-root-passwd
 chmod 0755 files/etc/uci-defaults/zz-xr1710g-services.sh
@@ -119,7 +121,7 @@ grep -qx 'CONFIG_TARGET_PREINIT_IP="192.168.50.1"' .config
 grep -qx 'CONFIG_TARGET_PREINIT_NETMASK="255.255.255.0"' .config
 grep -qx 'CONFIG_TARGET_PREINIT_BROADCAST="192.168.50.255"' .config
 grep -qx 'CONFIG_VERSION_DIST="iStoreOS-XR1710G-Community"' .config
-grep -qx 'CONFIG_VERSION_NUMBER="v1.6.0"' .config
+grep -qx 'CONFIG_VERSION_NUMBER="v1.6.1"' .config
 
 grep -qx 'CONFIG_PACKAGE_luci-app-istorex=y' .config
 grep -qx 'CONFIG_PACKAGE_luci-theme-argon=y' .config

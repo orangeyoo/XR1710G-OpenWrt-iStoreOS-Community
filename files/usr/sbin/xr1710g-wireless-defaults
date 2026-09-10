@@ -140,7 +140,12 @@ apply_policy() {
 			uci -q set wireless."$iface".max_inactivity='86400'
 			uci -q set wireless."$iface".ieee80211r='1'
 			uci -q set wireless."$iface".mobility_domain='6616'
-			uci -q set wireless."$iface".ft_over_ds='0'
+			# Advertise FT over the distribution system as well.  Apple
+			# devices roam with FT-over-DS; restricting to over-the-air
+			# only (previous default '0') made every roam fall back to a
+			# full SAE/PSK exchange, which at weak signal failed for
+			# minutes on real devices.
+			uci -q set wireless."$iface".ft_over_ds='1'
 			uci -q set wireless."$iface".ft_psk_generate_local='1'
 		done
 	done

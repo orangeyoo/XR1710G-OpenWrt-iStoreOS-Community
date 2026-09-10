@@ -270,4 +270,54 @@ assert_line 'wireless.radio2.background_radar=1'
 sh "$migration"
 [ "$(wc -l < "$XR_TEST_STATE/commits")" -eq 1 ] || fail 'migration not idempotent'
 
+# The FT-over-DS migration flips only retained 802.11r interfaces and keeps
+# every other owner value (mesh and non-FT interfaces are untouched).
+ft_migration="$(dirname "$POLICY")/../../etc/uci-defaults/98-xr1710g-ft-over-ds"
+[ -f "$ft_migration" ] || fail 'FT-over-DS migration missing'
+reset_state
+uci set wireless.owner5.band=5g
+uci set wireless.owner5.ieee80211r=1
+uci set wireless.owner5.ft_over_ds=0
+uci set wireless.owner5.ssid=OWNER-5G
+uci set wireless.owner24.band=2g
+uci set wireless.owner24.ieee80211r=1
+uci set wireless.owner24.ft_over_ds=0
+uci set wireless.mesh6.band=6g
+uci set wireless.mesh6.mode=mesh
+uci set wireless.mesh6.ft_over_ds=0
+uci set wireless.plain.band=5g
+uci set wireless.plain.ieee80211r=0
+uci set wireless.plain.ft_over_ds=0
+XR_TEST_BOARD=other,board sh "$ft_migration"
+assert_line 'wireless.owner5.ft_over_ds=0'
+[ ! -s "$XR_TEST_STATE/commits" ] || fail 'FT migration committed on wrong board'
+sh "$ft_migration"
+assert_line 'wireless.owner5.ft_over_ds=1'
+assert_line 'wireless.owner24.ft_over_ds=1'
+assert_line 'wireless.owner5.ssid=OWNER-5G'
+assert_line 'wireless.mesh6.ft_over_ds=0'
+assert_line 'wireless.plain.ft_over_ds=0'
+sh "$ft_migration"
+[ "$(wc -l < "$XR_TEST_STATE/commits")" -eq 1 ] || fail 'FT migration not idempotent'
+
+# The LuCI apply-window migration replaces only the stock 90 s value.
+apply_window="$(dirname "$POLICY")/../../etc/uci-defaults/98-xr1710g-luci-apply-window"
+[ -f "$apply_window" ] || fail 'LuCI apply-window migration missing'
+reset_state
+uci set luci.apply.rollback=90
+XR_TEST_BOARD=other,board sh "$apply_window"
+assert_line 'luci.apply.rollback=90'
+[ ! -s "$XR_TEST_STATE/commits" ] || fail 'apply-window migration committed on wrong board'
+sh "$apply_window"
+assert_line 'luci.apply.rollback=300'
+sh "$apply_window"
+[ "$(wc -l < "$XR_TEST_STATE/commits")" -eq 1 ] || fail 'apply-window migration not idempotent'
+reset_state
+uci set luci.apply.rollback=600
+sh "$apply_window"
+assert_line 'luci.apply.rollback=600'
+reset_state
+sh "$apply_window"
+assert_line 'luci.apply.rollback=300'
+
 echo 'WIRELESS DEFAULT TEST PASSED'

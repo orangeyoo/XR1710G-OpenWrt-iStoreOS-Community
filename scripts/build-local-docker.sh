@@ -42,6 +42,8 @@ cp -a /builder/files/. files/
 cp -a /builder/apps/. package/
 chmod 0755 files/etc/uci-defaults/99-custom.sh
 chmod 0755 files/etc/uci-defaults/98-xr1710g-5g-foreground-cac
+chmod 0755 files/etc/uci-defaults/98-xr1710g-ft-over-ds
+chmod 0755 files/etc/uci-defaults/98-xr1710g-luci-apply-window
 chmod 0755 files/etc/uci-defaults/41_uhttpd_proxy_linkease
 chmod 0755 files/etc/uci-defaults/50-root-passwd
 chmod 0755 files/etc/uci-defaults/zz-xr1710g-services.sh
