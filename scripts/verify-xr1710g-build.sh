@@ -1776,7 +1776,7 @@ for image_root in "$VERIFY_TMP/core-root" "$VERIFY_TMP/permanent-root"; do
 		fail "LuCI apply-window migration does not set the 300 s rollback in $image_root"
 	grep -Fq "'90')" "$apply_window" ||
 		fail "LuCI apply-window migration must only replace the stock 90 s value"
-	grep -Fq "optionValue(section_id, 'mode') != 'mesh'" "$mlo_view" ||
+	grep -Eq "optionValue\(section_id, ?'mode'\) ?!= ?'mesh'" "$mlo_view" ||
 		fail "MLO editor still lists 802.11s mesh interfaces in $image_root"
 done
 grep -Fq "mode='mesh'" "$wireless_defaults" ||
