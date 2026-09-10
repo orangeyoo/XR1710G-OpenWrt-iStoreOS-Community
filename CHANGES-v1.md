@@ -1,4 +1,14 @@
-# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.5.0 — Changes
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.6.0 — Changes
+
+## v1.6.0
+
+- 后台升级 / Backend upgrade：独立任务避开普通30秒RPC限制，保留原生校验和升级选项；互斥、状态及中英文失败提示，不自动重试。Detached job, native validation/options, mutual exclusion and explicit bilingual errors; no automatic retry. See [details](FIX-BACKEND-UPGRADE.md).
+
+- IPv6：避免 PPP 自动子接口与显式 DHCPv6 同设备重复启动，阻止重复客户端重试风暴，不关闭健康 IPv6。Prevent duplicate PPP-auto/explicit DHCPv6 clients and their restart loop; preserve healthy IPv6.
+- 驱动 / Driver：回移 / backport official mt76 d73f612 (failed TWT cleanup) and 0898393 (ALTX for disassociated stations), package revision r7. Preserve b2704cf5 plus existing board/PPE integration; no wholesale kernel update.
+- 构建 / Build：Windows checkout keeps bundled Clash binary intact through `-text`; no runtime Clash upgrade.
+- 默认 / Defaults：unchanged from v1.5, including `password`, wireless templates and optional-disabled services. U-Boot unchanged.
+- 两台刷后基础验收通过；主路由保留配置升级、IPv6及Mesh恢复，短测不替代长期压力验收 / Both units passed basic post-flash checks; retained main-router settings, IPv6 and Mesh recovered. Short checks are not long-term stress validation. See [details](RELEASE-NOTES.md).
 
 > Unofficial community firmware for Gemtek XR1710G only. / 非官方社区固件，仅适用于 Gemtek XR1710G。
 
@@ -153,3 +163,7 @@ The following capabilities are preserved but are not new in v1.4.0:
 - Airoha page cache/lock/fallback handling, physical-carrier truth, and iStore APK transaction preflight.
 - Upstream OpenWrt Moby/containerd/runc/docker-compose/Dockerman installed but stopped by default.
 - Default management address `192.168.50.1/24`, NAND/UBI 2.0, iStoreOS-style navigation, iStore, QuickStart, OpenClash, Nikki, and EqosPlus.
+# Additional unpublished v1.6 fix / 未发布1.6追加修复
+
+- Detached backend upgrade preparation from the short RPC lifecycle; retained native validation/options, added job exclusion and bilingual failure feedback. No v1.7 created. See FIX-BACKEND-UPGRADE.md.
+- 后台升级准备不再被短RPC请求终止；保留原校验和选项，加入任务互斥、中英文失败提示。此次仍为1.6，没有建立1.7。

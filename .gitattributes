@@ -10,3 +10,5 @@ apps/** text eol=lf
 files/** text eol=lf
 scripts/** text eol=lf
 diy-part2.d/** text eol=lf
+# Preserve the bundled executable byte-for-byte on Windows checkouts.
+files/etc/openclash/core/clash_meta -text

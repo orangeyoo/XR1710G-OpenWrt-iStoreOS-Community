@@ -1,0 +1,21 @@
+Subject: [PATCH] packages: identify DHCPv6 duplicate-client guard revisions
+
+--- a/package/network/services/ppp/Makefile
++++ b/package/network/services/ppp/Makefile
+@@ -11,6 +11,6 @@
+ PKG_NAME:=ppp
+ PKG_VERSION:=2.5.3
+-PKG_RELEASE:=2
++PKG_RELEASE:=3
+ 
+ PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+ PKG_SOURCE_URL:=https://download.samba.org/pub/ppp
+--- a/package/network/ipv6/odhcp6c/Makefile
++++ b/package/network/ipv6/odhcp6c/Makefile
+@@ -10,5 +10,5 @@
+ PKG_NAME:=odhcp6c
+-PKG_RELEASE:=3
++PKG_RELEASE:=4
+ 
+ PKG_SOURCE_PROTO:=git
+ PKG_SOURCE_URL=$(PROJECT_GIT)/project/odhcp6c.git

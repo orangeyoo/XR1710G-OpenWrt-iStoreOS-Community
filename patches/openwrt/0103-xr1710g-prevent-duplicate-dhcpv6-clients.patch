@@ -1,0 +1,43 @@
+Subject: [PATCH] netifd: avoid duplicate explicit and PPP auto DHCPv6 clients
+
+Keep IPv6 and the working client enabled. Suppress PPP auto creation when an
+enabled explicit DHCPv6 interface already owns that link. Refuse a second
+netifd client at setup and block its restart loop instead of repeatedly
+failing odhcp6c's per-device ubus registration. The helper is installed by
+the XR1710G overlay; no user network configuration is rewritten.
+
+--- a/package/network/services/ppp/files/lib/netifd/ppp6-up
++++ b/package/network/services/ppp/files/lib/netifd/ppp6-up
+@@ -16,6 +16,13 @@
+ 	done
+ }
+ 
++if [ -n "$AUTOIPV6" ] && [ -r /lib/netifd/xr1710g-dhcpv6-guard.sh ]; then
++	. /lib/netifd/xr1710g-dhcpv6-guard.sh
++	if xr_dhcpv6_has_explicit "$PPP_IPPARAM" "$IFNAME"; then
++		AUTOIPV6=
++	fi
++fi
++
+ if [ -n "$AUTOIPV6" ]; then
+ 	ZONE=$(fw3 -q network $PPP_IPPARAM 2>/dev/null)
+ 
+--- a/package/network/ipv6/odhcp6c/files/dhcpv6.sh
++++ b/package/network/ipv6/odhcp6c/files/dhcpv6.sh
+@@ -85,6 +85,16 @@ proto_dhcpv6_setup() {
+ 	local config="$1"
+ 	local iface="$2"
+ 
++	if [ -r /lib/netifd/xr1710g-dhcpv6-guard.sh ]; then
++		. /lib/netifd/xr1710g-dhcpv6-guard.sh
++		if xr_dhcpv6_conflict "$config" "$iface"; then
++			logger -t dhcpv6 'Duplicate DHCPv6 client blocked; keep one IPv6 interface per device'
++			proto_notify_error "$config" DHCPV6_DUPLICATE_CLIENT
++			proto_block_restart "$config"
++			return 1
++		fi
++	fi
++
+ 	local reqaddress reqprefix clientid sendclientid reqopts defaultreqopts
+ 	local noslaaconly forceprefix extendprefix norelease strict_rfc7550
+ 	local noserverunicast noclientfqdn noacceptreconfig iface_dslite

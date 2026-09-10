@@ -83,6 +83,7 @@ chmod 0755 files/etc/init.d/xr1710g-cpufreq
 chmod 0755 files/etc/init.d/xr1710g-uboot-recovery-restore
 chmod 0755 files/usr/sbin/xr1710g-mesh-diag
 chmod 0755 files/usr/sbin/xr1710g-role
+chmod 0755 files/usr/libexec/xr1710g-upgrade
 chmod 0755 files/usr/sbin/xr1710g-wan-carrier
 chmod 0755 files/usr/sbin/xr1710g-wireless-defaults
 chmod 0755 files/usr/sbin/xr1710g-lan-cidr-guard
@@ -118,7 +119,7 @@ grep -qx 'CONFIG_TARGET_PREINIT_IP="192.168.50.1"' .config
 grep -qx 'CONFIG_TARGET_PREINIT_NETMASK="255.255.255.0"' .config
 grep -qx 'CONFIG_TARGET_PREINIT_BROADCAST="192.168.50.255"' .config
 grep -qx 'CONFIG_VERSION_DIST="iStoreOS-XR1710G-Community"' .config
-grep -qx 'CONFIG_VERSION_NUMBER="v1.5.0"' .config
+grep -qx 'CONFIG_VERSION_NUMBER="v1.6.0"' .config
 
 grep -qx 'CONFIG_PACKAGE_luci-app-istorex=y' .config
 grep -qx 'CONFIG_PACKAGE_luci-theme-argon=y' .config

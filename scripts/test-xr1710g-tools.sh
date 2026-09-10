@@ -2,6 +2,7 @@
 set -eu
 
 BUILDER="${1:-/builder}"
+python3 "$BUILDER/scripts/test-dhcpv6-guard.py" "$BUILDER"
 ROLE_SRC="$BUILDER/files/usr/sbin/xr1710g-role"
 WAN_CARRIER_SRC="$BUILDER/files/usr/sbin/xr1710g-wan-carrier"
 BOOTLOG_SRC="$BUILDER/files/etc/init.d/xr1710g-bootlog"
@@ -866,4 +867,6 @@ grep -Fq 'if ! /usr/sbin/xr1710g-wireless-defaults; then' \
 	"$BUILDER/files/etc/uci-defaults/99-custom.sh" ||
 	fail 'first-boot wrapper does not retain itself when wireless policy fails'
 
+node "$BUILDER/scripts/test-upgrade-ui.js" "$BUILDER/files/www/luci-static/resources/xr-upgrade.js"
+sh -n "$BUILDER/files/usr/libexec/xr1710g-upgrade"
 echo 'TOOL TESTS PASSED'

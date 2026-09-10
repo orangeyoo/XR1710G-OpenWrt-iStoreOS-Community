@@ -123,7 +123,7 @@ require_config 'CONFIG_TARGET_PREINIT_IP="192.168.50.1"'
 require_config 'CONFIG_TARGET_PREINIT_NETMASK="255.255.255.0"'
 require_config 'CONFIG_TARGET_PREINIT_BROADCAST="192.168.50.255"'
 require_config 'CONFIG_VERSION_DIST="iStoreOS-XR1710G-Community"'
-require_config 'CONFIG_VERSION_NUMBER="v1.5.0"'
+require_config 'CONFIG_VERSION_NUMBER="v1.6.0"'
 
 # Keep the current OpenWrt CIDR-list model as the source of truth. The
 # XR1710G-specific guards normalize legacy input around this baseline; they
@@ -406,8 +406,14 @@ grep -qx 'PKG_SOURCE_VERSION:=b2704cf5a4068b672bf47ad5bf6b4802b6770a90' \
 	"$mt76_makefile" || fail "unexpected mt76 source revision"
 grep -qx 'PKG_MIRROR_HASH:=fc94437f3271a16d3865c16ec3bbdf828ac18a730953a74fc80f76abf461eb67' \
 	"$mt76_makefile" || fail "unexpected mt76 source archive hash"
-grep -qx 'PKG_RELEASE=6' "$mt76_makefile" ||
-	fail "A/B-tested mt76 package release is not selected"
+grep -qx 'PKG_RELEASE=7' "$mt76_makefile" ||
+	fail "mt76 baseline plus stable-fix package release is not selected"
+for mt76_fix in 0104-mt7996-unlink-rejected-twt-flow.patch 0105-mt76-fix-disassociated-station-queue.patch; do
+	cmp "$GITHUB_WORKSPACE/patches/mt76/$mt76_fix" "$TOPDIR/package/kernel/mt76/patches/$mt76_fix" ||
+		fail "mt76 upstream fix differs from reviewed source: $mt76_fix"
+done
+python3 "$GITHUB_WORKSPACE/scripts/test-dhcpv6-guard.py" "$GITHUB_WORKSPACE" "$TOPDIR" ||
+	fail 'DHCPv6 package integration regression failed'
 [ -f "$mt76_an7581_patch" ] ||
 	fail "XR1710G AN7581/NPU rebase patch is missing"
 grep -Fq 'mt7996_mcu_get_per_sta_info' "$mt76_an7581_patch" ||
@@ -431,7 +437,7 @@ grep -Fq 'mt76_queue_is_npu_rx' "$mt76_npu_rx_patch" ||
 grep -Fq 'skb->dev = ieee80211_vif_to_wdev(vif)->netdev' "$mt76_npu_rx_patch" ||
 	fail "MT7996 NPU RX ingress patch lacks skb device assignment"
 [ "$(find "$TOPDIR/package/kernel/mt76/patches" -maxdepth 1 -type f \
-	-name '*.patch' | wc -l)" -eq 4 ] ||
+	-name '*.patch' | wc -l)" -eq 6 ] ||
 	fail "mt76 patch directory contains an unexpected stale patch"
 
 trng_base_patch="$TOPDIR/target/linux/airoha/patches-6.18/920-hwrng-airoha-fix-init-sequence-default-to-DRBG.patch"
@@ -570,19 +576,19 @@ fi
 
 mt76_manifest_line="$(grep -hE '^kmod-mt7996e[[:space:]]+-[[:space:]]+' \
 	"$TARGET_DIR"/*.manifest | head -n1)"
-printf '%s\n' "$mt76_manifest_line" | grep -Fq '2026.08.01~b2704cf5-r6' ||
+printf '%s\n' "$mt76_manifest_line" | grep -Fq '2026.08.01~b2704cf5-r7' ||
 	fail "manifest does not identify the A/B-tested mt76 build"
 
-recovery_pattern='*-v1.5.0-*-econet_xr1710g-ubi-initramfs-recovery.itb'
-sysupgrade_pattern='*-v1.5.0-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb'
+recovery_pattern='*-v1.6.0-*-econet_xr1710g-ubi-initramfs-recovery.itb'
+sysupgrade_pattern='*-v1.6.0-*-econet_xr1710g-ubi-squashfs-sysupgrade.itb'
 recovery_count="$(find "$TARGET_DIR" -maxdepth 1 -type f \
 	-name "$recovery_pattern" -print | wc -l)"
 sysupgrade_count="$(find "$TARGET_DIR" -maxdepth 1 -type f \
 	-name "$sysupgrade_pattern" -print | wc -l)"
 [ "$recovery_count" -eq 1 ] ||
-	fail "expected exactly one v1.5.0 XR1710G recovery image, found $recovery_count"
+	fail "expected exactly one v1.6.0 XR1710G recovery image, found $recovery_count"
 [ "$sysupgrade_count" -eq 1 ] ||
-	fail "expected exactly one v1.5.0 XR1710G sysupgrade image, found $sysupgrade_count"
+	fail "expected exactly one v1.6.0 XR1710G sysupgrade image, found $sysupgrade_count"
 recovery="$(find "$TARGET_DIR" -maxdepth 1 -type f \
 	-name "$recovery_pattern" -print -quit)"
 sysupgrade="$(find "$TARGET_DIR" -maxdepth 1 -type f \
@@ -1202,7 +1208,7 @@ done
 # Do not accept a merely successful compile. The new operating-mode/NSS patch
 # intentionally changes the mt7996 module set, so old A/B hashes are no longer
 # valid. Prove instead that Recovery and permanent images carry byte-identical
-# modules from the r6 APKs built in this same release run. Runtime acceptance
+# modules from the r7 APKs built in this same release run. Runtime acceptance
 # of these new modules remains mandatory on the upstairs router.
 mkdir "$VERIFY_TMP/recovery-mt76"
 (
@@ -1245,11 +1251,11 @@ verify_built_module() {
 }
 
 verify_built_module mt76.ko \
-	'kmod-mt76-core-6.18.41.2026.08.01~b2704cf5-r6.apk'
+	'kmod-mt76-core-6.18.41.2026.08.01~b2704cf5-r7.apk'
 verify_built_module mt76-connac-lib.ko \
-	'kmod-mt76-connac-6.18.41.2026.08.01~b2704cf5-r6.apk'
+	'kmod-mt76-connac-6.18.41.2026.08.01~b2704cf5-r7.apk'
 verify_built_module mt7996e.ko \
-	'kmod-mt7996e-6.18.41.2026.08.01~b2704cf5-r6.apk'
+	'kmod-mt7996e-6.18.41.2026.08.01~b2704cf5-r7.apk'
 
 mkdir "$VERIFY_TMP/recovery-fullcone"
 (
@@ -1928,14 +1934,14 @@ sh "$ROOT_DEFAULT_TEST" "$root_default" "$custom_defaults" \
 	fail "final image fails the first-login password regression test"
 sh "$VERIFY_SCRIPT_DIR/test-factory-image-credentials.sh" "$VERIFY_TMP/core-root" ||
 	fail "final image lacks the factory credential or translated community note"
-grep -Fxq "DISTRIB_RELEASE='v1.5.0'" "$VERIFY_TMP/core-root/etc/openwrt_release" ||
-	fail "embedded OpenWrt release is not v1.5.0"
-grep -Fxq 'VERSION_ID="v1.5.0"' "$VERIFY_TMP/core-root/usr/lib/os-release" ||
-	fail "embedded OS version is not v1.5.0"
+grep -Fxq "DISTRIB_RELEASE='v1.6.0'" "$VERIFY_TMP/core-root/etc/openwrt_release" ||
+	fail "embedded OpenWrt release is not v1.6.0"
+grep -Fxq 'VERSION_ID="v1.6.0"' "$VERIFY_TMP/core-root/usr/lib/os-release" ||
+	fail "embedded OS version is not v1.6.0"
 "$TOPDIR/staging_dir/host/bin/fwtool" -i "$VERIFY_TMP/version-metadata.json" "$sysupgrade" ||
 	fail "cannot read firmware version metadata"
-python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["version"]["version"] == "v1.5.0"' \
-	"$VERIFY_TMP/version-metadata.json" || fail "sysupgrade metadata is not v1.5.0"
+python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["version"]["version"] == "v1.6.0"' \
+	"$VERIFY_TMP/version-metadata.json" || fail "sysupgrade metadata is not v1.6.0"
 
 dockerd_config="$VERIFY_TMP/core-root/etc/config/dockerd"
 dockerd_init="$VERIFY_TMP/core-root/etc/init.d/dockerd"
@@ -2059,6 +2065,15 @@ unsquashfs -d "$VERIFY_TMP/permanent-all" "$VERIFY_TMP/sysupgrade.rootfs" \
 	>/dev/null 2>&1 || fail "cannot extract complete permanent rootfs for secret scanning"
 
 for image_root in "$VERIFY_TMP/recovery-all" "$VERIFY_TMP/permanent-all"; do
+	cmp "$GITHUB_WORKSPACE/files/lib/netifd/xr1710g-dhcpv6-guard.sh" \
+		"$image_root/lib/netifd/xr1710g-dhcpv6-guard.sh" || fail 'DHCPv6 guard differs from source'
+	sh -n "$image_root/lib/netifd/xr1710g-dhcpv6-guard.sh" || fail 'DHCPv6 guard shell syntax'
+	grep -Fq 'xr_dhcpv6_has_explicit "$PPP_IPPARAM" "$IFNAME"' \
+		"$image_root/lib/netifd/ppp6-up" || fail 'PPP duplicate DHCPv6 check missing'
+	grep -Fq 'proto_block_restart "$config"' "$image_root/lib/netifd/proto/dhcpv6.sh" ||
+		fail 'DHCPv6 duplicate-client restart block missing'
+	grep -Fq 'DHCPV6_DUPLICATE_CLIENT' "$image_root/lib/netifd/proto/dhcpv6.sh" ||
+		fail 'DHCPv6 duplicate-client error missing'
 	if find "$image_root" -iname '*glass*' -print -quit | grep -q .; then
 		fail "assembled rootfs still contains a GlassTheme file: $image_root"
 	fi
@@ -2178,6 +2193,15 @@ for dtb in "$VERIFY_TMP/recovery.dtb" "$VERIFY_TMP/sysupgrade.dtb"; do
 		"/soc/spi@1fa10000/spi_nand@0/partitions/$ubi_node" reg 2>/dev/null)"
 	[ "$ubi_reg" = "700000 1b700000" ] ||
 		fail "embedded DTB is not the XR1710G UBI 2.0 layout: $ubi_reg"
+done
+
+for upgrade_root in "$VERIFY_TMP/recovery-all" "$VERIFY_TMP/permanent-all"; do
+	[ -x "$upgrade_root/usr/libexec/xr1710g-upgrade" ] || fail 'detached upgrade worker missing or not executable'
+	cmp "$BUILDER_ROOT/files/usr/libexec/xr1710g-upgrade" "$upgrade_root/usr/libexec/xr1710g-upgrade" || fail 'upgrade helper differs from reviewed source'
+	cmp "$BUILDER_ROOT/files/www/luci-static/resources/xr-upgrade.js" "$upgrade_root/www/luci-static/resources/xr-upgrade.js" || fail 'upgrade UI differs from reviewed source'
+	cmp "$BUILDER_ROOT/files/usr/share/rpcd/acl.d/xr1710g-upgrade.json" "$upgrade_root/usr/share/rpcd/acl.d/xr1710g-upgrade.json" || fail 'upgrade ACL differs from reviewed source'
+	grep -Fq 'xrUpgrade.start' "$upgrade_root/www/luci-static/resources/view/system/flash.js" || fail 'LuCI still uses blocking upgrade entry'
+	sh -n "$upgrade_root/usr/libexec/xr1710g-upgrade" || fail 'upgrade shell syntax'
 done
 
 echo "VERIFY PASSED"

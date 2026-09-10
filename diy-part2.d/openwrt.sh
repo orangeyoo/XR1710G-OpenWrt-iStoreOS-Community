@@ -137,8 +137,14 @@ grep -qx 'CONFIG_TARGET_airoha_an7581_DEVICE_econet_xr1710g-ubi=y' .config || {
 }
 git apply --check "$GITHUB_WORKSPACE/patches/openwrt/0102-xr1710g-factory-root-password.patch"
 git apply "$GITHUB_WORKSPACE/patches/openwrt/0102-xr1710g-factory-root-password.patch"
+git apply --check "$GITHUB_WORKSPACE/patches/openwrt/0103-xr1710g-prevent-duplicate-dhcpv6-clients.patch"
+git apply "$GITHUB_WORKSPACE/patches/openwrt/0103-xr1710g-prevent-duplicate-dhcpv6-clients.patch"
+git apply --check "$GITHUB_WORKSPACE/patches/openwrt/0104-xr1710g-dhcpv6-package-revisions.patch"
+git apply "$GITHUB_WORKSPACE/patches/openwrt/0104-xr1710g-dhcpv6-package-revisions.patch"
 git -C "$luci_feed" apply --check "$GITHUB_WORKSPACE/patches/luci/0640-xr1710g-password-community-note.patch"
 git -C "$luci_feed" apply "$GITHUB_WORKSPACE/patches/luci/0640-xr1710g-password-community-note.patch"
+git -C "$luci_feed" apply --recount --check "$GITHUB_WORKSPACE/patches/luci/0650-xr1710g-detached-sysupgrade.patch"
+git -C "$luci_feed" apply --recount "$GITHUB_WORKSPACE/patches/luci/0650-xr1710g-detached-sysupgrade.patch"
 if ! grep -Fq 'msgid "Firmware community QQ group: 1061612207"' "$luci_zh_hans_po"; then
 	cat >> "$luci_zh_hans_po" <<'EOF'
 
@@ -822,7 +828,7 @@ grep -qx 'PKG_RELEASE=3' "$mt76_makefile" || {
 # These are the deterministic git-archive/zstd values produced by OpenWrt's
 # own download helper for the public b2704cf5 commit.
 sed -i \
-	-e 's/^PKG_RELEASE=3$/PKG_RELEASE=6/' \
+	-e 's/^PKG_RELEASE=3$/PKG_RELEASE=7/' \
 	-e 's/^PKG_SOURCE_DATE:=2026-07-01$/PKG_SOURCE_DATE:=2026-08-01/' \
 	-e 's/^PKG_SOURCE_VERSION:=59676919ea408b0b13a9d23f2e2e1a1ab407fba1$/PKG_SOURCE_VERSION:=b2704cf5a4068b672bf47ad5bf6b4802b6770a90/' \
 	-e 's/^PKG_MIRROR_HASH:=8a6dc6dac37ed56fcbfd874359f5c25acb65bcfaa795d50494cba17c98405dd5$/PKG_MIRROR_HASH:=fc94437f3271a16d3865c16ec3bbdf828ac18a730953a74fc80f76abf461eb67/' \
@@ -835,9 +841,12 @@ install -m 0644 "$mt76_an7581_patch_src" "$mt76_an7581_patch_dst"
 install -m 0644 "$mt76_stats_patch_src" "$mt76_stats_patch_dst"
 install -m 0644 "$mt76_rate_patch_src" "$mt76_rate_patch_dst"
 install -m 0644 "$mt76_npu_rx_patch_src" "$mt76_npu_rx_patch_dst"
+for mt76_fix in 0104-mt7996-unlink-rejected-twt-flow.patch 0105-mt76-fix-disassociated-station-queue.patch; do
+	install -m 0644 "$GITHUB_WORKSPACE/patches/mt76/$mt76_fix" "package/kernel/mt76/patches/$mt76_fix"
+done
 
-grep -qx 'PKG_RELEASE=6' "$mt76_makefile" || {
-	echo "Unable to select the A/B-tested mt76 package release" >&2
+grep -qx 'PKG_RELEASE=7' "$mt76_makefile" || {
+	echo "Unable to select the mt76 baseline plus reviewed stable fixes" >&2
 	exit 1
 }
 grep -qx 'PKG_SOURCE_VERSION:=b2704cf5a4068b672bf47ad5bf6b4802b6770a90' \
@@ -1014,7 +1023,7 @@ sed -i -E \
 cat >> .config <<'CONFIGEOF'
 CONFIG_VERSIONOPT=y
 CONFIG_VERSION_DIST="iStoreOS-XR1710G-Community"
-CONFIG_VERSION_NUMBER="v1.5.0"
+CONFIG_VERSION_NUMBER="v1.6.0"
 CONFIG_VERSION_MANUFACTURER="XR1710G Community"
 CONFIG_VERSION_PRODUCT="XR1710G iStoreOS Community Port"
 CONFIG_VERSION_HOME_URL="https://doc.linkease.com/zh/guide/istoreos/"

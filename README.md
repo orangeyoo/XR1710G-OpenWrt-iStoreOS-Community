@@ -1,4 +1,15 @@
-# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.5.0
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.6.0
+
+## v1.6.0 更新
+
+[下载最新 v1.6.0 固件](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.6.0) · [完整中英文说明](RELEASE-NOTES.md)
+
+- 同版追加后台升级修复：配置备份不再被30秒RPC超时误杀，增加任务互斥和错误反馈。旧版升级入口的限制及操作说明见 [后台升级修复](FIX-BACKEND-UPGRADE.md)。
+
+- 修复 PPPoE 自动 IPv6 与手动 DHCPv6 同链路重复启动引发的报错/CPU 高占用，保留正常 IPv6，不重置用户配置。
+- 回移官方 mt76 的 TWT 失败清理、断开关联后管理帧队列两项修复；保留既有 AN7581/NPU 和 10G 保护。未整体升级内核或无线栈。
+- 默认密码、无线参数、插件与 U-Boot 不变。详情及验证边界见 [中英文修复说明](FIX-IPV6-DUPLICATE-CLIENT.md)。
+- 两台已完成本版刷后基础验收：主路由保留配置升级、PPPoE/IPv6、DNS、OpenClash、5GHz160及6GHz320 Mesh正常，双向短测无丢包；未将短测当作长期游戏/漫游或极限吞吐承诺。BBR已集成，无需为此安装TurboACC。四个下载文件包含原样可选Wiro U-Boot，已有兼容版本无需重刷。
 
 **语言 / Languages：** [中文（本页）](README.md) | [English](README-EN.md) | [双语刷机指南 / Bilingual Flashing Guide](FLASHING-GUIDE.md)
 
@@ -8,9 +19,9 @@
 
 本项目不是 LinkEase/iStoreOS、OpenWrt、Gemtek、Airoha 或 MediaTek 的官方发布。固件只适用于 XR1710G，不要刷入相似外壳或其他 Airoha/MediaTek 设备。
 
-## v1.5.0 更新
+## v1.5.0 历史更新
 
-[下载最新 v1.5.0 固件](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.5.0) · [完整中英文说明](RELEASE-NOTES.md)
+[历史 v1.5.0 发布](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.5.0)
 
 - 5GHz EHT160 改用前台 CAC，规避后台检测无临时可用信道时 AP 启动失败。保留 DFS，保留用户频宽和信道，首次仍为 EHT80。检测期间需等待 5GHz 开始广播。
 - 出厂镜像直接预置公开管理员密码 `password` 的哈希；保留配置升级不覆盖已有密码。

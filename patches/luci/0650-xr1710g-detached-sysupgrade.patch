@@ -1,0 +1,52 @@
+From: XR1710G Community
+Subject: [PATCH] luci: detach XR1710G upgrade preparation from short file.exec RPC
+
+Keep stock validation/options, but submit the final command to a bounded-argument
+job launcher and poll its state. Generic rpcd timeouts remain unchanged.
+
+--- a/modules/luci-mod-system/htdocs/luci-static/resources/view/system/flash.js
++++ b/modules/luci-mod-system/htdocs/luci-static/resources/view/system/flash.js
+@@ -5,6 +5,7 @@
+ 'require rpc';
+ 'require fs';
+ 'require ui';
++'require xr-upgrade as xrUpgrade';
+ 
+ const isReadonlyView = !L.hasViewPermission();
+ 
+@@ -191,5 +192,6 @@
+ 
+ 	handleSysupgrade(storage_size, has_rootfs_data, ev) {
+-		return ui.uploadFile('/tmp/firmware.bin', ev.target.firstChild)
++		return xrUpgrade.guard()
++			.then(() => ui.uploadFile('/tmp/firmware.bin', ev.target.firstChild))
+ 			.then(L.bind(function(btn, reply) {
+ 				btn.firstChild.data = _('Checking image…');
+@@ -318,26 +320,14 @@
+ 	handleSysupgradeConfirm(btn, opts, ev) {
+ 		btn.firstChild.data = _('Flashing…');
+-
+-		ui.showModal(_('Flashing…'), [
+-			E('p', { 'class': 'spinning' }, _('The system is flashing now.<br /> DO NOT POWER OFF THE DEVICE!<br /> Wait a few minutes before you try to reconnect. It might be necessary to renew the address of your computer to reach the device again, depending on your settings.'))
+-		]);
+ 
+ 		const args = [];
+ 
+ 		for (let key in opts)
+ 			/* if checkbox == condition add args to sysupgrade */
+ 			if (opts[key][0].checked == opts[key][1])
+ 				args.push(opts[key][2]);
+ 
+-		args.push('/tmp/firmware.bin');
+-
+-		/* Currently the sysupgrade rpc call will not return, hence no promise handling */
+-		fs.exec('/sbin/sysupgrade', args);
+-
+-		if (opts['keep'][0].checked)
+-			ui.awaitReconnect(window.location.host);
+-		else
+-			ui.awaitReconnect(window.location.host, '192.168.1.1', 'openwrt.lan');
++		return xrUpgrade.start(args, opts['keep'][0].checked);
+ 	},
+ 
+ 	handleBackupList(ev) {

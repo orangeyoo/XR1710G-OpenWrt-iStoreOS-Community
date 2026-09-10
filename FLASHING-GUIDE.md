@@ -1,17 +1,19 @@
-# XR1710G v1.5.0 刷机指南 / Flashing Guide
+# XR1710G v1.6.0 刷机指南 / Flashing Guide
 
 ## 中文
 
-仅适用于 Gemtek XR1710G。下载 [v1.5.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.5.0)。
+仅适用于 Gemtek XR1710G。v1.6.0 已通过两台设备刷后基础检查。升级前备份；如有多台，建议先升级节点，确认正常后再升级主路由。
 
 | 文件 | 用途 |
 |---|---|
-| `xr1710g-community-v1.5.0-sysupgrade.itb` | 唯一系统固件 |
+| `xr1710g-community-v1.6.0-sysupgrade.itb` | 唯一系统固件 |
 | `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | 可选 U-Boot，仅在“更新 U-Boot / Update U-Boot”入口使用 |
 | `SHA256SUMS.txt` | 系统与 U-Boot 校验，不刷入 |
 | `FLASHING-GUIDE.md` | 本说明，不刷入 |
 
 ### 已有兼容 OpenWrt / iStoreOS
+
+旧版后台可能在大配置备份时触发30秒超时。若确认后没有重启，不要重复提交；先检查升级进程/日志，安排维护窗口修补旧入口或经SSH受控升级。本次1.6包含新入口修复，但它不能在刷入前自动修复旧系统。已有兼容U-Boot无需为此更新。
 
 备份需要的配置 → 系统 → 备份/升级 → 上传 sysupgrade ITB → 确认并等待重启。
 同系列保留配置升级继续使用原地址和密码；跨发行版或排查旧配置问题时建议不保留配置。
@@ -32,7 +34,7 @@
 
 ### U-Boot 是否必须升级
 
-**不需要为了系统升级到 1.5 而重刷已有兼容 U-Boot。**
+**不需要为了系统升级到 1.6 而重刷已有兼容 U-Boot。**
 本次下载区已附原样验证的 `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin`。需要更换时按 [Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) 专页操作；上游署名、许可证和对应源码书面提供承诺保持不变。
 只有对应的 flash-slot.bin 能进入 **更新 U-Boot / Update U-Boot**；系统 ITB 和裸 u-boot.bin 不能混刷。
 
@@ -56,7 +58,9 @@ For Gemtek XR1710G only. Use the **sysupgrade ITB** as the system firmware, **SH
 
 ### Compatible running system
 
-Back up settings, open **System → Backup / Flash Firmware**, upload `xr1710g-community-v1.5.0-sysupgrade.itb`, confirm, and wait for reboot. Preserved upgrades retain the existing address and password. Avoid preserving settings across distributions or when eliminating stale configuration issues.
+Older pages may time out after 30 seconds while backing up a large configuration. If no reboot occurs, do not resubmit. Inspect the task/logs, then schedule a controlled entrypoint hotfix or SSH upgrade. This rebuilt v1.6 fixes future upgrades but cannot repair the running old entrypoint before installation. No U-Boot update is needed for this issue.
+
+Back up settings, open **System → Backup / Flash Firmware**, upload `xr1710g-community-v1.6.0-sysupgrade.itb`, confirm, and wait for reboot. Preserved upgrades retain the existing address and password. Avoid preserving settings across distributions or when eliminating stale configuration issues.
 
 ### Wiro Recovery
 
@@ -68,7 +72,7 @@ Wait for **100% in the page, a solid green LED and a reachable installed system*
 
 If DHCP is unavailable, temporarily set the computer to `192.168.255.2/24`, open `http://192.168.255.1/`, choose **Firmware → UBI 2.0 - 439 MiB**, and upload the same sysupgrade ITB. Restore computer DHCP after installation.
 
-A compatible U-Boot does **not** need updating for firmware 1.5. The unchanged optional `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` is included in the same download area. See [Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) for the U-Boot procedure, upstream credits, licenses and written corresponding-source offer. U-Boot retains its v1.0.0 version. Never upload a system ITB or raw u-boot.bin to **Update U-Boot**.
+A compatible U-Boot does **not** need updating for firmware 1.6. The unchanged optional `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` is included in this release. See [Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) for the U-Boot procedure, upstream credits, licenses and written corresponding-source offer. U-Boot retains its v1.0.0 version. Never upload a system ITB or raw u-boot.bin to **Update U-Boot**.
 
 ### First boot
 

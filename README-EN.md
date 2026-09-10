@@ -1,4 +1,14 @@
-# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.5.0
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.6.0
+
+## New in v1.6.0
+
+[Download v1.6.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.6.0) · [Bilingual release notes](RELEASE-NOTES.md)
+
+Also fixes backend upgrades exceeding the 30-second RPC window, with detached jobs, mutual exclusion and failure feedback. See [upgrade fix and old-entrypoint caveat](FIX-BACKEND-UPGRADE.md).
+
+Prevents duplicate automatic-PPP and explicit DHCPv6 clients without disabling IPv6 or resetting user configuration. Backports official mt76 fixes for rejected TWT cleanup and management-frame queuing after disassociation; retains the AN7581/NPU and 10G protections. No wholesale kernel/wireless-stack update. Defaults, plugins and U-Boot remain unchanged.
+
+See [bilingual fix details](FIX-IPV6-DUPLICATE-CLIENT.md). Both units passed basic post-flash checks: retained-configuration main-router upgrade, PPPoE/IPv6, DNS, OpenClash, 5GHz160 and 6GHz320 Mesh, with loss-free short pings. These are not long-term gaming/roaming or peak-throughput guarantees. BBR is included; TurboACC is not needed for it. The four assets include unchanged optional Wiro U-Boot; existing compatible U-Boot needs no update. Older results below remain historical.
 
 **Languages:** [English (this page)](README-EN.md) | [中文](README.md) | [Bilingual Flashing Guide](FLASHING-GUIDE.md)
 
@@ -8,9 +18,9 @@ This is an unofficial community port for the **Econet/Gemtek XR1710G (Airoha AN7
 
 This project is not an official release from LinkEase/iStoreOS, OpenWrt, Gemtek, Airoha, or MediaTek. It is only for the XR1710G and must not be flashed to visually similar devices or other Airoha/MediaTek hardware.
 
-## New in v1.5.0
+## Historical changes in v1.5.0
 
-[Download v1.5.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.5.0) · [Bilingual release notes](RELEASE-NOTES.md)
+[Historical v1.5.0 release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.5.0)
 
 - Use foreground CAC for 5GHz EHT160 to avoid AP startup failure when background CAC cannot find a temporary channel. DFS remains active; owner width/channel are preserved and the factory width remains EHT80. Wait for CAC before expecting the AP to broadcast.
 - Seed the public factory root password `password` as a hash in the image; preserved upgrades keep existing credentials.
