@@ -126,12 +126,12 @@ xr1710g-role node 192.168.50.2/24 192.168.50.1
 
 | 文件 | 用途 |
 |---|---|
-| `xr1710g-community-v1.5.0-sysupgrade.itb` | 后台升级及兼容 HTTP U-Boot 的永久系统安装，普通用户优先使用 |
+| `xr1710g-community-v1.6.0-sysupgrade.itb` | 后台升级及兼容 HTTP U-Boot 的永久系统安装，普通用户优先使用 |
 | `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | 可选 U-Boot，只能在 **更新 U-Boot / Update U-Boot** 入口刷入 |
 | `SHA256SUMS.txt` | 文件完整性校验，不刷入路由器 |
 | `FLASHING-GUIDE.md` | 中英文刷机路径与文件用途 |
 
-普通用户请先阅读 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。已运行兼容 OpenWrt/iStoreOS，或使用兼容 HTTP U-Boot 的 **Firmware + UBI 2.0 - 439 MiB** 页面时，优先使用 `xr1710g-community-v1.5.0-sysupgrade.itb`。不要把系统 ITB 刷进 U-Boot 槽位。
+普通用户请先阅读 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。已运行兼容 OpenWrt/iStoreOS，或使用兼容 HTTP U-Boot 的 **Firmware + UBI 2.0 - 439 MiB** 页面时，使用 `xr1710g-community-v1.6.0-sysupgrade.itb`。旧后台若超时，不要反复提交；先排查或采用受控SSH升级。不要把系统 ITB 刷进 U-Boot 槽位。
 
 首次启动地址为 `192.168.50.1`，用户名 `root`，初始密码为 `password`。请先用有线单独连接并立即修改管理员密码及无线加密。
 

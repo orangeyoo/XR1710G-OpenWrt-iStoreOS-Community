@@ -125,12 +125,12 @@ The formal Release contains only the required files:
 
 | File | Purpose |
 |---|---|
-| `xr1710g-community-v1.5.0-sysupgrade.itb` | Preferred image for compatible web upgrades and permanent installation through compatible HTTP U-Boot |
+| `xr1710g-community-v1.6.0-sysupgrade.itb` | System image for compatible web upgrades and permanent installation through compatible HTTP U-Boot |
 | `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | Optional U-Boot; use only **Update U-Boot**, not the system firmware form |
 | `SHA256SUMS.txt` | Integrity checks; never flash this file |
 | `FLASHING-GUIDE.md` | Bilingual file-purpose and flashing guide |
 
-Read [FLASHING-GUIDE.md](FLASHING-GUIDE.md) before flashing. Prefer `xr1710g-community-v1.5.0-sysupgrade.itb` from a compatible OpenWrt/iStoreOS system or from the compatible HTTP U-Boot **Firmware + UBI 2.0 - 439 MiB** page. Never flash a system ITB into the U-Boot slot.
+Read [FLASHING-GUIDE.md](FLASHING-GUIDE.md) before flashing. Use `xr1710g-community-v1.6.0-sysupgrade.itb` from a compatible OpenWrt/iStoreOS system or compatible HTTP U-Boot **Firmware + UBI 2.0 - 439 MiB** page. If an old upgrade page times out, do not repeatedly submit; inspect it or arrange a controlled SSH upgrade. Never flash a system ITB into the U-Boot slot.
 
 The initial address is `192.168.50.1`, the user is `root`, and the initial password is `password`. Connect one unit by Ethernet and immediately replace the administrator password and configure wireless encryption.
 
