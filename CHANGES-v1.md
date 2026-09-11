@@ -1,4 +1,15 @@
-# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.6.0 — Changes
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.6.1 — Changes
+
+## v1.6.1
+
+在 v1.6.0 基础上的四项 Wi-Fi 修复：
+
+- `patches/kernel/0923`（构建序列 923）修订：AN7581 PCS 的 `AN down`/`no-signal` 稳态诊断改为每链路状态周期打印一次（新增 `rxlock_link_down_reported[]`/`rxlock_no_signal_reported[]`），`cdr-reset` 事件诊断与 RX-lock 恢复逻辑不变。修复桥接节点空置端口每秒约两条刷屏、约 8 分钟冲掉全部日志的问题。
+- 首启默认与保留配置迁移：5GHz 802.11r 的 `ft_over_ds` 由 `0` 改 `1`（FT-over-DS 与 over-the-air 同时可用，修复 Apple 设备漫游退回完整认证）；新增 `files/etc/uci-defaults/98-xr1710g-ft-over-ds` 一次性迁移，仅修改已启用 FT 且值为 0 的接口。
+- 新增 `files/etc/uci-defaults/98-xr1710g-luci-apply-window`：`luci.apply.rollback` 仅在出厂值 90 或缺失时设为 300，修复 DFS 频宽应用被 90 秒窗口误回退；自定义值保留。
+- 新增 `patches/luci/0660-xr1710g-mlo-hide-mesh-ifaces.patch`：MLO 编辑器过滤 `mode='mesh'` 接口并显示指引提示，防止 6GHz 回程被 AP/STA 表单误改。
+
+其余（内核、mt76 r7、IPv6 去重、后台升级、插件、风扇、出厂无线默认）与 v1.6.0 一致。实机验收：两台迁移生效、节点 12 小时日志仅 1 条 PCS 记录、Mesh/三频/多终端接入漫游正常。
 
 ## v1.6.0
 

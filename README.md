@@ -1,15 +1,15 @@
-# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.6.0
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.6.1
 
-## v1.6.0 更新
+## v1.6.1 更新
 
-[下载最新 v1.6.0 固件](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.6.0) · [完整中英文说明](RELEASE-NOTES.md)
+[下载最新 v1.6.1 固件](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.6.1) · [完整中英文说明](RELEASE-NOTES.md)
 
-- 同版追加后台升级修复：配置备份不再被30秒RPC超时误杀，增加任务互斥和错误反馈。旧版升级入口的限制及操作说明见 [后台升级修复](FIX-BACKEND-UPGRADE.md)。
-
-- 修复 PPPoE 自动 IPv6 与手动 DHCPv6 同链路重复启动引发的报错/CPU 高占用，保留正常 IPv6，不重置用户配置。
-- 回移官方 mt76 的 TWT 失败清理、断开关联后管理帧队列两项修复；保留既有 AN7581/NPU 和 10G 保护。未整体升级内核或无线栈。
-- 默认密码、无线参数、插件与 U-Boot 不变。详情及验证边界见 [中英文修复说明](FIX-IPV6-DUPLICATE-CLIENT.md)。
-- 两台已完成本版刷后基础验收：主路由保留配置升级、PPPoE/IPv6、DNS、OpenClash、5GHz160及6GHz320 Mesh正常，双向短测无丢包；未将短测当作长期游戏/漫游或极限吞吐承诺。BBR已集成，无需为此安装TurboACC。四个下载文件包含原样可选Wiro U-Boot，已有兼容版本无需重刷。
+- 修复桥接节点内核日志刷屏：空置 WAN 口不再每秒刷 `USXGMII AN down`，日志不再被冲掉（实机 12 小时仅 1 条）。
+- 修复 Apple 设备漫游兼容：出厂及升级迁移改用 `ft_over_ds='1'`，跨 AP 漫游不再退回完整认证；只改该开关，不触碰用户无线设置。
+- 修复 LuCI 无线配置误回退：应用 160MHz 等 DFS 频宽时的确认窗口从 90 秒提升到 300 秒，不再被误判回滚为 80MHz。
+- MLO 编辑器隐藏 802.11s Mesh 回程接口，防止误改导致组网损坏。
+- IPv6 去重、后台升级修复、mt76 r7、默认密码与无线参数（5GHz 出厂 EHT80）不变。详情及验证边界见 [Wi-Fi 修复说明](FIX-WIFI-STABILITY-V1.6.1.md)。
+- 两台已完成本版刷后验收：迁移全部生效、节点日志完整保留、6GHz320 Mesh ESTAB、S24/Mac/iPhone 接入漫游正常。四个下载文件包含原样可选Wiro U-Boot，已有兼容版本无需重刷。
 
 **语言 / Languages：** [中文（本页）](README.md) | [English](README-EN.md) | [双语刷机指南 / Bilingual Flashing Guide](FLASHING-GUIDE.md)
 
@@ -126,12 +126,12 @@ xr1710g-role node 192.168.50.2/24 192.168.50.1
 
 | 文件 | 用途 |
 |---|---|
-| `xr1710g-community-v1.6.0-sysupgrade.itb` | 后台升级及兼容 HTTP U-Boot 的永久系统安装，普通用户优先使用 |
+| `xr1710g-community-v1.6.1-sysupgrade.itb` | 后台升级及兼容 HTTP U-Boot 的永久系统安装，普通用户优先使用 |
 | `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | 可选 U-Boot，只能在 **更新 U-Boot / Update U-Boot** 入口刷入 |
 | `SHA256SUMS.txt` | 文件完整性校验，不刷入路由器 |
 | `FLASHING-GUIDE.md` | 中英文刷机路径与文件用途 |
 
-普通用户请先阅读 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。已运行兼容 OpenWrt/iStoreOS，或使用兼容 HTTP U-Boot 的 **Firmware + UBI 2.0 - 439 MiB** 页面时，使用 `xr1710g-community-v1.6.0-sysupgrade.itb`。旧后台若超时，不要反复提交；先排查或采用受控SSH升级。不要把系统 ITB 刷进 U-Boot 槽位。
+普通用户请先阅读 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。已运行兼容 OpenWrt/iStoreOS，或使用兼容 HTTP U-Boot 的 **Firmware + UBI 2.0 - 439 MiB** 页面时，使用 `xr1710g-community-v1.6.1-sysupgrade.itb`。旧后台若超时，不要反复提交；先排查或采用受控SSH升级。不要把系统 ITB 刷进 U-Boot 槽位。
 
 首次启动地址为 `192.168.50.1`，用户名 `root`，初始密码为 `password`。请先用有线单独连接并立即修改管理员密码及无线加密。
 

@@ -1,12 +1,12 @@
-# XR1710G v1.6.0 刷机指南 / Flashing Guide
+# XR1710G v1.6.1 刷机指南 / Flashing Guide
 
 ## 中文
 
-仅适用于 Gemtek XR1710G。v1.6.0 已通过两台设备刷后基础检查。升级前备份；如有多台，建议先升级节点，确认正常后再升级主路由。
+仅适用于 Gemtek XR1710G。v1.6.1 已通过两台设备刷后验收。升级前备份；如有多台，建议先升级节点，确认正常后再升级主路由。
 
 | 文件 | 用途 |
 |---|---|
-| `xr1710g-community-v1.6.0-sysupgrade.itb` | 唯一系统固件 |
+| `xr1710g-community-v1.6.1-sysupgrade.itb` | 唯一系统固件 |
 | `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | 可选 U-Boot，仅在“更新 U-Boot / Update U-Boot”入口使用 |
 | `SHA256SUMS.txt` | 系统与 U-Boot 校验，不刷入 |
 | `FLASHING-GUIDE.md` | 本说明，不刷入 |
@@ -58,9 +58,9 @@ For Gemtek XR1710G only. Use the **sysupgrade ITB** as the system firmware, **SH
 
 ### Compatible running system
 
-Older pages may time out after 30 seconds while backing up a large configuration. If no reboot occurs, do not resubmit. Inspect the task/logs, then schedule a controlled entrypoint hotfix or SSH upgrade. This rebuilt v1.6 fixes future upgrades but cannot repair the running old entrypoint before installation. No U-Boot update is needed for this issue.
+Older pages may time out after 30 seconds while backing up a large configuration. If no reboot occurs, do not resubmit. Inspect the task/logs, then schedule a controlled entrypoint hotfix or SSH upgrade. This v1.6.1 release keeps those upgrade fixes and adds Wi-Fi fixes but cannot repair the running old entrypoint before installation. No U-Boot update is needed for this issue.
 
-Back up settings, open **System → Backup / Flash Firmware**, upload `xr1710g-community-v1.6.0-sysupgrade.itb`, confirm, and wait for reboot. Preserved upgrades retain the existing address and password. Avoid preserving settings across distributions or when eliminating stale configuration issues.
+Back up settings, open **System → Backup / Flash Firmware**, upload `xr1710g-community-v1.6.1-sysupgrade.itb`, confirm, and wait for reboot. Preserved upgrades retain the existing address and password. Avoid preserving settings across distributions or when eliminating stale configuration issues.
 
 ### Wiro Recovery
 

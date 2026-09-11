@@ -1,14 +1,16 @@
-# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.6.0
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware v1.6.1
 
-## New in v1.6.0
+## New in v1.6.1
 
-[Download v1.6.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.6.0) · [Bilingual release notes](RELEASE-NOTES.md)
+[Download v1.6.1](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.6.1) · [Bilingual release notes](RELEASE-NOTES.md)
 
-Also fixes backend upgrades exceeding the 30-second RPC window, with detached jobs, mutual exclusion and failure feedback. See [upgrade fix and old-entrypoint caveat](FIX-BACKEND-UPGRADE.md).
+Fixes the bridge-node kernel-log flood: an idle WAN port no longer prints the PCS diagnostic every second and node logs survive (one line over twelve hours on hardware).
 
-Prevents duplicate automatic-PPP and explicit DHCPv6 clients without disabling IPv6 or resetting user configuration. Backports official mt76 fixes for rejected TWT cleanup and management-frame queuing after disassociation; retains the AN7581/NPU and 10G protections. No wholesale kernel/wireless-stack update. Defaults, plugins and U-Boot remain unchanged.
+Improves Apple roaming compatibility: factory defaults and preserved-configuration upgrades now advertise FT-over-DS (`ft_over_ds='1'`) so cross-AP roams no longer fall back to full authentication. Only that switch changes; user wireless settings are untouched.
 
-See [bilingual fix details](FIX-IPV6-DUPLICATE-CLIENT.md). Both units passed basic post-flash checks: retained-configuration main-router upgrade, PPPoE/IPv6, DNS, OpenClash, 5GHz160 and 6GHz320 Mesh, with loss-free short pings. These are not long-term gaming/roaming or peak-throughput guarantees. BBR is included; TurboACC is not needed for it. The four assets include unchanged optional Wiro U-Boot; existing compatible U-Boot needs no update. Older results below remain historical.
+Widens LuCI's apply-rollback window from 90 to 300 seconds so DFS-spanning widths (for example EHT160 with its ~60 s CAC) are no longer silently rolled back to 80MHz. The MLO editor now hides 802.11s mesh backhaul interfaces.
+
+The IPv6 duplicate-client fix, detached upgrades, mt76 r7, default credentials and factory wireless defaults (5GHz EHT80) are unchanged. See [Wi-Fi fix details](FIX-WIFI-STABILITY-V1.6.1.md). Both units passed post-flash acceptance: all migrations active, node logs preserved, 6GHz320 Mesh ESTAB, S24/Mac/iPhone associating and roaming normally. The four assets include unchanged optional Wiro U-Boot; existing compatible U-Boot needs no update. Older results below remain historical.
 
 **Languages:** [English (this page)](README-EN.md) | [中文](README.md) | [Bilingual Flashing Guide](FLASHING-GUIDE.md)
 
@@ -125,12 +127,12 @@ The formal Release contains only the required files:
 
 | File | Purpose |
 |---|---|
-| `xr1710g-community-v1.6.0-sysupgrade.itb` | System image for compatible web upgrades and permanent installation through compatible HTTP U-Boot |
+| `xr1710g-community-v1.6.1-sysupgrade.itb` | System image for compatible web upgrades and permanent installation through compatible HTTP U-Boot |
 | `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | Optional U-Boot; use only **Update U-Boot**, not the system firmware form |
 | `SHA256SUMS.txt` | Integrity checks; never flash this file |
 | `FLASHING-GUIDE.md` | Bilingual file-purpose and flashing guide |
 
-Read [FLASHING-GUIDE.md](FLASHING-GUIDE.md) before flashing. Use `xr1710g-community-v1.6.0-sysupgrade.itb` from a compatible OpenWrt/iStoreOS system or compatible HTTP U-Boot **Firmware + UBI 2.0 - 439 MiB** page. If an old upgrade page times out, do not repeatedly submit; inspect it or arrange a controlled SSH upgrade. Never flash a system ITB into the U-Boot slot.
+Read [FLASHING-GUIDE.md](FLASHING-GUIDE.md) before flashing. Use `xr1710g-community-v1.6.1-sysupgrade.itb` from a compatible OpenWrt/iStoreOS system or compatible HTTP U-Boot **Firmware + UBI 2.0 - 439 MiB** page. If an old upgrade page times out, do not repeatedly submit; inspect it or arrange a controlled SSH upgrade. Never flash a system ITB into the U-Boot slot.
 
 The initial address is `192.168.50.1`, the user is `root`, and the initial password is `password`. Connect one unit by Ethernet and immediately replace the administrator password and configure wireless encryption.
 
