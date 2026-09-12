@@ -75,7 +75,3 @@ Everything else (kernel 6.18.41, mt76 r7, IPv6 and upgrade fixes, credentials, f
 **Validation:** both units run this image — all migrations active, one PCS line over twelve idle hours, 6GHz 320MHz mesh ESTAB, S24/Mac/iPhone associating and roaming normally, no driver or kernel errors. Post-flash checks, not long-term guarantees.
 
 See [changes](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/blob/v1.6.1/CHANGES-v1.md), [fix details](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/blob/v1.6.1/FIX-WIFI-STABILITY-V1.6.1.md), [flashing guide](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/blob/v1.6.1/FLASHING-GUIDE.md) and [mesh guide](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/blob/v1.6.1/MESH-GUIDE-ZH.md). Not an official OpenWrt/iStoreOS/Gemtek release; component licenses and upstream credits apply.
-
-| QQ group **1061612207** | Donation (optional) |
-|---|---|
-| <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/wiro-qq-group.jpg" width="180" alt="QQ group QR"> | <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/support-qr.png" width="180" alt="Donation QR"> |
