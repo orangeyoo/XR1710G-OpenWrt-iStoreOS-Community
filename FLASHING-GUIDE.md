@@ -31,14 +31,30 @@
 
 ### 路径 2：Wiro U-Boot 系统固件双清（全新/彻底重装）
 
-1. 只连接目标设备；电脑网卡设为**自动获取**，进 Recovery 后会拿到 `192.168.255.x`，打开 `http://192.168.255.1/`。
-2. 选 **系统固件双清 / System Firmware Double-Clean**，上传同一个 sysupgrade ITB。
-3. 🔴 **双清会清掉旧配置、overlay 和里面的 Docker 数据——先备份！**
-4. 红灯闪约 3 分钟属正常；等 **页面 100% + 绿灯常亮 + 系统可访问** 才算完成。全程不要断电、复位、拔线。
+**先物理进入 Recovery：**
+
+1. 电脑网线接路由器的 **10GbE（10G）端口**，网卡设为**自动获取 IP**（进 Recovery 后会拿到 `192.168.255.x`；拿不到就手动设 `192.168.255.2/24`）。
+2. 给路由器**接通电源**开机。
+3. 看到 **10GbE 端口 LED 开始闪烁时，长按 reset 复位键不松手**——拿不准时机就多按几秒，进入窗口的时间余量很大。
+4. **状态指示灯从常亮红灯变成跑马灯（流水灯）= 已进入恢复模式**，松开按键。
+5. 电脑打开 `http://192.168.255.1/`。
+
+**然后在页面里：**
+
+1. 选 **系统固件双清 / System Firmware Double-Clean**，上传同一个 sysupgrade ITB。
+2. 🔴 **双清会清掉旧配置、overlay 和里面的 Docker 数据——先备份！**
+3. 红灯闪约 3 分钟属正常；等 **页面 100% + 绿灯常亮 + 系统可访问** 才算完成。全程不要断电、复位、拔线。
+
+> 双清重建 `ubootenv / ubootenv2 / fit / rootfs_data`；出厂 EEPROM 和 MAC 数据从厂商 DSD 区域恢复。设备唯一硬件数据（EEPROM、DSD、校准）不会被清除。
 
 ### 路径 3：旧版兼容 HTTP U-Boot
 
-若没有自动 DHCP：电脑手动设 `192.168.255.2/24`，打开 `http://192.168.255.1/`，选 **Firmware → UBI 2.0 - 439 MiB**，上传同一个 sysupgrade ITB。完成后电脑恢复自动获取。
+物理进入方法与路径 2 相同（10GbE 口 + 电源开启后长按 reset 至跑马灯），页面打开 `http://192.168.255.1/` 后：
+
+1. 若没有自动 DHCP：电脑手动设 `192.168.255.2/24`。
+2. 选 **Firmware → UBI 2.0 - 439 MiB**，上传同一个 sysupgrade ITB。完成后电脑恢复自动获取。
+
+⚠️ 旧 U-Boot 页面带 UBI 布局选择器（UBI 2.0 / 1.5 / 1.0）：**必须选与所刷镜像内嵌布局一致的一项**（本项目固件为 UBI 2.0），不要只按页面当前检测到的布局选——不匹配时内核可能加载但系统无限等待。完全重建会重建 `ubootenv / ubootenv2 / fit / rootfs_data` 并重置已保存的 U-Boot 环境变量；EEPROM 与 MAC 从厂商 DSD 恢复。
 
 ### U-Boot 要不要一起刷？
 
@@ -66,9 +82,19 @@ For **Gemtek XR1710G** only. With two units, flash the node first. Back up befor
 
 **Path 1 — Web upgrade.** Back up settings, open **System → Backup / Flash Firmware**, upload the ITB, keep settings if upgrading within this firmware line, confirm and wait for reboot. If an old page times out after ~30 seconds without rebooting, do not resubmit; inspect the task and arrange a controlled SSH upgrade or entrypoint hotfix. No U-Boot change is needed.
 
-**Path 2 — Double-Clean.** Connect only the target router, set the computer to DHCP, open `http://192.168.255.1/`, choose **System Firmware Double-Clean**, upload the same ITB. 🔴 This erases configuration, overlay and Docker data — back up first. The red LED blinks for about three minutes; wait for **100%, a solid green LED and a reachable system**. Never cut power during writing.
+**Path 2 — Double-Clean.** Enter Recovery physically first:
 
-**Path 3 — Legacy U-Boot.** If DHCP is unavailable, set the computer to `192.168.255.2/24`, open `http://192.168.255.1/`, choose **Firmware → UBI 2.0 - 439 MiB**, upload the same ITB, then restore computer DHCP afterwards.
+1. Connect the computer to the router's **10GbE port** with the NIC set to **DHCP** (Recovery assigns `192.168.255.x`; fall back to static `192.168.255.2/24` if needed).
+2. Power the router on.
+3. **When the 10GbE port LED starts blinking, press and hold the reset button** — the timing window is generous, so hold a few extra seconds if unsure.
+4. The status LED changing from solid red to a marquee/running pattern means Recovery is active; release the button.
+5. Open `http://192.168.255.1/` in the browser.
+
+Then choose **System Firmware Double-Clean** and upload the same ITB. 🔴 This erases configuration, overlay and Docker data — back up first. The red LED blinks for about three minutes; wait for **100%, a solid green LED and a reachable system**. Never cut power during writing. The double-clean rebuilds `ubootenv/ubootenv2/fit/rootfs_data`; factory EEPROM and MAC data are restored from the vendor DSD area — unique hardware data is never wiped.
+
+**Path 3 — Legacy U-Boot.** Enter Recovery the same way (10GbE port, hold reset after power-on until the marquee LED), open `http://192.168.255.1/`, and if DHCP is unavailable set the computer to `192.168.255.2/24`. Choose **Firmware → UBI 2.0 - 439 MiB** and upload the same ITB, then restore computer DHCP afterwards.
+
+⚠️ The legacy page includes a UBI layout selector (2.0 / 1.5 / 1.0): **pick the layout embedded in the image you are flashing** (this project's images are UBI 2.0), not merely what the page currently detects — a mismatch can leave the kernel loaded but the system waiting forever. A full rebuild recreates `ubootenv/ubootenv2/fit/rootfs_data` and resets saved U-Boot environment values; EEPROM and MAC are restored from the vendor DSD.
 
 **U-Boot:** existing compatible U-Boot does not need re-flashing for this system update. The optional `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` is unchanged; see the [Wiro U-Boot v1.0.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0) page for the procedure, credits, licenses and the written corresponding-source offer. Only that flash-slot file may be uploaded to **Update U-Boot** — never a system ITB or raw u-boot.bin.
 
