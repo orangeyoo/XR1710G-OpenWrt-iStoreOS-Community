@@ -1,5 +1,20 @@
 # XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware
 
+[![Release](https://img.shields.io/github/v/release/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/total?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest)
+[![Stars](https://img.shields.io/github/stars/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/stargazers)
+[![Forks](https://img.shields.io/github/forks/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/forks)
+[![Issues](https://img.shields.io/github/issues/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/commits/public-first-release)
+[![GPL-2.0](https://img.shields.io/badge/license-GPL--2.0--or--later-blue?style=flat-square)](ATTRIBUTION.md)
+[![OpenWrt](https://img.shields.io/badge/OpenWrt-24.10%20line-0099FF?style=flat-square)](https://openwrt.org)
+[![Kernel](https://img.shields.io/badge/kernel-6.18.41-green?style=flat-square)](CHANGES-v1.md)
+[![Wi-Fi 7](https://img.shields.io/badge/Wi--Fi%207-MT7996%20tri--band-8A2BE2?style=flat-square)](https://en.wikipedia.org/wiki/Wi-Fi_7)
+[![SoC](https://img.shields.io/badge/SoC-Airoha%20AN7581-333333?style=flat-square)](https://www.airoha.com/)
+[![iStoreOS](https://img.shields.io/badge/iStoreOS-component%20integration-FF6600?style=flat-square)](https://github.com/YYH2913/openwrt)
+[![Docker](https://img.shields.io/badge/Docker-preinstalled%2C%20off%20by%20default-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
+[![QQ Group](https://img.shields.io/badge/QQ%20group-1061612207-orange?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)
+
 Unofficial community firmware for the **Gemtek XR1710G**: tri-band Wi-Fi 7, a dedicated 6GHz mesh backhaul, the iStore app shop and Docker — ready to flash.
 
 **[Download v1.6.1](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.6.1)** · [What changed](#new-in-v161) · [Flashing guide](FLASHING-GUIDE.md) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
