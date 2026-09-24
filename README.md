@@ -8,7 +8,7 @@
 [![Last Commit](https://img.shields.io/github/last-commit/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E6%9C%80%E8%BF%91%E6%8F%90%E4%BA%A4)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/commits/public-first-release)
 [![GPL-2.0](https://img.shields.io/badge/%E8%AE%B8%E5%8F%AF%E8%AF%81-GPL--2.0--or--later-blue?style=flat-square)](ATTRIBUTION.md)
 [![OpenWrt](https://img.shields.io/badge/OpenWrt-24.10%20%E7%BA%BF-0099FF?style=flat-square)](https://openwrt.org)
-[![Kernel](https://img.shields.io/badge/%E5%86%85%E6%A0%B8-6.18.41-green?style=flat-square)](CHANGES-v1.md)
+[![Kernel](https://img.shields.io/badge/%E5%86%85%E6%A0%B8-6.18.53-green?style=flat-square)](CHANGES-v1.md)
 [![Wi-Fi 7](https://img.shields.io/badge/Wi--Fi%207-MT7996%20%E4%B8%89%E9%A2%91-8A2BE2?style=flat-square)](https://en.wikipedia.org/wiki/Wi-Fi_7)
 [![SoC](https://img.shields.io/badge/SoC-Airoha%20AN7581-333333?style=flat-square)](https://www.airoha.com/)
 [![iStoreOS](https://img.shields.io/badge/iStoreOS-%E7%BB%84%E4%BB%B6%E9%9B%86%E6%88%90-FF6600?style=flat-square)](https://github.com/YYH2913/openwrt)
@@ -17,7 +17,7 @@
 
 面向 **Gemtek XR1710G** 的非官方社区固件：Wi-Fi 7 三频 + 6GHz 专线 Mesh 回程 + iStore 商店 + Docker，开箱即用。
 
-**[下载最新 v1.6.1](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.6.1)** · [更新了什么](#v161-更新) · [刷机指南](FLASHING-GUIDE.md) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
+**[下载最新 v1.7](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.7)** · [更新了什么](#v17-更新) · [刷机指南](FLASHING-GUIDE.md) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
 
 ## 30 秒速览
 
@@ -34,34 +34,36 @@
 
 ## 四步上手
 
-1. **下载**：Release 页只需关注 4 个文件（见下表），普通用户只刷第 1 个。
+1. **下载**：v1.7 Release 页提供系统固件和校验文件，普通用户只刷系统固件。
 2. **刷入**：已在运行兼容 OpenWrt/iStoreOS → 后台上传升级；新机/全刷 → 兼容 U-Boot 上传同一个文件。详见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
 3. **登录**：电脑网线连路由器，打开 `192.168.50.1`，`root / password`。
 4. **收尾**：改管理员密码 → 给 2.4/5GHz 设密码；要两台组网看 [Mesh 教程](MESH-GUIDE-ZH.md)（一页纸，照表格填空即可）。
 
 界面默认简体中文；切换英文：**系统 → 系统 → 语言和界面 → English → 保存应用**。
 
-## v1.6.1 更新
+## v1.7 更新
 
-- 修复桥接节点内核日志刷屏：空置 WAN 口不再每秒刷 `USXGMII AN down`，日志不再被冲掉（实机 12 小时仅 1 条）。
-- 修复 Apple 设备漫游兼容：出厂及升级迁移改用 `ft_over_ds='1'`，跨 AP 漫游不再退回完整认证；只改该开关，不触碰用户无线设置。
-- 修复 LuCI 无线配置误回退：应用 160MHz 等 DFS 频宽时的确认窗口从 90 秒提升到 300 秒，不再被误判回滚为 80MHz。
-- MLO 编辑器隐藏 802.11s Mesh 回程接口，防止误改导致组网损坏。
-- IPv6 去重、后台升级修复、mt76 r7、默认密码与无线参数不变。详情及验证边界见 [Wi-Fi 修复说明](FIX-WIFI-STABILITY-V1.6.1.md)。
-- 两台已完成刷后验收：迁移全部生效、节点日志完整保留、6GHz Mesh ESTAB、多品牌手机/电脑接入漫游正常。
+- 修复 6GHz 802.11s Mesh 回程吞吐异常问题，已完成实机验证。
+- Linux 内核更新至 **6.18.53**，采用 OpenWrt Airoha 平台的 6.18 LTS 分支。
+- mac80211 / cfg80211 无线栈更新至 **backports 7.2-r4**。
+- MediaTek mt76 / MT7996 无线驱动更新至 **be5ce791-r10**。
+- 同步上游更新，保留仍然需要的设备适配与兼容性修复。
+- 继续保留日志刷屏、快速漫游兼容、LuCI 无线配置误回退、IPv6 重复客户端和后台升级等问题的修复，以及 MLO 页面防误操作功能。
 
-历史版本（v1.4 起）逐条变更见 [CHANGES-v1.md](CHANGES-v1.md)。
+历史版本逐条变更见 [CHANGES-v1.md](CHANGES-v1.md)。
 
-## 下载：只需关注 4 个文件
+## 下载与升级
+
+[v1.7 发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.7)提供两个附件：
 
 | 文件 | 用途 |
 |---|---|
-| `xr1710g-community-v1.6.1-sysupgrade.itb` | **唯一系统固件**：后台升级或兼容 U-Boot 永久安装都用它 |
-| `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | 可选 U-Boot 更新，只能在"更新 U-Boot"页面刷；已有兼容 U-Boot 不必重刷 |
-| `SHA256SUMS.txt` | 校验文件，不刷入 |
-| `FLASHING-GUIDE.md` | 中英文刷机教程，不刷入 |
+| `xr1710g-community-v1.7-sysupgrade.itb` | **唯一系统固件**：后台升级或兼容 U-Boot 永久安装都用它 |
+| `SHA256SUMS.txt` | 系统固件校验文件，不刷入 |
 
-不需要 recovery.itb；GitHub 自动生成的 Source code 压缩包不是刷机文件；不要把系统 ITB 刷进 U-Boot 槽位。旧后台升级若超时不重启，不要反复提交，按指南排查。
+**U-Boot 本次没有更新，已有兼容 U-Boot 的设备无需重刷。** 需要 Wiro U-Boot v1.0.0 的用户，请到[独立发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)查看说明和下载。刷机步骤见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
+
+GitHub 自动生成的 Source code 压缩包不是刷机文件；不要把系统 ITB 刷进 U-Boot 槽位。升级前备份重要数据；旧后台升级若超时不重启，不要反复提交，按指南排查。
 
 ## 首次启动默认值
 
@@ -97,20 +99,18 @@ xr1710g-role node 192.168.50.2/24 192.168.50.1
 
 | 类别 | 内容 |
 |---|---|
-| 系统 | Linux 6.18.41、UBI 2.0 布局、默认地址 192.168.50.1、performance 调频、单控制器风扇策略 |
-| 无线 | 三频 Wi-Fi 7（MT7996，mt76 固定基线 b2704cf5）、802.11s Mesh、802.11k/v/r、BBR 默认启用 |
+| 系统 | Linux 6.18.53、UBI 2.0 布局、默认地址 192.168.50.1、performance 调频、单控制器风扇策略 |
+| 无线 | 三频 Wi-Fi 7（MT7996，mt76 be5ce791-r10，mac80211/cfg80211 backports 7.2-r4）、802.11s Mesh、802.11k/v/r、BBR 默认启用 |
 | 商店/插件 | iStore、iStoreX、QuickStart、Argon 主题、OpenClash、PassWall2（默认关闭，勿与 OpenClash 同开）、Nikki、EqosPlus |
 | Docker | OpenWrt 上游 Moby/containerd/runc/compose + Dockerman；预装但默认关闭，三入口共用一套配置 |
 | 网络 | Airoha PPE 硬件卸载、Full Cone NAT（默认关闭，不能绕过 CGNAT/双重 NAT）、10G 口保护修复 |
 | 诊断 | `xr1710g-role` 角色工具、`xr1710g-mesh-diag` 脱敏诊断、状态页缓存化（不走 devmem） |
 
-## 实机验证边界（诚实声明）
+## 源码发布安排
 
-- v1.6.1：两台实机刷后验收通过（迁移生效、节点日志保留、Mesh ESTAB、多终端接入漫游正常）；不代表长期游戏、行走漫游或极限吞吐承诺。
-- v1.4 历史：10G 直连 3.85/1.69Gbps、6GHz 320MHz 摆位实测中位约 715/720Mbps 等数据为特定条件实测，详见 [CHANGES-v1.md](CHANGES-v1.md)，不构成所有环境保证。
-- 历史要点：v1.5 修复 5GHz 160MHz 前台 CAC 启动；v1.4 修复 LAN 编辑/首页重定向/风扇单控/Dockerman Moby 29 显示，删除 GlassTheme 及其中文包，并预装 Full Cone 与 PassWall2。
+本版暂以二进制形式发布，对应源码将随下一版本一并在仓库公布。当前仓库的构建说明用于已公开的源码，不代表能够重现 v1.7 发布镜像。
 
-## 构建
+## 已公开源码的构建
 
 ```sh
 docker volume create xr1710g-istoreos-final
