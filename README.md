@@ -1,5 +1,7 @@
 # XR1710G OpenWrt / iStoreOS Wi-Fi 7 社区固件
 
+> **v1.9 已撤回**：收到 5GHz 游戏卡顿反馈，正在排查。请暂勿使用 v1.9；当前公开最新版为 v1.8。
+
 [![Release](https://img.shields.io/github/v/release/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E5%8F%91%E5%B8%83)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/total?style=flat-square&label=%E4%B8%8B%E8%BD%BD)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest)
 [![Stars](https://img.shields.io/github/stars/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E6%98%9F%E6%A0%87)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/stargazers)
@@ -17,7 +19,7 @@
 
 面向 **Gemtek XR1710G** 的非官方社区固件：Wi-Fi 7 三频 + 6GHz 专线 Mesh 回程 + iStore 商店 + Docker，开箱即用。
 
-**[下载最新 v1.9](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.9)** · [更新了什么](#v19-更新) · [刷机指南](FLASHING-GUIDE.md) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
+**[下载最新 v1.8](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.8)** · [更新了什么](#v17-更新) · [刷机指南](FLASHING-GUIDE.md) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
 
 ## 30 秒速览
 
@@ -34,33 +36,31 @@
 
 ## 四步上手
 
-1. **下载**：v1.9 Release 页提供系统固件和校验文件，普通用户只刷系统固件。
+1. **下载**：v1.8 Release 页提供系统固件和校验文件，普通用户只刷系统固件。
 2. **刷入**：已在运行兼容 OpenWrt/iStoreOS → 后台上传升级；新机/全刷 → 兼容 U-Boot 上传同一个文件。详见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
 3. **登录**：电脑网线连路由器，打开 `192.168.50.1`，`root / password`。
 4. **收尾**：改管理员密码 → 给 2.4/5GHz 设密码；要两台组网看 [Mesh 教程](MESH-GUIDE-ZH.md)（一页纸，照表格填空即可）。
 
 界面默认简体中文；切换英文：**系统 → 系统 → 语言和界面 → English → 保存应用**。
 
-## v1.9 更新
+## v1.7 更新
 
-- 修正 EHT320 模式下的无线速率能力配置。
-- 修复以太网收包处理及 LRO 状态管理问题，LRO 默认关闭。
-- 整理 MLO 页面与初始化配置，三频各自单链路，默认开启 MLO。
-- 修复首次启动无线配置覆盖：2.4G 使用 EHT20，5G/6G 默认 EHT160。
-- 补齐 6GHz OWE 支持，修复相关配置报错。
-- 修复固件升级后网页资源缓存导致的旧页面问题。
-
-Mesh 回程请关闭 MLO；MLO + WDS 桥接仍有兼容性问题。
+- 修复 6GHz 802.11s Mesh 回程吞吐异常问题，已完成实机验证。
+- Linux 内核更新至 **6.18.53**，采用 OpenWrt Airoha 平台的 6.18 LTS 分支。
+- mac80211 / cfg80211 无线栈更新至 **backports 7.2-r4**。
+- MediaTek mt76 / MT7996 无线驱动更新至 **be5ce791-r10**。
+- 同步上游更新，保留仍然需要的设备适配与兼容性修复。
+- 继续保留日志刷屏、快速漫游兼容、LuCI 无线配置误回退、IPv6 重复客户端和后台升级等问题的修复，以及 MLO 页面防误操作功能。
 
 历史版本逐条变更见 [CHANGES-v1.md](CHANGES-v1.md)。
 
 ## 下载与升级
 
-[v1.9 发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.9)提供两个附件：
+[v1.8 发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.8)提供两个附件：
 
 | 文件 | 用途 |
 |---|---|
-| `xr1710g-community-v1.9-sysupgrade.itb` | **唯一系统固件**：后台升级或兼容 U-Boot 永久安装都用它 |
+| `xr1710g-community-v1.8-sysupgrade.itb` | **唯一系统固件**：后台升级或兼容 U-Boot 永久安装都用它 |
 | `SHA256SUMS.txt` | 系统固件校验文件，不刷入 |
 
 **U-Boot 本次没有更新，已有兼容 U-Boot 的设备无需重刷。** 需要 Wiro U-Boot v1.0.0 的用户，请到[独立发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)查看说明和下载。刷机步骤见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
@@ -71,10 +71,9 @@ GitHub 自动生成的 Source code 压缩包不是刷机文件；不要把系统
 
 干净首启后，驱动加载完成才应用无线默认值：
 
-- 2.4GHz：US、信道 1、EHT20、请求 28dBm；SSID `XR1710G`，初始开放且没有预置密码。
-- 5GHz：US、channel 36、EHT160、请求 29dBm；SSID `XR1710G-5G`，初始开放且没有预置密码，启用 802.11k/v/r 与终端防误清退设置。
-- 6GHz：US、PSC channel 37、EHT160、请求 28dBm；SSID `XR1710G-6G`，初始为 OWE AP，要求 PMF。
-- 三频初始各自为单链路 MLO AP；Mesh 回程需另行配置，并关闭回程接口 MLO。
+- 2.4GHz：US、自动信道、HE20、请求 28dBm；SSID `XR1710G`，初始开放且没有预置密码。
+- 5GHz：US、channel 36、EHT80、请求 29dBm；SSID `XR1710G-5G`，初始开放且没有预置密码，启用 802.11k/v/r 与终端防误清退设置。
+- 6GHz：US、PSC channel 37、EHT160、请求 28dBm、WPA3-SAE 802.11s Mesh 模板；没有预置密钥，因此首次默认禁用，两端设置相同 Mesh ID 和密钥后启用。
 - 2.4/5GHz 不预置 Wi-Fi 密码；首次登录后应立即修改管理员密码并设置无线加密。
 - 三频共享同一个 Linux PHY，监管域只能三频统一，不能按频段设置不同国家码。
 
@@ -106,12 +105,12 @@ xr1710g-role node 192.168.50.2/24 192.168.50.1
 | 无线 | 三频 Wi-Fi 7（MT7996，mt76 be5ce791-r10，mac80211/cfg80211 backports 7.2-r4）、802.11s Mesh、802.11k/v/r、BBR 默认启用 |
 | 商店/插件 | iStore、iStoreX、QuickStart、Argon 主题、OpenClash、PassWall2（默认关闭，勿与 OpenClash 同开）、Nikki、EqosPlus |
 | Docker | OpenWrt 上游 Moby/containerd/runc/compose + Dockerman；预装但默认关闭，三入口共用一套配置 |
-| 网络 | 软/硬件流卸载默认关闭、Full Cone NAT（默认开启，不能绕过 CGNAT/双重 NAT）、10G 口保护修复 |
+| 网络 | Airoha PPE 硬件卸载、Full Cone NAT（默认关闭，不能绕过 CGNAT/双重 NAT）、10G 口保护修复 |
 | 诊断 | `xr1710g-role` 角色工具、`xr1710g-mesh-diag` 脱敏诊断、状态页缓存化（不走 devmem） |
 
 ## 源码发布安排
 
-本版暂以二进制形式发布，对应源码将随下一版本一并在仓库公布。当前仓库的构建说明用于已公开的源码，不代表能够重现 v1.9 发布镜像。
+本版暂以二进制形式发布，对应源码将随下一版本一并在仓库公布。当前仓库的构建说明用于已公开的源码，不代表能够重现 v1.7 发布镜像。
 
 ## 已公开源码的构建
 
