@@ -8,7 +8,7 @@
 [![Last Commit](https://img.shields.io/github/last-commit/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/commits/public-first-release)
 [![GPL-2.0](https://img.shields.io/badge/license-GPL--2.0--or--later-blue?style=flat-square)](ATTRIBUTION.md)
 [![OpenWrt](https://img.shields.io/badge/OpenWrt-24.10%20line-0099FF?style=flat-square)](https://openwrt.org)
-[![Kernel](https://img.shields.io/badge/kernel-6.18.41-green?style=flat-square)](CHANGES-v1.md)
+[![Kernel](https://img.shields.io/badge/kernel-6.18.53-green?style=flat-square)](CHANGES-v1.md)
 [![Wi-Fi 7](https://img.shields.io/badge/Wi--Fi%207-MT7996%20tri--band-8A2BE2?style=flat-square)](https://en.wikipedia.org/wiki/Wi-Fi_7)
 [![SoC](https://img.shields.io/badge/SoC-Airoha%20AN7581-333333?style=flat-square)](https://www.airoha.com/)
 [![iStoreOS](https://img.shields.io/badge/iStoreOS-component%20integration-FF6600?style=flat-square)](https://github.com/YYH2913/openwrt)
@@ -17,7 +17,7 @@
 
 Unofficial community firmware for the **Gemtek XR1710G**: tri-band Wi-Fi 7, a dedicated 6GHz mesh backhaul, the iStore app shop and Docker — ready to flash.
 
-**[Download v1.6.1](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.6.1)** · [What changed](#new-in-v161) · [Flashing guide](FLASHING-GUIDE.md) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
+**[Download v1.9](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.9)** · [What changed](#new-in-v19) · [Flashing guide](FLASHING-GUIDE.md) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
 
 ## At a glance
 
@@ -34,32 +34,32 @@ Unofficial community firmware for the **Gemtek XR1710G**: tri-band Wi-Fi 7, a de
 
 ## Four steps to get going
 
-1. **Download** — from the release page you only need the four files listed below; most users flash only the first.
+1. **Download** — download the system image and checksum file; flash only the system image.
 2. **Flash** — already running compatible OpenWrt/iStoreOS: upload in the web UI; fresh/full install: upload the same file through compatible U-Boot. See [FLASHING-GUIDE.md](FLASHING-GUIDE.md).
 3. **Log in** — connect by Ethernet, open `192.168.50.1`, use `root / password`.
 4. **Finish** — change the admin password, set 2.4/5GHz Wi-Fi passwords; for a two-unit mesh see the one-page [mesh guide](MESH-GUIDE-ZH.md) (fill-in tables).
 
 The UI starts in Simplified Chinese. Switch to English under **System → System → Language and Style → English → Save & Apply**.
 
-## New in v1.6.1
+## New in v1.9
 
-- Bridge-node kernel-log flood fixed: an idle WAN port no longer prints `USXGMII AN down` every second; node logs survive (one line over twelve hours on hardware).
-- Apple roaming compatibility: factory defaults and preserved-configuration upgrades now use `ft_over_ds='1'`; cross-AP roams no longer fall back to full authentication. Only that switch changes.
-- LuCI wireless-config rollback window widened from 90 to 300 seconds so DFS-spanning widths are no longer silently rolled back to 80MHz.
-- The MLO editor hides 802.11s mesh backhaul interfaces to prevent breaking the mesh by mistake.
-- The IPv6 duplicate-client fix, detached upgrades, mt76 r7 and default credentials are unchanged. Details and validation boundaries: [Wi-Fi fix notes](FIX-WIFI-STABILITY-V1.6.1.md).
-- Both units passed post-flash acceptance: migrations active, node logs preserved, mesh ESTAB, multi-vendor phones and laptops associating and roaming normally.
+- Correct EHT320 wireless rate capability configuration.
+- Fix Ethernet RX processing and LRO state handling; LRO remains disabled by default.
+- Restore the MLO interface and clean up initialization, with three independent single-link MLO AP defaults.
+- Fix first-boot wireless overrides: EHT20 on 2.4GHz and EHT160 on 5/6GHz.
+- Add missing 6GHz OWE support and fix related configuration errors.
+- Fix stale web resources after firmware upgrades.
+
+Disable MLO on mesh backhaul interfaces. MLO + WDS bridging still has compatibility issues.
 
 Full per-version history since v1.4: [CHANGES-v1.md](CHANGES-v1.md).
 
-## Downloads: only four files matter
+## Downloads
 
 | File | Purpose |
 |---|---|
-| `xr1710g-community-v1.6.1-sysupgrade.itb` | **The only system image** — web upgrades and compatible U-Boot permanent installs |
-| `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | Optional U-Boot update, for the **Update U-Boot** page only; existing compatible U-Boot needs no re-flash |
+| `xr1710g-community-v1.9-sysupgrade.itb` | **The only system image** — web upgrades and compatible U-Boot permanent installs |
 | `SHA256SUMS.txt` | Checksums; not flashed |
-| `FLASHING-GUIDE.md` | Bilingual flashing tutorial; not flashed |
 
 No separate recovery.itb is needed; GitHub's auto-generated Source code archives are not flashable; never flash a system ITB into the U-Boot slot. If an old upgrade page times out without rebooting, do not resubmit — follow the guide.
 
@@ -67,9 +67,10 @@ No separate recovery.itb is needed; GitHub's auto-generated Source code archives
 
 Wireless defaults apply after the drivers finish loading on a clean first boot:
 
-- 2.4GHz: US, automatic channel, HE20, 28 dBm requested; SSID `XR1710G`, initially open with no preset password.
-- 5GHz: US, channel 36, EHT80, 29 dBm requested; SSID `XR1710G-5G`, initially open with no preset password, with 802.11k/v/r and stale-client protection enabled.
-- 6GHz: US, PSC channel 37, EHT160, 28 dBm requested, WPA3-SAE 802.11s mesh template; It has no preset key and is disabled initially — set an identical mesh ID and key on both units, then enable.
+- 2.4GHz: US, channel 1, EHT20, 28 dBm requested; SSID `XR1710G`, initially open with no preset password.
+- 5GHz: US, channel 36, EHT160, 29 dBm requested; SSID `XR1710G-5G`, initially open with no preset password, with 802.11k/v/r and stale-client protection enabled.
+- 6GHz: US, PSC channel 37, EHT160, 28 dBm requested; SSID `XR1710G-6G`, initially an OWE AP with PMF required.
+- Each band defaults to an independent single-link MLO AP. Configure mesh backhaul separately with MLO disabled on that interface.
 - 2.4/5GHz have no preset Wi-Fi password; change the administrator password and set wireless encryption immediately after first login.
 - All three bands share one Linux PHY: the regulatory domain applies to all bands together and cannot differ per band.
 
@@ -97,18 +98,22 @@ The tool backs up and commits configuration only; it never reloads the network o
 
 | Area | Contents |
 |---|---|
-| System | Linux 6.18.41, UBI 2.0 layout, default address 192.168.50.1, performance governor, single-controller fan policy |
-| Wireless | Tri-band Wi-Fi 7 (MT7996 on the pinned mt76 baseline b2704cf5), 802.11s mesh, 802.11k/v/r, BBR enabled |
+| System | Linux 6.18.53, UBI 2.0 layout, default address 192.168.50.1, performance governor, single-controller fan policy |
+| Wireless | Tri-band Wi-Fi 7 (MT7996 on mt76 be5ce791-r10 / backports 7.2-r4), 802.11s mesh, 802.11k/v/r, BBR enabled |
 | Shop/plugins | iStore, iStoreX, QuickStart, Argon theme, OpenClash, PassWall2 (off by default; never enable both proxies together), Nikki, EqosPlus |
 | Docker | Upstream OpenWrt Moby/containerd/runc/compose + Dockerman; preinstalled but off; all entry points share one config |
-| Network | Airoha PPE hardware offload, Full Cone NAT (off by default; cannot bypass CGNAT or double NAT), 10G port protection fixes |
+| Network | Software/hardware flow offload disabled by default, Full Cone NAT (enabled by default; cannot bypass CGNAT or double NAT), 10G port protection fixes |
 | Diagnostics | `xr1710g-role`, privacy-safe `xr1710g-mesh-diag`, cached status pages (no devmem in LuCI hot paths) |
 
 ## Validation boundaries (honesty)
 
-- v1.6.1: both units passed post-flash acceptance (migrations active, node logs preserved, mesh ESTAB, normal association/roaming). Not a promise of long-term gaming, walking-roam or peak throughput.
+- v1.9: both units were checked with ordinary APs and 6GHz mesh. Fresh-install OWE client association and long-term stability remain unverified.
 - v1.4-era figures (10G direct 3.85/1.69 Gbps; 6GHz 320MHz site test ~715/720 Mbps median) were measured under specific conditions — see [CHANGES-v1.md](CHANGES-v1.md); they are not guarantees for every environment.
 - Historical highlights: v1.5 fixed 5GHz 160MHz foreground-CAC startup; v1.4 fixed the LAN editor, home redirects, fan control and Dockerman Moby 29 display, Removes GlassTheme and its Chinese package, and preinstalled Full Cone NAT and PassWall2.
+
+## Source release
+
+This release ships binaries only. The corresponding source is planned for the next release; existing public source does not reproduce v1.9.
 
 ## Building
 
