@@ -60,14 +60,15 @@ Mesh 回程请关闭 MLO；MLO + WDS 桥接仍有兼容性问题。
 
 ## 下载与升级
 
-[v1.9 发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.9)提供两个附件：
+[v1.9 发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v1.9)提供三个附件：
 
 | 文件 | 用途 |
 |---|---|
 | `xr1710g-community-v1.9-sysupgrade.itb` | **唯一系统固件**：后台升级或兼容 U-Boot 永久安装都用它 |
-| `SHA256SUMS.txt` | 系统固件校验文件，不刷入 |
+| `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | 可选 Wiro U-Boot v1.0.0，仅用于“更新 U-Boot” |
+| `SHA256SUMS.txt` | 系统固件和 U-Boot 校验文件，不刷入 |
 
-**U-Boot 本次没有更新，已有兼容 U-Boot 的设备无需重刷。** 需要 Wiro U-Boot v1.0.0 的用户，请到[独立发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)查看说明和下载。刷机步骤见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
+**U-Boot 本次没有更新，已有兼容 U-Boot 的设备无需重刷。** v1.9 附件已补充同一份 Wiro U-Boot v1.0.0；使用方法、来源与许可证说明见[独立发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)。刷机步骤见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
 
 GitHub 自动生成的 Source code 压缩包不是刷机文件；不要把系统 ITB 刷进 U-Boot 槽位。升级前备份重要数据；旧后台升级若超时不重启，不要反复提交，按指南排查。
 

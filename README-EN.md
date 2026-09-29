@@ -63,7 +63,10 @@ Full per-version history since v1.4: [CHANGES-v1.md](CHANGES-v1.md).
 | File | Purpose |
 |---|---|
 | `xr1710g-community-v1.9-sysupgrade.itb` | **The only system image** — web upgrades and compatible U-Boot permanent installs |
-| `SHA256SUMS.txt` | Checksums; not flashed |
+| `xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin` | Optional Wiro U-Boot v1.0.0; use only in Update U-Boot |
+| `SHA256SUMS.txt` | System image and U-Boot checksums; not flashed |
+
+The bundled Wiro U-Boot v1.0.0 is unchanged from its [original release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0), which includes instructions, provenance and license details. Devices with compatible U-Boot do not need to reflash it.
 
 No separate recovery.itb is needed; GitHub's auto-generated Source code archives are not flashable; never flash a system ITB into the U-Boot slot. If an old upgrade page times out without rebooting, do not resubmit — follow the guide.
 
