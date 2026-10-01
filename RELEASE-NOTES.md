@@ -14,3 +14,7 @@ Mesh 回程请关闭 MLO；MLO + WDS 桥接仍有兼容性问题。
 本次仅发布固件和校验文件，源码计划随下一版本公布。
 
 附带原版 Wiro U-Boot v1.0.0（`xr1710g-wiro-uboot-recovery-v1.0.0-flash-slot.bin`），仅用于“更新 U-Boot”；已有该版本无需重刷。[使用与许可证说明](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)。
+
+| 交流群 **1061612207** | 赞赏自愿 |
+|---|---|
+| <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/wiro-qq-group.jpg" width="240" alt="QQ群二维码"> | <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/support-qr.png" width="240" alt="赞赏码"> |

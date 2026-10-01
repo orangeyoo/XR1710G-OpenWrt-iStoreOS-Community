@@ -134,4 +134,8 @@ docker run --name xr1710g-istoreos-build-final \
 
 本项目以 [YYH2913/openwrt](https://github.com/YYH2913/openwrt) 板级支持为基础，按 iStoreOS 公开组件方式集成，并使用/标注 YYH2913/http-uboot、naoki66/ImmortalWrt-for-Gemtek-XR1710G、OpenWrt、mt76、hostapd、iStore/iStoreX、QuickStart、OpenClash、PassWall2、Argon、Nikki、sirpdboy/EqosPlus 及 Airoha/MediaTek 上游内容。完整固定提交与许可证见 [ATTRIBUTION.md](ATTRIBUTION.md)；各组件继续适用其原许可证，上游不为本固件背书。
 
-固件交流群：**1061612207**
+## 交流与支持
+
+| 交流群 **1061612207** | 赞赏自愿 |
+|---|---|
+| <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/wiro-qq-group.jpg" width="240" alt="QQ群二维码"> | <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/support-qr.png" width="240" alt="赞赏码"> |

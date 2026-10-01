@@ -138,4 +138,8 @@ Key entry points: `configs/openwrt.config` (pinned configuration), `feeds.d/open
 
 Built on board support from [YYH2913/openwrt](https://github.com/YYH2913/openwrt), integrated the way public iStoreOS components are, and uses/attributes YYH2913/http-uboot, naoki66/ImmortalWrt-for-Gemtek-XR1710G, OpenWrt, mt76, hostapd, iStore/iStoreX, QuickStart, OpenClash, PassWall2, Argon, Nikki, sirpdboy/EqosPlus and Airoha/MediaTek upstream content. Pinned commits and licenses: [ATTRIBUTION.md](ATTRIBUTION.md). Third-party components keep their original licenses; no upstream endorses this firmware.
 
-Community QQ group: **1061612207**
+## Community and support
+
+| Community QQ group **1061612207** | Voluntary support |
+|---|---|
+| <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/wiro-qq-group.jpg" width="240" alt="QQ group QR code"> | <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/support-qr.png" width="240" alt="Support QR code"> |
