@@ -1,108 +1,140 @@
-![OpenWrt logo](include/logo.png)
+# XR1710G OpenWrt / iStoreOS Wi-Fi 7 社区固件
 
-OpenWrt Project is a Linux operating system targeting embedded devices. Instead
-of trying to create a single, static firmware, OpenWrt provides a fully
-writable filesystem with package management. This frees you from the
-application selection and configuration provided by the vendor and allows you
-to customize the device through the use of packages to suit any application.
-For developers, OpenWrt is the framework to build an application without having
-to build a complete firmware around it; for users this means the ability for
-full customization, to use the device in ways never envisioned.
+**当前版本：[v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · 更新日期：2026-10-11 · 本次同时发布固件与完整源码。
 
-Sunshine!
+[![Release](https://img.shields.io/github/v/release/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E5%8F%91%E5%B8%83)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/total?style=flat-square&label=%E4%B8%8B%E8%BD%BD)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest)
+[![Stars](https://img.shields.io/github/stars/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E6%98%9F%E6%A0%87)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/stargazers)
+[![Forks](https://img.shields.io/github/forks/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E5%A4%8D%E5%88%BB)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/forks)
+[![Issues](https://img.shields.io/github/issues/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E9%97%AE%E9%A2%98)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E6%9C%80%E8%BF%91%E6%8F%90%E4%BA%A4)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/commits/source-2.0)
+[![GPL-2.0](https://img.shields.io/badge/%E8%AE%B8%E5%8F%AF%E8%AF%81-GPL--2.0--or--later-blue?style=flat-square)](ATTRIBUTION.md)
+[![OpenWrt](https://img.shields.io/badge/OpenWrt-24.10%20%E7%BA%BF-0099FF?style=flat-square)](https://openwrt.org)
+[![Kernel](https://img.shields.io/badge/%E5%86%85%E6%A0%B8-6.18.53-green?style=flat-square)](CHANGES-v1.md)
+[![Wi-Fi 7](https://img.shields.io/badge/Wi--Fi%207-MT7996%20%E4%B8%89%E9%A2%91-8A2BE2?style=flat-square)](https://en.wikipedia.org/wiki/Wi-Fi_7)
+[![SoC](https://img.shields.io/badge/SoC-Airoha%20AN7581-333333?style=flat-square)](https://www.airoha.com/)
+[![iStoreOS](https://img.shields.io/badge/iStoreOS-%E7%BB%84%E4%BB%B6%E9%9B%86%E6%88%90-FF6600?style=flat-square)](https://github.com/YYH2913/openwrt)
+[![Docker](https://img.shields.io/badge/Docker-%E9%A2%84%E8%A3%85%E9%BB%98%E8%AE%A4%E5%85%B3-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
+[![QQ Group](https://img.shields.io/badge/%E4%BA%A4%E6%B5%81%E7%BE%A4-1061612207-orange?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)
 
-## Download
+面向 **Gemtek XR1710G** 的非官方社区固件：Wi-Fi 7 三频 + 6GHz 专线 Mesh 回程 + iStore 商店 + Docker，开箱即用。
 
-Built firmware images are available for many architectures and come with a
-package selection to be used as WiFi home router. To quickly find a factory
-image usable to migrate from a vendor stock firmware to OpenWrt, try the
-*Firmware Selector*.
+**[下载最新 v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · [更新了什么](#v20-更新) · [刷机指南](FLASHING-GUIDE.md) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
 
-* [OpenWrt Firmware Selector](https://firmware-selector.openwrt.org/)
+## 30 秒速览
 
-If your device is supported, please follow the **Info** link to see install
-instructions or consult the support resources listed below.
+| 项目 | 说明 |
+|---|---|
+| 适用于 | **仅 Gemtek XR1710G**（Airoha AN7581 + MediaTek MT7996） |
+| 是什么 | 非官方 OpenWrt / iStoreOS 社区固件，不是任何厂商官方发布 |
+| 亮点 | 三频 Wi-Fi 7、两台 6GHz 专线组网、iStore 商店、OpenClash/PassWall2、Docker |
+| 刷机后管理地址 | `http://192.168.50.1` |
+| 初始账号 | 用户名 `root`，初始密码为 `password` |
+| 首次 Wi-Fi | 2.4/5GHz 开放网络；登录后立即设置密码 |
 
-##
+⚠️ 不要刷入其他型号或外壳相似的其他 Airoha/MediaTek 设备。
 
-An advanced user may require additional or specific package. (Toolchain, SDK, ...) For everything else than simple firmware download, try the wiki download page:
+## 四步上手
 
-* [OpenWrt Wiki Download](https://openwrt.org/downloads)
+1. **下载**：v2.0 Release 页提供系统固件、Recovery 镜像和校验文件，普通用户只刷系统固件。
+2. **刷入**：已在运行兼容 OpenWrt/iStoreOS → 后台上传升级；新机/全刷 → 兼容 U-Boot 上传同一个文件。详见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
+3. **登录**：电脑网线连路由器，打开 `192.168.50.1`，`root / password`。
+4. **收尾**：改管理员密码 → 给 2.4/5GHz 设密码；要两台组网看 [Mesh 教程](MESH-GUIDE-ZH.md)（一页纸，照表格填空即可）。
 
-## Development
+界面默认简体中文；切换英文：**系统 → 系统 → 语言和界面 → English → 保存应用**。
 
-To build your own firmware you need a GNU/Linux, BSD or macOS system (case
-sensitive filesystem required). Cygwin is unsupported because of the lack of a
-case sensitive file system.
+## v2.0 更新
 
-### Requirements
+- 修复并出厂启用 PPE 硬件转发/NAT 卸载通道；实验室双 10G 背靠背实测 8 流 5.74 Gbps、30 流峰值 6.98 Gbps，转发期间 CPU 占用接近空载（idle 97% 以上）。
+- PPPoE 会话可进入 PPE 硬件快速路径：修复 PPPoE 流因源/目的 MAC 校验被误拒的问题。
+- PPE L4 陈旧槽位防护；WAN 方向 LRO 收包中断覆盖、NPU 一致性邮箱 DMA 等有线驱动栈整合。
+- Full Cone NAT 在新转发通道下生效（firewall4 + nftables，出厂开启）。
+- mt76/MT7996 NPU 收发栈整合（0100–0114 系列）。无线出厂设置延续 v1.9：2.4G EHT20，5G/6G EHT160。
+- LuCI 简体中文与 airoha-npu / airoha-flowsense / airoha-fancontrol / xr1710g-recovery 应用、状态核心；静态资源版本化，修复升级后旧页面缓存。
+- 对应完整源码随本版公布：分支 `source-2.0`，标签 `v2.0`。
 
-You need the following tools to compile OpenWrt, the package names vary between
-distributions. A complete list with distribution specific packages is found in
-the [Build System Setup](https://openwrt.org/docs/guide-developer/build-system/install-buildsystem)
-documentation.
+10G 双向线速与长期稳定性仍是进行中目标，本版未作最终验收；家庭实际使用已验证外网有线/无线下载稳定。
+
+Mesh 回程请关闭 MLO；MLO + WDS 桥接仍有兼容性问题。
+
+切换国家码后若 5GHz 异常，请重启 5GHz 无线并等待 DFS 检查完成。
+
+历史版本逐条变更见 [CHANGES-v1.md](CHANGES-v1.md)。
+
+## 下载与升级
+
+[v2.0 发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)提供三个附件：
+
+| 文件 | 用途 |
+|---|---|
+| `xr1710g-community-v2.0-sysupgrade.itb` | **系统固件**：后台升级或兼容 U-Boot 永久安装都用它 |
+| `xr1710g-community-v2.0-recovery.itb` | Recovery/全刷镜像：U-Boot Recovery 页或救砖用，普通升级不需要 |
+| `SHA256SUMS.txt` | 校验文件，不刷入 |
+
+**U-Boot 本次没有更新，已有兼容 U-Boot（Wiro U-Boot v1.0.0）的设备无需重刷。** 使用方法、来源与许可证说明见[独立发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)。刷机步骤见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
+
+v2.0 为大版本升级（有线转发栈重写），建议升级时**不保留配置**；保留配置升级未做完整回归。GitHub 自动生成的 Source code 压缩包即本版完整源码（分支 `source-2.0`），不是刷机文件；不要把系统 ITB 刷进 U-Boot 槽位。升级前备份重要数据；旧后台升级若超时不重启，不要反复提交，按指南排查。
+
+## 首次启动默认值
+
+干净首启后，驱动加载完成才应用无线默认值：
+
+- 2.4GHz：US、信道 1、EHT20、请求 28dBm；SSID `XR1710G`，初始开放且没有预置密码。
+- 5GHz：US、channel 36、EHT160、请求 29dBm；SSID `XR1710G-5G`，初始开放且没有预置密码，启用 802.11k/v/r 与终端防误清退设置。
+- 6GHz：US、PSC channel 37、EHT160、请求 28dBm；SSID `XR1710G-6G`，初始为 OWE AP，要求 PMF。
+- 三频初始各自为单链路 MLO AP；Mesh 回程需另行配置，并关闭回程接口 MLO。
+- 2.4/5GHz 不预置 Wi-Fi 密码；首次登录后应立即修改管理员密码并设置无线加密。
+- 三频共享同一个 Linux PHY，监管域只能三频统一，不能按频段设置不同国家码。
+
+需要兼容老设备时，2.4GHz 可选 WPA/WPA2 混合加密。XZ 实验档（AU 派生 + 6GHz 36dBm 实验规则）默认关闭，仅限已取得授权的受控测试，详见历史文档。
+
+## 两台组网（Mesh 回程）
 
 ```
-binutils bzip2 diff find flex gawk gcc-6+ getopt grep install libc-dev libz-dev
-make4.1+ perl python3.8+ rsync subversion unzip which
+光猫 ── 主路由(192.168.50.1) ════ 6GHz 专线 ════ 节点(192.168.50.2)
+              │                                      │
+        手机/电脑连 2.4G/5G Wi-Fi ——全屋同名，自动漫游
 ```
 
-### Quickstart
+完整步骤见 [MESH-GUIDE-ZH.md](MESH-GUIDE-ZH.md)（一页纸简明版）。角色准备命令：
 
-1. Run `./scripts/feeds update -a` to obtain all the latest package definitions
-   defined in feeds.conf / feeds.conf.default
+```sh
+xr1710g-role status
+xr1710g-role main-dhcp 192.168.50.1/24   # 或 main-pppoe
+xr1710g-role node 192.168.50.2/24 192.168.50.1
+```
 
-2. Run `./scripts/feeds install -a` to install symlinks for all obtained
-   packages into package/feeds/
+工具只备份并提交配置，不擅自重载网络或重启。
 
-3. Run `make menuconfig` to select your preferred configuration for the
-   toolchain, target system & firmware packages.
+## 功能一览
 
-4. Run `make` to build your firmware. This will download all sources, build the
-   cross-compile toolchain and then cross-compile the GNU/Linux kernel & all chosen
-   applications for your target system.
+| 类别 | 内容 |
+|---|---|
+| 系统 | Linux 6.18.53、UBI 2.0 布局、默认地址 192.168.50.1、performance 调频、单控制器风扇策略 |
+| 无线 | 三频 Wi-Fi 7（MT7996，mt76 be5ce791-r10，mac80211/cfg80211 backports 7.2-r4）、802.11s Mesh、802.11k/v/r、BBR 默认启用 |
+| 商店/插件 | iStore、iStoreX、QuickStart、Argon 主题、OpenClash、PassWall2（默认关闭，勿与 OpenClash 同开）、Nikki、EqosPlus |
+| Docker | OpenWrt 上游 Moby/containerd/runc/compose + Dockerman；预装但默认关闭，三入口共用一套配置 |
+| 网络 | PPE 硬件流卸载/NAT 快速路径（修复并出厂启用）、Full Cone NAT（默认开启，不能绕过 CGNAT/双重 NAT）、10G 口保护修复 |
+| 诊断 | `xr1710g-role` 角色工具、`xr1710g-mesh-diag` 脱敏诊断、状态页缓存化（不走 devmem） |
 
-### Related Repositories
+## 源码发布
 
-The main repository uses multiple sub-repositories to manage packages of
-different categories. All packages are installed via the OpenWrt package
-manager called `opkg`. If you're looking to develop the web interface or port
-packages to OpenWrt, please find the fitting repository below.
+**v2.0 起完整源码随版本公布**：分支 [`source-2.0`](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/source-2.0)（标签 `v2.0`）是 v2.0 镜像对应的完整 OpenWrt / iStoreOS 构建树——Linux 6.18.53 Airoha 平台 XR1710G BSP 补丁集（SOE/PPE 卸载栈、LRO、缓冲转发等 `9999-*` 系列）、mt76/MT7996 NPU 栈（`0100–0114`）、fullcone NAT、XR1710G 出厂默认与 LuCI 应用；构建种子 `xr1710g-2.0.seed.config`（`cp xr1710g-2.0.seed.config .config && make defconfig`）。U-Boot 源码不在其中，详见树内 `XR1710G-SOURCE-2.0.md`。
 
-* [LuCI Web Interface](https://github.com/openwrt/luci): Modern and modular
-  interface to control the device via a web browser.
+v1.x 时代的构建脚手架（`configs/`、`feeds.d/`、`patches/` 等）已于 2026-10-11 自仓库移除以免误导；其内容可在 v1.6.1–v1.9 标签的 Source 归档中查阅。
 
-* [OpenWrt Packages](https://github.com/openwrt/packages): Community repository
-  of ported packages.
+## 历史版本构建
 
-* [OpenWrt Routing](https://github.com/openwrt/routing): Packages specifically
-  focused on (mesh) routing.
+v1.x 版本使用旧的 Docker 构建脚手架构建；该脚手架已于 2026-10-11 随仓库整理移除，
+如需查阅见 v1.6.1–v1.9 标签的 Source 归档。v2.0 起直接从本源码树构建（见上文
+“源码发布”与树内 `XR1710G-SOURCE-2.0.md`）。
 
-* [OpenWrt Video](https://github.com/openwrt/video): Packages specifically
-  focused on display servers and clients (Xorg and Wayland).
+## 上游与许可证
 
-## Support Information
+本项目以 [YYH2913/openwrt](https://github.com/YYH2913/openwrt) 板级支持为基础，按 iStoreOS 公开组件方式集成，并使用/标注 YYH2913/http-uboot、naoki66/ImmortalWrt-for-Gemtek-XR1710G、OpenWrt、mt76、hostapd、iStore/iStoreX、QuickStart、OpenClash、PassWall2、Argon、Nikki、sirpdboy/EqosPlus 及 Airoha/MediaTek 上游内容。完整固定提交与许可证见 [ATTRIBUTION.md](ATTRIBUTION.md)；各组件继续适用其原许可证，上游不为本固件背书。
 
-For a list of supported devices see the [OpenWrt Hardware Database](https://openwrt.org/supported_devices)
+## 交流与支持
 
-### Documentation
-
-* [Quick Start Guide](https://openwrt.org/docs/guide-quick-start/start)
-* [User Guide](https://openwrt.org/docs/guide-user/start)
-* [Developer Documentation](https://openwrt.org/docs/guide-developer/start)
-* [Technical Reference](https://openwrt.org/docs/techref/start)
-
-### Support Community
-
-* [Forum](https://forum.openwrt.org): For usage, projects, discussions and hardware advise.
-* [Support Chat](https://webchat.oftc.net/#openwrt): Channel `#openwrt` on **oftc.net**.
-
-### Developer Community
-
-* [Bug Reports](https://bugs.openwrt.org): Report bugs in OpenWrt
-* [Dev Mailing List](https://lists.openwrt.org/mailman/listinfo/openwrt-devel): Send patches
-* [Dev Chat](https://webchat.oftc.net/#openwrt-devel): Channel `#openwrt-devel` on **oftc.net**.
-
-## License
-
-OpenWrt is licensed under GPL-2.0
+| 交流群 **1061612207** | 赞赏自愿 |
+|---|---|
+| <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/wiro-qq-group.jpg" width="240" alt="QQ群二维码"> | <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/support-qr.png" width="240" alt="赞赏码"> |

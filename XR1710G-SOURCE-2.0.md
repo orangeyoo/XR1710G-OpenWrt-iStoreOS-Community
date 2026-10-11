@@ -44,9 +44,8 @@ Standard OpenWrt flow; the build seed is included:
 Images land in `bin/targets/airoha/an7581/`
 (`...ubi-squashfs-sysupgrade.itb`, `...ubi-initramfs-recovery.itb`).
 
-Community documentation, flashing guide and release notes live on the repository
-default branch `public-first-release`. 社区文档、刷机指南与发布说明在仓库默认分支
-`public-first-release`。U-Boot sources are not part of this tree（U-Boot 不在本树内）.
+Community documentation (README, flashing/mesh guides, release notes) lives at
+this repository root. 社区文档（README、刷机/Mesh 指南、发布说明）位于本仓库根目录。U-Boot sources are not part of this tree（U-Boot 不在本树内）.
 
 ## License / 许可
 
