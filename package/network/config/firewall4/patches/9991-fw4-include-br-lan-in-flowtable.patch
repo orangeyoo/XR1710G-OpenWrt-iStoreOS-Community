@@ -1,0 +1,20 @@
+From: XR1710G Hotfix <xr1710g@local>
+Date: Mon, 6 Oct 2026 00:00:00 +0800
+Subject: [PATCH] fw4: include br-lan itself when resolving flowtable devices
+
+resolve_lower_devices() previously resolved bridge members but omitted the
+bridge device itself. Include br-lan so software flow offload covers
+traffic that is bridged locally. Applies on top of 9990 bonding fix.
+---
+--- a/root/usr/share/ucode/fw4.uc
++++ b/root/usr/share/ucode/fw4.uc
+@@ -439,6 +439,9 @@
+ 				if (index(e, "lower_") === 0)
+ 					push(devs, ...resolve_lower_devices(devstatus, substr(e, 6)));
+ 
++			if (devstatus[devname]?.devtype == 'bridge')
++				push(devs, devname);
++
+ 			break;
+ 
+ 		case 'bonding':
