@@ -1,0 +1,21 @@
+From: XR1710G Community
+Subject: mac80211: report decap offload enabled-state accurately to the driver
+
+When a station keeps fast-rx (assign=true) while the vif lost
+IEEE80211_OFFLOAD_DECAP_ENABLED, the driver callback was invoked
+with assign=true even though the station decap flag was just
+cleared, leaving the hardware translation enabled against the
+mac80211 state. Pass assign && offload.
+---
+--- a/net/mac80211/rx.c
++++ b/net/mac80211/rx.c
+@@ -4865,7 +4865,8 @@
+ 		set_offload = test_and_clear_sta_flag(sta, WLAN_STA_DECAP_OFFLOAD);
+ 
+ 	if (set_offload)
+-		drv_sta_set_decap_offload(local, sdata, &sta->sta, assign);
++		drv_sta_set_decap_offload(local, sdata, &sta->sta,
++					  assign && offload);
+ 
+ 	spin_lock_bh(&sta->lock);
+ 	old = rcu_dereference_protected(sta->fast_rx, true);

@@ -4,9 +4,10 @@ Do the same changes done also in iwlwifi/mvm/tt.c in the iwlwifi/mld/thermal.c f
 
 This fixes the compilation.
 
+
 --- a/drivers/net/wireless/intel/iwlwifi/mld/thermal.c
 +++ b/drivers/net/wireless/intel/iwlwifi/mld/thermal.c
-@@ -209,9 +209,15 @@ unlock:
+@@ -209,9 +209,15 @@
  	return ret;
  }
  
@@ -22,7 +23,7 @@ This fixes the compilation.
  {
  	struct iwl_mld *mld = thermal_zone_device_priv(device);
  	int ret;
-@@ -248,18 +254,29 @@ static void iwl_mld_thermal_zone_registe
+@@ -248,18 +254,29 @@
  		[0 ... IWL_MAX_DTS_TRIPS - 1] = {
  			.temperature = THERMAL_TEMP_INVALID,
  			.type = THERMAL_TRIP_PASSIVE,

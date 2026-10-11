@@ -17,11 +17,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  net/mac80211/cfg.c | 35 +++++++++++++++++++++++++++++++++--
  1 file changed, 33 insertions(+), 2 deletions(-)
 
-diff --git a/net/mac80211/cfg.c b/net/mac80211/cfg.c
-index f733e379..88f9da95 100644
+
 --- a/net/mac80211/cfg.c
 +++ b/net/mac80211/cfg.c
-@@ -4535,8 +4535,39 @@ __ieee80211_channel_switch(struct wiphy *wiphy, struct net_device *dev,
+@@ -4840,8 +4840,39 @@
  		ieee80211_link_info_change_notify(sdata, link_data, changed);
  		drv_channel_switch_beacon(sdata, &link_data->csa.chanreq.oper);
  	} else {
@@ -63,6 +62,3 @@ index f733e379..88f9da95 100644
  	}
  
  out:
--- 
-2.45.2
-

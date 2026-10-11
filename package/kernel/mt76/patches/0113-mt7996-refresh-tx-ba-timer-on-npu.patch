@@ -1,0 +1,26 @@
+From: Chris Scott <gilroyscott1970@gmail.com>
+Subject: [PATCH] wifi: mt76: mt7996: refresh the tx BA session timer on NPU devices
+
+NPU-forwarded frames bypass the software TX path that refreshes last_tx.
+Include active NPU devices in the existing WED TX status refresh condition
+so negotiated nonzero BA timers do not expire during offloaded transfers.
+
+Adapted to the local b2704cf5 + NPU patch stack; no behavior changes from
+the author's 2026-09-18 submission. Submission is not claimed as merged.
+Source: https://lists.openwall.net/linux-kernel/2026/09/18/1149
+Message-ID: <20260918091659.1176350-1-gilroyscott@hotmail.com>
+Signed-off-by: Chris Scott <gilroyscott1970@gmail.com>
+
+
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -1381,7 +1381,8 @@
+ 		}
+ 	}
+ 
+-	if (mtk_wed_device_active(&dev->mt76.mmio.wed) && wcid->sta) {
++	if ((mtk_wed_device_active(&dev->mt76.mmio.wed) ||
++	     mt76_npu_device_active(&dev->mt76)) && wcid->sta) {
+ 		struct ieee80211_sta *sta;
+ 		u8 tid;
+ 

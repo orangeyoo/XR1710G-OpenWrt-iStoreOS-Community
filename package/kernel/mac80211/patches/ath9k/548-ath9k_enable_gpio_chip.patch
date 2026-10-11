@@ -8,6 +8,7 @@ wireless devices. For now AR9285 and AR9287 are supported.
 Signed-off-by: Michal Cieslakiewicz <michal.cieslakiewicz@wp.pl>
 Signed-off-by: Felix Fietkau <nbd@nbd.name>
 ---
+
 --- a/drivers/net/wireless/ath/ath9k/ath9k.h
 +++ b/drivers/net/wireless/ath/ath9k/ath9k.h
 @@ -25,6 +25,8 @@
@@ -19,7 +20,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  
  #include "common.h"
  #include "debug.h"
-@@ -1048,6 +1050,10 @@ struct ath_softc {
+@@ -1048,6 +1050,10 @@
  #ifdef CPTCFG_MAC80211_LEDS
  	const char *led_default_trigger;
  	struct list_head leds;
@@ -32,7 +33,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  #ifdef CPTCFG_ATH9K_DEBUGFS
 --- a/drivers/net/wireless/ath/ath9k/gpio.c
 +++ b/drivers/net/wireless/ath/ath9k/gpio.c
-@@ -16,12 +16,131 @@
+@@ -16,11 +16,130 @@
  
  #include "ath9k.h"
  
@@ -160,13 +161,12 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  /********************************/
  /*	 LED functions		*/
  /********************************/
- 
--#ifdef CPTCFG_MAC80211_LEDS
 -
+-#ifdef CPTCFG_MAC80211_LEDS
+ 
  static void ath_fill_led_pin(struct ath_softc *sc)
  {
- 	struct ath_hw *ah = sc->sc_ah;
-@@ -80,6 +199,12 @@ static int ath_add_led(struct ath_softc
+@@ -80,6 +199,12 @@
  	else
  		ath9k_hw_set_gpio(sc->sc_ah, gpio->gpio, gpio->active_low);
  
@@ -179,7 +179,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  	return 0;
  }
  
-@@ -117,6 +242,11 @@ void ath_deinit_leds(struct ath_softc *s
+@@ -117,6 +242,11 @@
  
  	while (!list_empty(&sc->leds)) {
  		led = list_first_entry(&sc->leds, struct ath_led, list);
@@ -191,7 +191,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  		list_del(&led->list);
  		ath_led_brightness(&led->cdev, LED_OFF);
  		led_classdev_unregister(&led->cdev);
-@@ -124,6 +254,7 @@ void ath_deinit_leds(struct ath_softc *s
+@@ -124,6 +254,7 @@
  		ath9k_hw_gpio_free(sc->sc_ah, gpio->gpio);
  		kfree(led);
  	}
@@ -199,16 +199,16 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  }
  
  void ath_init_leds(struct ath_softc *sc)
-@@ -136,6 +267,12 @@ void ath_init_leds(struct ath_softc *sc)
+@@ -135,6 +266,12 @@
+ 
  	if (AR_SREV_9100(sc->sc_ah))
  		return;
- 
++
 +	/* setup gpio controller only if requested and skip the led_pin setup */
 +	if (device_property_present(sc->dev, "gpio-controller")) {
 +		ath9k_register_gpio_chip(sc);
 +		return;
 +	}
-+
+ 
  	ath_fill_led_pin(sc);
  
- 	snprintf(led_name, sizeof(led_name), "ath9k-%s",

@@ -1,0 +1,67 @@
+From: XR1710G Community
+Subject: [PATCH] hostapd: skip untagged STA VLAN binding on MLD APs
+
+hostapd 831364bf carries the "dynamic VLAN for MLO" feature and issues
+SET_STATION with NL80211_ATTR_STA_VLAN (plus the MLD link id) for MLO
+stations.  The backports-7.2 kernel side used by this build has no ML
+VLAN support and rejects the operation with -EINVAL; ap_sta_bind_vlan()
+then fails association/rekey processing and the MLO client is bounced.
+On real hardware this showed as an Apple MacBook repeatedly
+disconnecting from an ap-mld interface, with
+"nl80211: NL80211_ATTR_STA_VLAN ... failed: -22 (Invalid argument)"
+logged on every bounce.
+
+Two guards:
+- src/ap/sta_info.c: skip the helper-level bind for MLO stations with
+  vlan_id 0 (covers the normal association path).
+- src/drivers/driver_nl80211.c: funnel-level guard in i802_set_sta_vlan
+  itself - skip any untagged (vlan_id 0) bind that carries a link id,
+  covering every caller by construction.
+
+Legacy clients on non-MLD interfaces and dynamic VLAN users keep the
+previous behavior.
+
+---
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -1493,6 +1493,19 @@
+ 	}
+ #endif /* CONFIG_IEEE80211BE */
+ 
++	/*
++	 * The kernel side used by this build rejects VLAN operations for
++	 * MLO stations with -EINVAL (see the driver_nl80211.c part of this
++	 * patch), and the error makes ap_sta_bind_vlan() fail association
++	 * processing, which bounces MLO clients.  An untagged station
++	 * (vlan_id 0) has no VLAN binding to perform anyway, so skip the
++	 * driver call in that case.  Dynamic VLAN together with MLO keeps
++	 * its previous (rejected) behavior until the kernel side gains
++	 * ML VLAN support.
++	 */
++	if (ap_sta_is_mld(hapd, sta) && sta->vlan_id == 0)
++		return 0;
++
+ 	if ((sta->flags & WLAN_STA_WDS) && sta->vlan_id == 0) {
+ 		wpa_printf(MSG_DEBUG,
+ 			   "Do not override WDS VLAN assignment for STA "
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -9134,6 +9134,18 @@
+ 		   ", ifname=%s[%d], vlan_id=%d)",
+ 		   bss->ifname, if_nametoindex(bss->ifname),
+ 		   MAC2STR(addr), ifname, if_nametoindex(ifname), vlan_id);
++	/*
++	 * Every STA VLAN binding funnels through here.  On an MLD AP each
++	 * command carries NL80211_ATTR_MLO_LINK_ID, and the kernel side
++	 * used by this build (backports-7.2, no ML VLAN support) rejects
++	 * such untagged binds with -EINVAL, which hostapd turns into a
++	 * station teardown.  vlan_id 0 carries no VLAN semantics, so skip
++	 * the command whenever a link id is present; the station stays
++	 * bound to its own BSS interface as intended.  Dynamic VLAN
++	 * (vlan_id > 0) keeps its previous behavior.
++	 */
++	if (vlan_id == 0 && link_id != NL80211_DRV_LINK_ID_NA)
++		return 0;
+ 	if (!(msg = nl80211_bss_msg(bss, 0, NL80211_CMD_SET_STATION)) ||
+ 	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, addr) ||
+ 	    (vlan_id && (drv->capa.flags & WPA_DRIVER_FLAGS_VLAN_OFFLOAD) &&

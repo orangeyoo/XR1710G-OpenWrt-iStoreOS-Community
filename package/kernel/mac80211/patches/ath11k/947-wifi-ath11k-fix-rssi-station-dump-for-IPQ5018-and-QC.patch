@@ -19,9 +19,10 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  drivers/net/wireless/ath/ath11k/hw.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
+
 --- a/drivers/net/wireless/ath/ath11k/hw.c
 +++ b/drivers/net/wireless/ath/ath11k/hw.c
-@@ -1175,7 +1175,7 @@ const struct ath11k_hw_ops ipq5018_ops =
+@@ -1175,7 +1175,7 @@
  	.rx_desc_get_attention = ath11k_hw_qcn9074_rx_desc_get_attention,
  	.reo_setup = ath11k_hw_ipq5018_reo_setup,
  	.rx_desc_get_msdu_payload = ath11k_hw_qcn9074_rx_desc_get_msdu_payload,

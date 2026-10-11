@@ -1,0 +1,26 @@
+From: XR1710G Community
+Subject: wifi: mt7996: run common cleanup when a truncated tx-free message ends early
+
+The truncated-message path returned before waking TX, scheduling the
+tx worker and consuming the staged free_list, leaking staged skbs and
+missing queue recovery. Jump to the common out label instead.
+---
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -1279,7 +1279,7 @@
+ 		u8 i;
+ 
+ 		if (WARN_ON_ONCE((void *)cur_info >= end))
+-			return;
++			goto out;
+ 		/* 1'b1: new wcid pair.
+ 		 * 1'b0: msdu_id with the same 'wcid pair' as above.
+ 		 */
+@@ -1335,6 +1335,7 @@
+ 		}
+ 	}
+ 
++out:
+ 	if (wake)
+ 		mt76_set_tx_blocked(&dev->mt76, false);
+ 

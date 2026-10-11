@@ -19,6 +19,7 @@ the card-specific structure.
  drivers/net/wireless/marvell/mwifiex/decl.h | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
+
 --- a/drivers/net/wireless/marvell/mwifiex/decl.h
 +++ b/drivers/net/wireless/marvell/mwifiex/decl.h
 @@ -18,7 +18,7 @@

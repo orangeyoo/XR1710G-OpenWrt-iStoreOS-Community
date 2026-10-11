@@ -14,12 +14,14 @@ and we should ignore this.
  net/wireless/core.c | 15 ---------------
  1 file changed, 15 deletions(-)
 
+
 --- a/net/wireless/core.c
 +++ b/net/wireless/core.c
-@@ -675,21 +675,6 @@ int wiphy_verify_iface_combinations(stru
+@@ -777,21 +777,6 @@
+ 			if (WARN_ON(types & BIT(NL80211_IFTYPE_NAN) &&
  				    c->limits[j].max > 1))
  				return -EINVAL;
- 
+-
 -			/*
 -			 * This isn't well-defined right now. If you have an
 -			 * IBSS interface, then its beacon interval may change
@@ -34,7 +36,6 @@ and we should ignore this.
 -				    c->beacon_int_min_gcd)) {
 -				return -EINVAL;
 -			}
--
+ 
  			cnt += c->limits[j].max;
  			/*
- 			 * Don't advertise an unsupported type

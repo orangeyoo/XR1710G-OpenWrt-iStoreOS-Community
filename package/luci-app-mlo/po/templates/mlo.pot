@@ -6,7 +6,7 @@ msgid "%d MLO interface(s) override the auto-generated MLD ifname."
 msgstr ""
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:197
-msgid "%d MLO interface(s) still have fewer than two radios selected."
+msgid "%d MLO interface(s) have no radio selected."
 msgstr ""
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:529
@@ -45,9 +45,7 @@ msgid "Advanced"
 msgstr ""
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:392
-msgid ""
-"At least two configured radios are required before an MLO interface can be "
-"created."
+msgid "At least one configured radio is required before an MLO interface can be created."
 msgstr ""
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:485
@@ -166,10 +164,6 @@ msgid ""
 "MLO is configured, but no active runtime MLD interface is currently reported."
 msgstr ""
 
-#: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:480
-msgid "MLO requires at least two radio devices"
-msgstr ""
-
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:236
 msgid "MLO-enabled"
 msgstr ""
@@ -179,7 +173,7 @@ msgid "Mode"
 msgstr ""
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:275
-msgid "Needs at least two radios"
+msgid "Needs at least one radio"
 msgstr ""
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:299
@@ -211,7 +205,7 @@ msgid "OWE"
 msgstr ""
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:189
-msgid "Only one radio is configured. MLO needs at least two radios."
+msgid "No radio is configured."
 msgstr ""
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:531
@@ -305,7 +299,7 @@ msgid "Select at least one radio device"
 msgstr ""
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:467
-msgid "Select one radio for normal Wi-Fi, or two or more radios for MLO."
+msgid "Select one radio for normal Wi-Fi or single-link MLO, or multiple radios for multi-link MLO."
 msgstr ""
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:288
@@ -340,9 +334,7 @@ msgid "WPA3-SAE"
 msgstr ""
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:456
-msgid ""
-"When enabled, this <code>wifi-iface</code> spans multiple radios through a "
-"multi-value <code>device</code> list."
+msgid "Enable MLO on one radio for single-link operation, or select multiple radios to combine links."
 msgstr ""
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:368
@@ -378,4 +370,8 @@ msgstr ""
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:292
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:300
 msgid "unset"
+msgstr ""
+
+
+msgid "Single-link MLO"
 msgstr ""

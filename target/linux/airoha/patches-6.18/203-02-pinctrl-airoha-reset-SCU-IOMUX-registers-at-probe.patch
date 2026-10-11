@@ -20,15 +20,15 @@ Signed-off-by: Daniel Schwierzeck <daniel.schwierzeck@gmail.com>
 
 --- a/drivers/pinctrl/airoha/pinctrl-airoha.c
 +++ b/drivers/pinctrl/airoha/pinctrl-airoha.c
-@@ -84,6 +84,7 @@
+@@ -85,6 +85,7 @@
  #define GPIO_SPI_CS1_MODE_MASK			BIT(0)
  
  #define REG_GPIO_PON_MODE			0x021c
 +#define AN7583_GPIO_MODE_MASK			(GENMASK(22, 15) | GENMASK(26, 25))
- #define GPIO_PARALLEL_NAND_MODE_MASK		BIT(14)
- #define GPIO_SGMII_MDIO_MODE_MASK		BIT(13)
- #define GPIO_PCIE_RESET2_MASK			BIT(12)
-@@ -107,6 +108,9 @@
+ #define AN7583_MDIO_0_GPIO_MODE_MASK		BIT(26)
+ #define AN7583_MDC_0_GPIO_MODE_MASK		BIT(25)
+ #define AN7583_UART_RXD_GPIO_MODE_MASK		BIT(24)
+@@ -120,6 +121,9 @@
  #define REG_FORCE_GPIO_EN			0x0228
  #define FORCE_GPIO_EN(n)			BIT(n)
  
@@ -38,7 +38,7 @@ Signed-off-by: Daniel Schwierzeck <daniel.schwierzeck@gmail.com>
  /* LED MAP */
  #define REG_LAN_LED0_MAPPING			0x027c
  #define REG_LAN_LED1_MAPPING			0x0280
-@@ -403,6 +407,11 @@ struct airoha_pinctrl {
+@@ -416,6 +420,11 @@
  	struct airoha_pinctrl_gpiochip gpiochip;
  };
  
@@ -50,7 +50,7 @@ Signed-off-by: Daniel Schwierzeck <daniel.schwierzeck@gmail.com>
  struct airoha_pinctrl_match_data {
  	const struct pinctrl_pin_desc *pins;
  	const unsigned int num_pins;
-@@ -411,6 +420,8 @@ struct airoha_pinctrl_match_data {
+@@ -424,6 +433,8 @@
  	const struct airoha_pinctrl_func *funcs;
  	const unsigned int num_funcs;
  	const struct airoha_pinctrl_confs_info confs_info[AIROHA_PINCTRL_CONFS_MAX];
@@ -59,7 +59,7 @@ Signed-off-by: Daniel Schwierzeck <daniel.schwierzeck@gmail.com>
  };
  
  static struct pinctrl_pin_desc en7581_pinctrl_pins[] = {
-@@ -2981,6 +2992,23 @@ static const struct pinctrl_ops airoha_p
+@@ -3164,6 +3175,23 @@
  	.dt_free_map = pinconf_generic_dt_free_map,
  };
  
@@ -83,7 +83,7 @@ Signed-off-by: Daniel Schwierzeck <daniel.schwierzeck@gmail.com>
  static int airoha_pinctrl_probe(struct platform_device *pdev)
  {
  	const struct airoha_pinctrl_match_data *data;
-@@ -3005,6 +3033,20 @@ static int airoha_pinctrl_probe(struct p
+@@ -3188,6 +3216,20 @@
  
  	pinctrl->chip_scu = map;
  
@@ -104,7 +104,7 @@ Signed-off-by: Daniel Schwierzeck <daniel.schwierzeck@gmail.com>
  	/* Init pinctrl desc struct */
  	pinctrl->desc.name = KBUILD_MODNAME;
  	pinctrl->desc.owner = THIS_MODULE;
-@@ -3067,6 +3109,8 @@ static const struct airoha_pinctrl_match
+@@ -3261,6 +3303,8 @@
  	.num_grps = ARRAY_SIZE(en7581_pinctrl_groups),
  	.funcs = en7581_pinctrl_funcs,
  	.num_funcs = ARRAY_SIZE(en7581_pinctrl_funcs),
@@ -113,7 +113,7 @@ Signed-off-by: Daniel Schwierzeck <daniel.schwierzeck@gmail.com>
  	.confs_info = {
  		[AIROHA_PINCTRL_CONFS_PULLUP] = {
  			.confs = en7581_pinctrl_pullup_conf,
-@@ -3098,6 +3142,8 @@ static const struct airoha_pinctrl_match
+@@ -3292,6 +3336,8 @@
  	.num_grps = ARRAY_SIZE(an7583_pinctrl_groups),
  	.funcs = an7583_pinctrl_funcs,
  	.num_funcs = ARRAY_SIZE(an7583_pinctrl_funcs),

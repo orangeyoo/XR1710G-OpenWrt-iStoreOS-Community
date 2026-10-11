@@ -27,7 +27,10 @@ set_xr1710g_radio_defaults() {
 	6g)
 		uci set wireless."$cfg".country='US'
 		uci set wireless."$cfg".channel='37'
-		uci set wireless."$cfg".htmode='EHT320'
+		# EHT320 halves per-subcarrier power on this through-floor backhaul and
+		# rate adaptation pins at MCS 3-4 (measured 2026-09-29: EHT160 jumps to
+		# MCS 6 and every throughput metric gains 10-21%, same-position A/B).
+		uci set wireless."$cfg".htmode='EHT160'
 		;;
 	*)
 		return 0

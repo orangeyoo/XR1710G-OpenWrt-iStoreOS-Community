@@ -1,0 +1,375 @@
+XR1710G B3: force-LRO queue remap - restore v1.9-era LRO mechanism
+(airoha_qdma_lro_enable/lro_forced, force_lro module parameter,
+ LRO users ownership lifecycle, napi_complete_done, GRO->LRO naming,
+ SKB_GSO_DODGY, DSCP ring table 0=1024 / 2,4,11,15=128 / default 32)
+Content = diff(prepare-replay product, xr-m3/lro-final snapshot).
+--- a/drivers/net/ethernet/airoha/airoha_eth.c
++++ b/drivers/net/ethernet/airoha/airoha_eth.c
+@@ -706,9 +706,8 @@
+ 			     LRO_RXQ_EN_MASK);
+ }
+ 
+-static void airoha_dev_lro_enable(struct airoha_gdm_dev *dev)
++static void airoha_qdma_lro_enable(struct airoha_qdma *qdma)
+ {
+-	struct airoha_qdma *qdma = airoha_qdma_deref(dev);
+ 	struct airoha_eth *eth = qdma->eth;
+ 	int qdma_id = qdma - &eth->qdma[0];
+ 	int i, lro_queue_index = 0;
+@@ -731,6 +730,77 @@
+ 	}
+ }
+ 
++/* The CDM LRO configuration is QDMA-wide, so upstream ties NETIF_F_LRO to
++ * single-open ownership of the QDMA. On XR1710G eth0 (gdm1, switch CPU
++ * port) and lan1 (gdm4) share QDMA0, which keeps qdma->users > 1 and makes
++ * the ethtool path unusable there. force_lro bypasses the per-netdev
++ * feature negotiation and toggles the QDMA0 aggregate directly:
++ *   echo 1  > /sys/module/airoha_eth/parameters/force_lro  (enable QDMA0)
++ *   echo -1 > /sys/module/airoha_eth/parameters/force_lro  (disable)
++ */
++static int airoha_force_lro = -1;
++static int airoha_force_lro_applied = -1;
++static DEFINE_MUTEX(airoha_force_lro_mutex);
++static struct airoha_eth *airoha_force_lro_eth;
++
++static bool airoha_qdma_lro_forced(int qdma_id)
++{
++	return airoha_force_lro == qdma_id ||
++	       airoha_force_lro_applied == qdma_id;
++}
++
++static void airoha_force_lro_apply(struct airoha_eth *eth, int qdma_id,
++				   bool enable)
++{
++	if (enable)
++		airoha_qdma_lro_enable(&eth->qdma[qdma_id]);
++	else
++		airoha_fe_lro_disable(eth, qdma_id);
++
++	dev_info(eth->dev, "force %s HW LRO on QDMA%d\n",
++		 enable ? "enabled" : "disabled", qdma_id);
++}
++
++static int airoha_force_lro_set(const char *val,
++				const struct kernel_param *kp);
++static const struct kernel_param_ops airoha_force_lro_ops = {
++	.set = airoha_force_lro_set,
++	.get = param_get_int,
++};
++
++static int airoha_force_lro_set(const char *val,
++				const struct kernel_param *kp)
++{
++	struct airoha_eth *eth;
++	int ret;
++
++	ret = param_set_int(val, kp);
++	if (ret)
++		return ret;
++
++	if (airoha_force_lro >= AIROHA_MAX_NUM_QDMA)
++		return -EINVAL;
++
++	mutex_lock(&airoha_force_lro_mutex);
++	eth = airoha_force_lro_eth;
++	if (eth) {
++		if (airoha_force_lro_applied >= 0) {
++			airoha_force_lro_apply(eth, airoha_force_lro_applied,
++					       false);
++			airoha_force_lro_applied = -1;
++		}
++		if (airoha_force_lro >= 0) {
++			airoha_force_lro_apply(eth, airoha_force_lro, true);
++			airoha_force_lro_applied = airoha_force_lro;
++		}
++	}
++	mutex_unlock(&airoha_force_lro_mutex);
++
++	return 0;
++}
++module_param_call(force_lro, airoha_force_lro_set, param_get_int,
++		  &airoha_force_lro, 0644);
++
+ static int airoha_fe_init(struct airoha_eth *eth)
+ {
+ 	airoha_fe_maccr_init(eth);
+@@ -951,7 +1021,7 @@
+ 
+ 	ipv4 = FIELD_GET(QDMA_ETH_RXMSG_IP4_MASK, msg1);
+ 	ipv6 = FIELD_GET(QDMA_ETH_RXMSG_IP6_MASK, msg1);
+-	if (!ipv4 && !ipv6)
++	if (ipv4 == ipv6)
+ 		return NULL;
+ 
+ 	l2_len = FIELD_GET(QDMA_ETH_RXMSG_L2_LEN_MASK, msg2);
+@@ -1002,6 +1072,11 @@
+ 	if (len < data_off)
+ 		return NULL;
+ 
++	agg_count = FIELD_GET(QDMA_ETH_RXMSG_AGG_COUNT_MASK, msg2);
++	data_len = len - data_off;
++	if (agg_count < 2 || data_len < agg_count)
++		return NULL;
++
+ 	tcp_win = FIELD_GET(QDMA_ETH_RXMSG_TCP_WIN_MASK, msg3);
+ 	tcp_ack_seq = le32_to_cpu(READ_ONCE(desc->data));
+ 	th->ack_seq = cpu_to_be32(tcp_ack_seq);
+@@ -1040,14 +1115,14 @@
+ 	memcpy(skb->data, e->buf, data_off);
+ 
+ 	page = virt_to_head_page(e->buf);
+-	data_len = len - data_off;
+ 	shinfo = skb_shinfo(skb);
+ 	skb_add_rx_frag(skb, shinfo->nr_frags, page,
+ 			e->buf + data_off - page_address(page), data_len,
+ 			q->buf_size);
+ 
+-	shinfo->gso_type = ipv4 ? SKB_GSO_TCPV4 : SKB_GSO_TCPV6;
+-	agg_count = FIELD_GET(QDMA_ETH_RXMSG_AGG_COUNT_MASK, msg2);
++	/* Hardware reports an aggregate length, not the original MSS. */
++	shinfo->gso_type = (ipv4 ? SKB_GSO_TCPV4 : SKB_GSO_TCPV6) |
++			   SKB_GSO_DODGY;
+ 	shinfo->gso_size = DIV_ROUND_UP(data_len, agg_count);
+ 	shinfo->gso_segs = agg_count;
+ 
+@@ -1366,7 +1441,7 @@
+ 		done += cur;
+ 	} while (cur && done < budget);
+ 
+-	if (done < budget && napi_complete(napi)) {
++	if (done < budget && napi_complete_done(napi, done)) {
+ 		struct airoha_qdma *qdma = q->qdma;
+ 		int qid = q - &qdma->q_rx[0];
+ 
+@@ -1503,6 +1578,7 @@
+ 			page_pool_put_full_page(q->page_pool, page, false);
+ 		}
+ 		/* Reset DMA descriptor */
++		WRITE_ONCE(desc->tcp_ts_reply, 0);
+ 		WRITE_ONCE(desc->ctrl, 0);
+ 		WRITE_ONCE(desc->addr, 0);
+ 		WRITE_ONCE(desc->data, 0);
+@@ -2510,13 +2586,13 @@
+ 					 VLAN_ETH_HLEN + netdev->mtu));
+ }
+ 
+-static void airoha_update_netdev_features(struct airoha_gdm_dev *dev)
++static void airoha_update_netdev_features(struct airoha_qdma *qdma)
+ {
+-	struct airoha_eth *eth = dev->eth;
++	struct airoha_eth *eth = qdma->eth;
+ 	int i;
+ 
+ 	for (i = 0; i < ARRAY_SIZE(eth->ports); i++) {
+-		struct airoha_gdm_port *port = dev->port;
++		struct airoha_gdm_port *port = eth->ports[i];
+ 		int j;
+ 
+ 		if (!port)
+@@ -2526,11 +2602,10 @@
+ 			struct airoha_gdm_dev *iter_dev = port->devs[j];
+ 			struct net_device *netdev;
+ 
+-			if (!iter_dev || iter_dev == dev)
++			if (!iter_dev)
+ 				continue;
+ 
+-			if (rcu_access_pointer(iter_dev->qdma) !=
+-			    rcu_access_pointer(dev->qdma))
++			if (rcu_access_pointer(iter_dev->qdma) != qdma)
+ 				continue;
+ 
+ 			netdev = netdev_from_priv(iter_dev);
+@@ -2558,8 +2633,9 @@
+ 	qdma = airoha_qdma_deref(dev);
+ 	qdma_id = qdma - &eth->qdma[0];
+ 
+-	if (qdma->users && airoha_fe_lro_is_enabled(eth, qdma_id)) {
+-		netdev_warn(netdev, "required to disable HW GRO on QDMA%d\n",
++	if (!airoha_qdma_lro_forced(qdma_id) &&
++		    qdma->users && airoha_fe_lro_is_enabled(eth, qdma_id)) {
++		netdev_warn(netdev, "required to disable HW LRO on QDMA%d\n",
+ 			    qdma_id);
+ 		return -EBUSY;
+ 	}
+@@ -2594,11 +2670,10 @@
+ 	airoha_set_gdm_port_fwd_cfg(eth, REG_GDM_FWD_CFG(port->id),
+ 				    pse_port);
+ 
+- 	qdma->users++;
+-	if (netdev->features & NETIF_F_GRO_HW)
+-		airoha_dev_lro_enable(dev);
+-
+-	airoha_update_netdev_features(dev);
++	qdma->users++;
++	airoha_update_netdev_features(qdma);
++	if (netdev->features & NETIF_F_LRO)
++		airoha_qdma_lro_enable(qdma);
+ 
+ 	return 0;
+ }
+@@ -2613,7 +2688,6 @@
+ 	airoha_set_vip_for_gdm_port(dev, false);
+ 
+ 	qdma = airoha_qdma_deref(dev);
+-
+ 	if (--port->users)
+ 		airoha_ppe_set_xmit_frame_size(dev);
+ 	else
+@@ -2621,8 +2695,11 @@
+ 					    REG_GDM_FWD_CFG(port->id),
+ 					    FE_PSE_PORT_DROP);
+ 
++	/* Only the sole open device can own this QDMA's LRO state. */
++	if (qdma->users == 1 && (netdev->features & NETIF_F_LRO))
++		airoha_fe_lro_disable(qdma->eth, qdma - &qdma->eth->qdma[0]);
+ 	qdma->users--;
+-	airoha_update_netdev_features(dev);
++	airoha_update_netdev_features(qdma);
+ 
+ 	phylink_stop(dev->phylink);
+ 	phylink_disconnect_phy(dev->phylink);
+@@ -2781,15 +2858,38 @@
+ {
+ 	struct net_device *netdev = netdev_from_priv(dev);
+ 	struct airoha_eth *eth = dev->eth;
++	struct airoha_qdma *old_qdma = rcu_access_pointer(dev->qdma);
+ 	struct airoha_qdma *qdma;
++	bool running = netif_running(netdev);
+ 	int ppe_id;
+ 
+ 	/* QDMA0 is used for lan ports while QDMA1 is used for WAN ports */
+ 	qdma = &eth->qdma[!airoha_is_lan_gdm_dev(dev)];
+ 
++	if (old_qdma != qdma && running) {
++		if (old_qdma) {
++			if (old_qdma->users == 1 &&
++			    (netdev->features & NETIF_F_LRO))
++				airoha_fe_lro_disable(eth, old_qdma - &eth->qdma[0]);
++			old_qdma->users--;
++		}
++		/* Disable the destination aggregate before sharing its queues. */
++		airoha_fe_lro_disable(eth, qdma - &eth->qdma[0]);
++		qdma->users++;
++	}
++
+ 	rcu_assign_pointer(dev->qdma, qdma);
+ 	netdev->irq = qdma->irq_banks[0].irq;
+ 
++	if (old_qdma != qdma && old_qdma) {
++		airoha_update_netdev_features(old_qdma);
++		airoha_update_netdev_features(qdma);
++		/* Unchanged feature bits still need programming on the new QDMA. */
++		if (running && qdma->users == 1 &&
++		    (netdev->features & NETIF_F_LRO))
++			airoha_qdma_lro_enable(qdma);
++	}
++
+ 	ppe_id = !airoha_is_lan_gdm_dev(dev) && airoha_ppe_is_enabled(eth, 1);
+ 	airoha_ppe_set_cpu_port(dev, ppe_id, airoha_get_fe_port(dev));
+ }
+@@ -2942,7 +3042,7 @@
+ 
+ 	qdma = airoha_qdma_deref(dev);
+ 	if (qdma->users > 1)
+-		features &= ~NETIF_F_GRO_HW;
++		features &= ~NETIF_F_LRO;
+ 
+ 	return features;
+ }
+@@ -2960,11 +3060,14 @@
+ 	if (err)
+ 		return err;
+ 
+-	if (!(diff & NETIF_F_GRO_HW))
++	/* Down devices may change wanted features but must not touch a
++	 * running sibling's QDMA-wide aggregation state.
++	 */
++	if (!(diff & NETIF_F_LRO) || !netif_running(netdev))
+ 		return 0;
+ 
+-	if (features & NETIF_F_GRO_HW)
+-		airoha_dev_lro_enable(dev);
++	if (features & NETIF_F_LRO)
++		airoha_qdma_lro_enable(qdma);
+ 	else
+ 		airoha_fe_lro_disable(dev->eth, qdma_id);
+ 
+@@ -3252,6 +3355,7 @@
+ error:
+ 	dev_kfree_skb_any(skb);
+ 	netdev->stats.tx_dropped++;
++	rcu_read_unlock();
+ 
+ 	return NETDEV_TX_OK;
+ }
+@@ -4670,6 +4774,17 @@
+ 	if (err)
+ 		goto error_napi_stop;
+ 
++	/* Publish the instance for the force_lro module parameter; apply a
++	 * value already provided on the kernel cmdline before netdevs open.
++	 */
++	mutex_lock(&airoha_force_lro_mutex);
++	airoha_force_lro_eth = eth;
++	if (airoha_force_lro >= 0 && airoha_force_lro < AIROHA_MAX_NUM_QDMA) {
++		airoha_force_lro_apply(eth, airoha_force_lro, true);
++		airoha_force_lro_applied = airoha_force_lro;
++	}
++	mutex_unlock(&airoha_force_lro_mutex);
++
+ 	return 0;
+ 
+ error_napi_stop:
+@@ -4716,6 +4831,10 @@
+ 	struct airoha_eth *eth = platform_get_drvdata(pdev);
+ 	int i;
+ 
++	mutex_lock(&airoha_force_lro_mutex);
++	airoha_force_lro_eth = NULL;
++	mutex_unlock(&airoha_force_lro_mutex);
++
+ 	for (i = 0; i < ARRAY_SIZE(eth->qdma); i++) {
+ 		airoha_qdma_stop_napi(&eth->qdma[i]);
+ 		airoha_qdma_tx_cleanup(&eth->qdma[i]);
+@@ -4737,12 +4856,14 @@
+ 
+ 			netdev = netdev_from_priv(dev);
+ 			unregister_netdev(netdev);
++			airoha_soe_teardown_netdev(netdev);
+ 			phylink_destroy(dev->phylink);
+ 			of_node_put(netdev->dev.of_node);
+ 		}
+ 		airoha_metadata_dst_free(port);
+ 	}
+ 	airoha_hw_cleanup(eth);
++	airoha_soe_deinit(eth);
+ 
+ 	free_netdev(eth->napi_dev);
+ 	platform_set_drvdata(pdev, NULL);
+--- a/drivers/net/ethernet/airoha/airoha_eth.h
++++ b/drivers/net/ethernet/airoha/airoha_eth.h
+@@ -43,13 +43,20 @@
+ #define TX_DSCP_NUM			1024
+ #define RX_DSCP_NUM(_n)			\
+ 	((_n) ==  2 ? 128 :		\
++	 (_n) ==  4 ? 128 :		\
++	  (_n) ==  5 ? 128 :		\
++	 (_n) ==  6 ? 128 :		\
++	 (_n) == 21 ? 128 :		\
++	 (_n) == 22 ? 128 :		\
++	 (_n) == 23 ? 128 :		\
++	 (_n) == 24 ? 128 :		\
+ 	 (_n) == 11 ? 128 :		\
+ 	 (_n) == 15 ? 128 :		\
+-	 (_n) ==  0 ? 1024 : 16)
++	 (_n) ==  0 ? 1024 : 32)
+ 
+ #define AIROHA_LRO_PAGE_ORDER		order_base_2(SZ_16K / PAGE_SIZE)
+ #define AIROHA_MAX_NUM_LRO_QUEUES	8
+-#define AIROHA_RXQ_LRO_EN_MASK		GENMASK(7, 0)
++#define AIROHA_RXQ_LRO_EN_MASK		(BIT(0) | BIT(5) | BIT(6) | BIT(11) | BIT(15) | BIT(21) | BIT(22) | BIT(24))
+ #define AIROHA_RXQ_LRO_MAX_AGG_COUNT	64
+ #define AIROHA_RXQ_LRO_MAX_AGG_TIME	100
+ #define AIROHA_RXQ_LRO_MAX_AGE_TIME	2000

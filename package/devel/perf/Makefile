@@ -10,7 +10,7 @@ include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=perf
 PKG_VERSION:=$(LINUX_VERSION)
-PKG_RELEASE:=7
+PKG_RELEASE:=8
 
 PKG_BUILD_FLAGS:=no-mips16 no-lto
 PKG_BUILD_PARALLEL:=1
@@ -28,7 +28,7 @@ define Package/perf
   SECTION:=devel
   CATEGORY:=Development
   DEPENDS:= +libelf +libdw +PACKAGE_libunwind:libunwind +libpthread +librt +objdump @!IN_SDK @KERNEL_PERF_EVENTS \
-	    +PACKAGE_libbfd:libbfd +PACKAGE_libopcodes:libopcodes +libtraceevent
+	    +PACKAGE_libbfd:libbfd +PACKAGE_libopcodes:libopcodes +libtraceevent +libzstd
   TITLE:=Linux performance monitoring tool
   VERSION:=$(LINUX_VERSION)-r$(PKG_RELEASE)
   URL:=https://www.kernel.org
@@ -55,7 +55,6 @@ MAKE_FLAGS = \
 	NO_LIBAUDIT=1 \
 	NO_LIBCRYPTO=1 \
 	NO_LIBUNWIND=1 \
-	NO_LIBZSTD=1 \
 	NO_LIBCAP=1 \
 	NO_JEVENTS=1 \
 	NO_SHELLCHECK=1 \

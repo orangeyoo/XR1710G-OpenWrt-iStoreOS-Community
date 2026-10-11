@@ -1,6 +1,7 @@
+
 --- a/drivers/net/wireless/ath/ath9k/ar5008_phy.c
 +++ b/drivers/net/wireless/ath/ath9k/ar5008_phy.c
-@@ -969,55 +969,6 @@ static bool ar5008_hw_ani_control_new(st
+@@ -969,55 +969,6 @@
  		 * on == 0 means more noise imm
  		 */
  		u32 on = param ? 1 : 0;
@@ -58,10 +59,11 @@
  			REG_SET_BIT(ah, AR_PHY_SFCORR_LOW,
 --- a/drivers/net/wireless/ath/ath9k/ar9003_phy.c
 +++ b/drivers/net/wireless/ath/ath9k/ar9003_phy.c
-@@ -42,20 +42,6 @@ static const int cycpwrThr1_table[] =
+@@ -41,20 +41,6 @@
+ static const int cycpwrThr1_table[] =
  /* level:  0   1   2   3   4   5   6   7   8  */
  	{ -6, -4, -2,  0,  2,  4,  6,  8 };     /* lvl 0-7, default 3 */
- 
+-
 -/*
 - * register values to turn OFDM weak signal detection OFF
 - */
@@ -75,11 +77,10 @@
 -static const int m2ThreshLowExt_off = 127;
 -static const int m1ThreshExt_off = 127;
 -static const int m2ThreshExt_off = 127;
--
+ 
  static const u8 ofdm2pwr[] = {
  	ALL_TARGET_LEGACY_6_24,
- 	ALL_TARGET_LEGACY_6_24,
-@@ -1065,11 +1051,6 @@ static bool ar9003_hw_ani_control(struct
+@@ -1065,11 +1051,6 @@
  	struct ath_common *common = ath9k_hw_common(ah);
  	struct ath9k_channel *chan = ah->curchan;
  	struct ar5416AniState *aniState = &ah->ani;
@@ -91,7 +92,7 @@
  	s32 value, value2;
  
  	switch (cmd & ah->ani_function) {
-@@ -1083,61 +1064,6 @@ static bool ar9003_hw_ani_control(struct
+@@ -1083,61 +1064,6 @@
  		 */
  		u32 on = param ? 1 : 0;
  

@@ -25,7 +25,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  #include <linux/platform_device.h>
  #include <linux/property.h>
  #include <linux/regmap.h>
-@@ -83,6 +84,7 @@ struct en_rst_data {
+@@ -83,6 +84,7 @@
  };
  
  struct en_clk_soc_data {
@@ -33,7 +33,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	u32 num_clocks;
  	const struct en_clk_desc *base_clks;
  	const struct clk_ops pcie_ops;
-@@ -900,8 +902,19 @@ static int en7523_clk_probe(struct platf
+@@ -900,8 +902,19 @@
  	if (err)
  		return err;
  

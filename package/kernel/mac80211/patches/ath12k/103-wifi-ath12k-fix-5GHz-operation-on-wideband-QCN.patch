@@ -122,9 +122,10 @@ change-id: 20250313-ath12-wideband-caps-24b281788dfe
 
 Best regards,
 
+
 --- a/drivers/net/wireless/ath/ath12k/mac.c
 +++ b/drivers/net/wireless/ath/ath12k/mac.c
-@@ -7727,9 +7727,7 @@ static void ath12k_mac_setup_ht_vht_cap(
+@@ -8600,9 +8600,7 @@
  						    rate_cap_rx_chainmask);
  	}
  

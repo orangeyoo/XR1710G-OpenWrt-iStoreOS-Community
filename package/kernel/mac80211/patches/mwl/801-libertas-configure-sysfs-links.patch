@@ -1,6 +1,7 @@
+
 --- a/drivers/net/wireless/marvell/libertas/cfg.c
 +++ b/drivers/net/wireless/marvell/libertas/cfg.c
-@@ -2105,6 +2105,8 @@ struct wireless_dev *lbs_cfg_alloc(struc
+@@ -2105,6 +2105,8 @@
  		goto err_wiphy_new;
  	}
  
@@ -11,7 +12,7 @@
   err_wiphy_new:
 --- a/drivers/net/wireless/marvell/libertas/main.c
 +++ b/drivers/net/wireless/marvell/libertas/main.c
-@@ -852,6 +852,7 @@ struct lbs_private *lbs_add_card(void *c
+@@ -852,6 +852,7 @@
  		goto err_adapter;
  	}
  

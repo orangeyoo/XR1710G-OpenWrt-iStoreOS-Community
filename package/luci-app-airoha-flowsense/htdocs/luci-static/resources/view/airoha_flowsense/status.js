@@ -22,11 +22,8 @@ var callTokenInfo        = rpc.declare({ object: 'luci.airoha_flowsense', method
 var callFrameEngine      = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getFrameEngine' });
 var callTxStats          = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getTxStats' });
 var callGetVlanOffload   = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getVlanOffload' });
-var callSetVlanOffload   = rpc.declare({ object: 'luci.airoha_flowsense', method: 'setVlanOffload', params: ['enabled'] });
 var callGetFlowOffload   = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getFlowOffload' });
-var callSetFlowOffload   = rpc.declare({ object: 'luci.airoha_flowsense', method: 'setFlowOffload', params: ['enabled'] });
 var callGetPppoeOffload      = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getPppoeOffload' });
-var callSetPppoeOffload      = rpc.declare({ object: 'luci.airoha_flowsense', method: 'setPppoeOffload', params: ['enabled'] });
 var callGetDeviceMode    = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getDeviceMode' });
 var callGetNpuBypass     = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getNpuBypass' });
 var callGetWanHealth     = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getWanHealth' });
@@ -35,6 +32,14 @@ var callGetConflictAlerts= rpc.declare({ object: 'luci.airoha_flowsense', method
 var callGetWifiStats     = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getWifiStats' });
 var callGetBridgeStats   = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getBridgeStats' });
 var callGetEthStats      = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getEthStats' });
+var callSnapshot         = rpc.declare({ object: 'luci.airoha_flowsense', method: 'getSnapshot' });
+
+function snapshotData(s) {
+	s = s || {};
+	return [s.status||{}, s.ppe||{}, s.token||{}, s.frame||{}, s.vlan||{},
+		s.tx||{}, s.mode||{}, s.bypass||{}, s.wan||{}, s.jitter||{},
+		s.alerts||{}, s.wifi||{}, s.bridge||{}, s.flow||{}, s.pppoe||{}, s.eth||{}];
+}
 
 /* ── Theme-adaptive CSS ── */
 var themeCSS = '\
@@ -137,10 +142,18 @@ function calcTotalMem(regions) {
 	return t >= 1024 ? (t/1024).toFixed(0)+' MiB' : t+' KiB';
 }
 
-function tokenHealth(c, s) {
-	if (!s) return { text: 'N/A', color: '#888' };
-	var p = c/s*100;
-	return p < 50 ? { text:'Healthy', color:'#4caf50' } : p < 80 ? { text:'Warning', color:'#ff9800' } : { text:'Critical', color:'#f44336' };
+function pleHealth(free) {
+	if (typeof free !== 'number' || free < 0) return { text: _('N/A'), color: '#888' };
+	if (free >= 1000000) return { text: _('OK'),   color: '#4caf50' };
+	if (free >=  100000) return { text: _('WARN'), color: '#ff9800' };
+	return { text: _('CRIT'), color: '#f44336' };
+}
+
+function formatPleCount(free) {
+	if (typeof free !== 'number' || free < 0) return '—';
+	if (free >= 1000000) return (free/1000000).toFixed(1) + 'M';
+	if (free >= 1000)    return Math.round(free/1000) + 'K';
+	return free + '';
 }
 
 function getBandStats(ti, b) {
@@ -169,10 +182,10 @@ function getTxQueue(ti, b) {
 }
 
 function bandHealth(s) {
-	if (!s || s.count===0) return { text:'No clients', color:'#888' };
-	if (!s.tx_packets) return { text:'Idle', color:'#888' };
+	if (!s || s.count===0) return { text:_('No clients'), color:'#888' };
+	if (!s.tx_packets) return { text:_('Idle'), color:'#888' };
 	var r = s.tx_retries/(s.tx_packets+s.tx_retries);
-	return r>0.5 ? {text:'Poor',color:'#f44336'} : r>0.2 ? {text:'Fair',color:'#ff9800'} : {text:'Good',color:'#4caf50'};
+	return r>0.5 ? {text:_('Poor'),color:'#f44336'} : r>0.2 ? {text:_('Fair'),color:'#ff9800'} : {text:_('Good'),color:'#4caf50'};
 }
 
 function retryPct(s) {
@@ -241,49 +254,29 @@ function freqBarState(hw, min, max, pll, gov) {
 
 
 
-function renderVlanOffloadSelect(enabled) {
-	var cur = enabled ? '1' : '0';
-	return E('select', { 'id': 'vlan-offload-select', 'class': 'cbi-input-select', 'style': 'min-width:140px', 'change': function(ev) {
-		var v = parseInt(ev.target.value);
-		ev.target.disabled = true;
-		callSetVlanOffload(v).then(function(r) {
-			ev.target.disabled = false;
-			if (r && r.error) ui.addNotification(null, E('p', {}, _('Error: ') + r.error), 'error');
-		}).catch(function() { ev.target.disabled = false; });
-	}}, [
-		E('option', { 'value': '0', 'selected': cur === '0' ? '' : null }, _('Disabled')),
-		E('option', { 'value': '1', 'selected': cur === '1' ? '' : null }, _('Enabled'))
-	]);
+function renderOffloadBadge(enabled, id) {
+	return E('span', {
+		'id': id,
+		'class': 'offload-badge ' + (enabled ? 'offload-on' : 'offload-off')
+	}, enabled ? _('Enabled') : _('Disabled'));
 }
 
-function renderFlowOffloadSelect(enabled) {
-	var cur = enabled ? '1' : '0';
-	return E('select', { 'id': 'flow-offload-select', 'class': 'cbi-input-select', 'style': 'min-width:140px', 'change': function(ev) {
-		var v = parseInt(ev.target.value);
-		ev.target.disabled = true;
-		callSetFlowOffload(v).then(function(r) {
-			ev.target.disabled = false;
-			if (r && r.error) ui.addNotification(null, E('p', {}, _('Error: ') + r.error), 'error');
-		}).catch(function() { ev.target.disabled = false; });
-	}}, [
-		E('option', { 'value': '0', 'selected': cur === '0' ? '' : null }, _('Disabled')),
-		E('option', { 'value': '1', 'selected': cur === '1' ? '' : null }, _('Enabled'))
-	]);
+function renderVlanOffloadStatus(enabled) {
+	return E('span', {
+		'id': 'vlan-offload-status',
+		'class': 'offload-badge ' + (enabled ? 'offload-on' : 'offload-off')
+	}, enabled ? _('Enabled') : _('Not enabled or configured'));
 }
 
-function renderPppoeOffloadSelect(enabled) {
-	var cur = enabled ? '1' : '0';
-	return E('select', { 'id': 'pppoe-offload-select', 'class': 'cbi-input-select', 'style': 'min-width:140px', 'change': function(ev) {
-		var v = parseInt(ev.target.value);
-		ev.target.disabled = true;
-		callSetPppoeOffload(v).then(function(r) {
-			ev.target.disabled = false;
-			if (r && r.error) ui.addNotification(null, E('p', {}, _('Error: ') + r.error), 'error');
-		}).catch(function() { ev.target.disabled = false; });
-	}}, [
-		E('option', { 'value': '0', 'selected': cur === '0' ? '' : null }, _('Disabled')),
-		E('option', { 'value': '1', 'selected': cur === '1' ? '' : null }, _('Enabled'))
-	]);
+function renderFlowOffloadStatus(enabled) {
+	return renderOffloadBadge(enabled, 'flow-offload-status');
+}
+
+function renderPppoeOffloadStatus(enabled) {
+	return E('span', {
+		'id': 'pppoe-offload-status',
+		'class': 'offload-badge ' + (enabled ? 'offload-on' : 'offload-off')
+	}, enabled ? _('Enabled') : _('Not enabled or configured'));
 }
 
 /* ── PPE Panels ── */
@@ -453,11 +446,11 @@ function buildTachoInner(ppe, cs, mode) {
 	p.push('<text x="150" y="113" text-anchor="middle" fill="var(--soc-text)" font-size="9" font-weight="700" font-family="monospace" letter-spacing="2">'+modeText+'</text>');
 	p.push('<text x="150" y="124" text-anchor="middle" fill="'+statusCol+'" font-size="7" font-family="monospace" letter-spacing="1">'+statusText+'</text>');
 	p.push('<text x="150" y="144" text-anchor="middle" fill="'+bndColor+'" font-size="22" font-weight="700" font-family="monospace">'+bndTot+'</text>');
-	p.push('<text x="150" y="155" text-anchor="middle" fill="var(--soc-muted)" font-size="7" font-family="monospace" letter-spacing="2">BND FLOWS</text>');
+	p.push('<text x="150" y="155" text-anchor="middle" fill="var(--soc-muted)" font-size="7" font-family="monospace" letter-spacing="2">'+_('BND FLOWS')+'</text>');
 	p.push('<text x="117" y="175" text-anchor="middle" fill="#00c8ff"  font-size="8" font-family="monospace">v4: '+n4+'</text>');
 	p.push('<text x="183" y="175" text-anchor="middle" fill="#9c27b0"  font-size="8" font-family="monospace">v6: '+n6+'</text>');
 	p.push('<text x="150" y="189" text-anchor="middle" fill="'+unbColor+'" font-size="13" font-weight="700" font-family="monospace">'+unbTot+'</text>');
-	p.push('<text x="150" y="200" text-anchor="middle" fill="var(--soc-muted)" font-size="7" font-family="monospace" letter-spacing="1.5">UNB FLOWS</text>');
+	p.push('<text x="150" y="200" text-anchor="middle" fill="var(--soc-muted)" font-size="7" font-family="monospace" letter-spacing="1.5">'+_('UNB FLOWS')+'</text>');
 
 	return p.join('');
 }
@@ -610,16 +603,39 @@ function renderModeBanner(dm) {
 }
 
 /* ── Conflict Alerts ── */
+function translateAlertMsg(msg) {
+	var t = _(msg);
+	if (t !== msg) return t;
+	var m = msg.match(/^([^(]+)\s*\(([^)]+)\)\s*(.*)$/);
+	if (m) {
+		var template = m[1].trim() + '. ' + m[3].trim();
+		template = template.replace(/\.\s*\./g, '.');
+		var tt = _(template);
+		if (tt !== template) {
+			var firstPeriod = tt.indexOf('。');
+			if (firstPeriod === -1) firstPeriod = tt.indexOf('.');
+			if (firstPeriod !== -1) {
+				return tt.substring(0, firstPeriod) + ' (' + m[2] + ')' + tt.substring(firstPeriod);
+			}
+		}
+	}
+	return msg;
+}
+
 function renderConflictAlerts(alertData) {
 	var alerts = (alertData && Array.isArray(alertData.alerts)) ? alertData.alerts : [];
+	// Older installed RPC backends may still emit this invalid heuristic until
+	// the next full image upgrade. High latency to one probe target does not
+	// prove NPU bypass; only the CAKE + HW-offload conflict is actionable.
+	alerts = alerts.filter(function(a) { return a && a.id !== 'npu_bypass_latency'; });
 	if (!alerts.length) return E('div', { 'id': 'conflict-alerts' });
 	var items = alerts.map(function(a) {
 		var isErr = a.severity === 'error';
 		return E('div', { 'class': 'alert-item ' + (isErr ? 'alert-error' : 'alert-warning') }, [
 			E('span', { 'class': 'alert-icon' }, isErr ? '\u26A0' : '\u26A1'),
 			E('div', {}, [
-				E('div', { 'class': 'alert-title' }, a.title || ''),
-				E('div', { 'class': 'alert-msg' }, a.message || '')
+				E('div', { 'class': 'alert-title' }, _(a.title || '')),
+				E('div', { 'class': 'alert-msg' }, translateAlertMsg(a.message || ''))
 			])
 		]);
 	});
@@ -843,7 +859,7 @@ function updateCompassSVG(cs, mode, ppe) {
 }
 
 /* ── CPU/NPU Load Tachometer ── */
-function buildCpuNpuTacho(cs, ppe, st) {
+function buildCpuNpuTacho(cs, ppe, st, ti) {
 	st = st || {};
 	var cpuPct     = cs.cpuPct || 0;
 	var ppeBound   = (ppe.bnd || {}).total || 0;
@@ -866,8 +882,8 @@ function buildCpuNpuTacho(cs, ppe, st) {
 	// Outer ring (CW, r=71-81): CPU frequency, 500–1400 MHz
 	var FREQ_MIN = 500, FREQ_MAX = 1400;
 	var freqLit = Math.round(Math.max(0, Math.min(TICKS, (freqMhz - FREQ_MIN) / (FREQ_MAX - FREQ_MIN) * TICKS)));
-	// Inner ring (anti-CW, r=57-67): CPU load, 0–40% = full scale (more sensitive)
-	var cpuLit = Math.round(Math.min(cpuPct, 40) / 40 * TICKS);
+	// Inner ring (anti-CW, r=57-67): CPU load, 0–100% = full scale
+	var cpuLit = Math.round(Math.min(cpuPct, 100) / 100 * TICKS);
 
 	var cx = 150, cy = 150;
 	var p = [];
@@ -917,60 +933,81 @@ function buildCpuNpuTacho(cs, ppe, st) {
 	p.push('<text x="150" y="190" text-anchor="middle" fill="'+npuColor+'" font-size="13" font-weight="700" font-family="monospace">'+offloadPct+'%</text>');
 	p.push('<text x="150" y="200" text-anchor="middle" fill="var(--soc-muted)" font-size="7" font-family="monospace" letter-spacing="1.5">OFFLOADED</text>');
 
+	// PLE pool — curved textPath at r=91, south arc (CCW 160°→20°), outside the freq ring.
+	// Matches the "UNB/BND FLOWS" curved-text style used on the WiFi band gauges.
+	var pleFree = (ti && typeof ti.ple_free === 'number') ? ti.ple_free : -1;
+	var pleH    = pleHealth(pleFree);
+	var pleStr  = formatPleCount(pleFree);
+	var plR  = 91;
+	var plSX = (150 + plR * Math.cos(160 * Math.PI / 180)).toFixed(1);
+	var plSY = (150 + plR * Math.sin(160 * Math.PI / 180)).toFixed(1);
+	var plEX = (150 + plR * Math.cos( 20 * Math.PI / 180)).toFixed(1);
+	var plEY = (150 + plR * Math.sin( 20 * Math.PI / 180)).toFixed(1);
+	p.push('<defs><path id="cn-ple-arc" d="M '+plSX+' '+plSY+' A '+plR+' '+plR+' 0 0 0 '+plEX+' '+plEY+'" fill="none"/></defs>');
+	p.push('<text font-size="8" font-family="monospace" fill="'+pleH.color+'" opacity="0.9" letter-spacing="1"><textPath href="#cn-ple-arc" startOffset="50%" text-anchor="middle">PLE '+pleStr+' ● '+pleH.text+'</textPath></text>');
+
 	return p.join('');
 }
 
-function _cnPpeRingStyle(ppe) {
-	// Solid PPE-state ring: invisible=no flows or UNB-only, cyan=BND present
+function _cnPpeRingStyle(ppe, ti) {
+	// PLE pool health overrides the BND-based cyan default when the WiFi TX buffer pool
+	// drops toward zero — that's the precursor signal for mt7996 SER / TX wedge.
+	var ple = (ti && typeof ti.ple_free === 'number') ? ti.ple_free : -1;
+	if (ple >= 0 && ple < 100000) {
+		return { style: 'filter:blur(6px);opacity:0.85', color: '#f44336' };
+	}
+	if (ple >= 0 && ple < 1000000) {
+		return { style: 'filter:blur(5px);opacity:0.7',  color: '#ff9800' };
+	}
+
+	// Default: cyan-on-BND, invisible when no BND
 	var bnd = (ppe && ppe.bnd) ? (ppe.bnd.total || 0) : 0;
-	var unb = (ppe && ppe.unb) ? (ppe.unb.total || 0) : 0;
 	if (bnd === 0) return { style: 'opacity:0', color: '#00c8ff' };
-	// BND >= 1: cyan ring, brighter as BND count grows (saturates ~100 flows)
 	var intensity = Math.min(1, bnd / 100);
 	var blur = (3 + intensity * 6).toFixed(1);
 	var op   = (0.5 + intensity * 0.45).toFixed(2);
 	return { style: 'filter:blur('+blur+'px);opacity:'+op, color: '#00c8ff' };
 }
 
-function buildCpuNpuCompassSVG(cs, ppe, st) {
+function buildCpuNpuCompassSVG(cs, ppe, st, ti) {
 	// viewBox tightly wraps the tachometer (r=102 outer circle + glow headroom + silver ring)
-	var ring = _cnPpeRingStyle(ppe);
+	var ring = _cnPpeRingStyle(ppe, ti);
 	return '<svg viewBox="30 30 240 240" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:213px;display:block;margin:0 auto">' +
 	'<defs>' +
 	'<filter id="f-cn-cpu" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
 	'<filter id="f-cn-npu" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
 	'</defs>' +
-	// PPE-state ring rendered BEFORE outer circle so the circle fill covers the inward bleed
+	// PPE/PLE-state ring rendered BEFORE outer circle so the circle fill covers the inward bleed
 	'<circle id="cn-glow" cx="150" cy="150" r="104" fill="none" stroke="'+ring.color+'" stroke-width="6" style="'+ring.style+'"/>' +
 	// Outer border — tight around the tachometer content
 	'<circle cx="150" cy="150" r="102" style="fill:var(--soc-card-bg)" stroke="var(--soc-border)" stroke-width="1"/>' +
-	'<g id="cn-tacho">'+buildCpuNpuTacho(cs, ppe, st)+'</g>' +
-	// Solid silver outer ring — sits outside the cyan PPE glow ring
+	'<g id="cn-tacho">'+buildCpuNpuTacho(cs, ppe, st, ti)+'</g>' +
+	// Solid silver outer ring — sits outside the PPE/PLE glow ring
 	'<circle cx="150" cy="150" r="109" fill="none" stroke="#222222" stroke-width="2.5"/>' +
 	'</svg>';
 }
 
-function updateCpuNpuCompassSVG(cs, ppe, st) {
-	// Update PPE-state ring on the outer border
+function updateCpuNpuCompassSVG(cs, ppe, st, ti) {
+	// Update PPE/PLE-state ring on the outer border
 	var glow = document.getElementById('cn-glow');
 	if (glow) {
-		var ring = _cnPpeRingStyle(ppe);
+		var ring = _cnPpeRingStyle(ppe, ti);
 		glow.setAttribute('stroke', ring.color);
 		glow.setAttribute('style', ring.style);
 	}
 
 	var tg = document.getElementById('cn-tacho');
-	if (tg) tg.innerHTML = buildCpuNpuTacho(cs, ppe, st);
+	if (tg) tg.innerHTML = buildCpuNpuTacho(cs, ppe, st, ti);
 }
 
 /* ── WiFi Band Tachometers ── */
 function _wifiBandHealth(ws) {
 	var stations = ws ? (ws.stations || 0) : 0;
-	if (stations === 0) return { text: 'NO CLIENTS', color: '#888' };
+	if (stations === 0) return { text: _('NO CLIENTS'), color: '#888' };
 	var rty = ws.retry_pct || 0;
-	if (rty > 50) return { text: 'WEAK', color: '#f44336' };
-	if (rty > 20) return { text: 'FAIR', color: '#ff9800' };
-	return { text: 'GOOD', color: '#4caf50' };
+	if (rty > 50) return { text: _('WEAK'), color: '#f44336' };
+	if (rty > 20) return { text: _('FAIR'), color: '#ff9800' };
+	return { text: _('GOOD'), color: '#4caf50' };
 }
 
 function _wifiPpeRingStyle(ws, ppe, bandIdx) {
@@ -1146,7 +1183,7 @@ function buildWifiTachoElements(wifi, ti, st, ppe) {
 
 /* ── Ethernet Port Horizontal Bar Gauges ── */
 function _ethLabel(iface) {
-	var m = { wan:'WAN', lan1:'LAN 1', lan2:'LAN 2', lan3:'LAN 3', lan4:'LAN 4' };
+	var m = { wan:'WAN', lan1:'LAN 1', lan2:'LAN 2', lan3:'LAN 3' };
 	return m[iface] || iface.toUpperCase();
 }
 function _ethSpeed(speed) {
@@ -1199,7 +1236,7 @@ function buildEthPortSVG(port, txMbps, rxMbps, ppe) {
 			footerClr = '#555';
 		}
 	} else {
-		var portIdx  = {lan1:0, lan2:1, lan3:2, lan4:3}[iface];
+		var portIdx  = {lan1:0, lan2:1, lan3:2}[iface];
 		var bndPort  = (ppe && ppe.bnd && ppe.bnd.port_bnd) ? (ppe.bnd.port_bnd[portIdx] || 0) : 0;
 		footerTxt = 'BND: ' + bndPort;
 		footerClr = bndPort > 0 ? '#00c8ff' : '#555';
@@ -1359,24 +1396,7 @@ function updateCompassCards(cs, bypass, jitter, wan, wifi, bridge, mode) {
 /* ── Main View ── */
 return view.extend({
 	load: function() {
-		return Promise.all([
-			callNpuStatus(),        // d[0]
-			callPpeEntries(),       // d[1]
-			callTokenInfo(),        // d[2]
-			callFrameEngine(),      // d[3]
-			callGetVlanOffload(),   // d[4]
-			callTxStats(),          // d[5]
-			callGetDeviceMode(),    // d[6]
-			callGetNpuBypass(),     // d[7]
-			callGetWanHealth(),     // d[8]
-			callGetJitterResult(),  // d[9]
-			callGetConflictAlerts(),// d[10]
-			callGetWifiStats(),     // d[11]
-			callGetBridgeStats(),   // d[12]
-			callGetFlowOffload(),   // d[13]
-			callGetPppoeOffload(),  // d[14]
-			callGetEthStats()       // d[15]
-		]);
+		return callSnapshot().then(snapshotData).catch(function() { return snapshotData({}); });
 	},
 
 	render: function(data) {
@@ -1399,7 +1419,7 @@ return view.extend({
 		compassSvgWrap.innerHTML = buildCompassSVG(cs, mode, ppe);
 
 		var cnWrap = E('div', { 'id': 'cpu-npu-svg-wrap', 'style': 'flex-shrink:0' });
-		cnWrap.innerHTML = buildCpuNpuCompassSVG(cs, ppe, st);
+		cnWrap.innerHTML = buildCpuNpuCompassSVG(cs, ppe, st, ti);
 
 		var view = E('div',{'class':'cbi-map'},[
 			E('h2',{},_('Airoha FlowSense')),
@@ -1420,16 +1440,16 @@ return view.extend({
 				renderModeBanner(dm),
 				E('div',{'style':'display:flex;align-items:center;justify-content:space-evenly;margin-top:10px;flex-wrap:wrap;width:100%'},[
 					E('label',{'style':'display:flex;align-items:center;gap:6px;font-size:13px'},[
-						E('span',{'id':'flow-offload-badge','class':'offload-badge '+(flo.enabled?'offload-on':'offload-off')},_('HW Flow Offload')),
-						renderFlowOffloadSelect(flo.enabled)
+						E('span',{'class':'soc-text','style':'font-weight:600'},_('HW Flow Offload')),
+						renderFlowOffloadStatus(flo.enabled)
 					]),
 					E('label',{'style':'display:flex;align-items:center;gap:6px;font-size:13px'},[
-						E('span',{'id':'vlan-offload-badge','class':'offload-badge '+(vo.enabled?'offload-on':'offload-off')},_('VLAN Offload')),
-						renderVlanOffloadSelect(vo.enabled)
+						E('span',{'class':'soc-text','style':'font-weight:600'},_('VLAN Offload')),
+						renderVlanOffloadStatus(vo.enabled)
 					]),
 					E('label',{'style':'display:flex;align-items:center;gap:6px;font-size:13px'},[
-						E('span',{'id':'pppoe-offload-badge','class':'offload-badge '+(ppo.enabled?'offload-on':'offload-off')},_('PPPoE Offload')),
-						renderPppoeOffloadSelect(ppo.enabled)
+						E('span',{'class':'soc-text','style':'font-weight:600'},_('PPPoE Offload')),
+						renderPppoeOffloadStatus(ppo.enabled)
 					])
 				]),
 				E('div',{'style':'margin-top:12px'}, renderPpeTerminal(ppe))
@@ -1437,15 +1457,7 @@ return view.extend({
 		]);
 
 		poll.add(L.bind(function() {
-			return Promise.all([
-				callNpuStatus(), callPpeEntries(), callTokenInfo(), callFrameEngine(),
-				callGetVlanOffload(), callTxStats(),
-				callGetDeviceMode(), callGetNpuBypass(),
-				callGetWanHealth(), callGetJitterResult(), callGetConflictAlerts(),
-				callGetWifiStats(), callGetBridgeStats(),
-				callGetFlowOffload(), callGetPppoeOffload(),
-				callGetEthStats()
-			]).then(L.bind(function(d) {
+			return callSnapshot().then(snapshotData).then(L.bind(function(d) {
 				injectCSS();
 				var st=d[0]||{}, ppe=d[1]||{}, ti=d[2]||{}, fe=d[3]||{};
 				var vo=d[4]||{}, txs=d[5]||{}, dm=d[6]||{};
@@ -1463,7 +1475,7 @@ return view.extend({
 				updateCompassCards(cs, bypass, jitter, wan, wifi, bridge, mode);
 
 				// CPU/NPU Load compass update
-				updateCpuNpuCompassSVG(cs, ppe, st);
+				updateCpuNpuCompassSVG(cs, ppe, st, ti);
 
 				// WiFi band tachometers
 				var wbands = (wifi && Array.isArray(wifi.bands)) ? wifi.bands : [];
@@ -1481,11 +1493,11 @@ return view.extend({
 					alertWrap.innerHTML = fresh.innerHTML;
 				}
 
-				// Offload selects + badges
-				function _setOffloadBadge(id, on) { var b=document.getElementById(id); if(b) b.className='offload-badge '+(on?'offload-on':'offload-off'); }
-				var vs=document.getElementById('vlan-offload-select'); if(vs&&!vs.matches(':focus')) vs.value=(vo.enabled?'1':'0'); _setOffloadBadge('vlan-offload-badge',vo.enabled);
-				var fls=document.getElementById('flow-offload-select'); if(fls&&!fls.matches(':focus')) fls.value=(flo.enabled?'1':'0'); _setOffloadBadge('flow-offload-badge',flo.enabled);
-				var pps=document.getElementById('pppoe-offload-select'); if(pps&&!pps.matches(':focus')) pps.value=(ppo.enabled?'1':'0'); _setOffloadBadge('pppoe-offload-badge',ppo.enabled);
+				// Offload status badges
+				function _setOffloadStatus(id, on, inactiveText) { var b=document.getElementById(id); if(b) { b.className='offload-badge '+(on?'offload-on':'offload-off'); b.textContent=on?_('Enabled'):(inactiveText || _('Disabled')); } }
+				_setOffloadStatus('vlan-offload-status', vo.enabled, _('Not enabled or configured'));
+				_setOffloadStatus('flow-offload-status', flo.enabled);
+				_setOffloadStatus('pppoe-offload-status', ppo.enabled, _('Not enabled or configured'));
 
 				// Ethernet port gauges — compute per-port Mbps deltas from cumulative byte counters
 				var ethPorts = (eth && Array.isArray(eth.ports)) ? eth.ports : [];
@@ -1509,7 +1521,7 @@ return view.extend({
 				// PPE terminal
 				var tb = document.getElementById('ppe-terminal-body');
 				if (tb) tb.innerHTML = buildPpeTerminalBody(ppe);
-			},this));
+			},this)).catch(function() { return null; });
 		},this), 5);
 
 		return view;

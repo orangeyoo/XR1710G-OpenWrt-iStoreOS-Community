@@ -15,9 +15,10 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  compat/backport-genetlink.c      | 60 +++++++++++++++++++++++
  3 files changed, 73 insertions(+), 1 deletion(-)
 
+
 --- a/backport-include/net/genetlink.h
 +++ b/backport-include/net/genetlink.h
-@@ -192,4 +192,15 @@ int backport_genlmsg_multicast_allns(con
+@@ -192,4 +192,15 @@
  #define genlmsg_multicast_allns LINUX_BACKPORT(genlmsg_multicast_allns)
  #endif /* LINUX_VERSION_IS_LESS(5,2,0) */
  
@@ -35,7 +36,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  #endif /* __BACKPORT_NET_GENETLINK_H */
 --- a/compat/Makefile
 +++ b/compat/Makefile
-@@ -16,7 +16,8 @@ compat-$(CPTCFG_KERNEL_5_9) += backport-
+@@ -16,7 +16,8 @@
  compat-$(CPTCFG_KERNEL_5_10) += backport-5.10.o
  compat-$(CPTCFG_KERNEL_5_11) += backport-5.11.o
  compat-$(CPTCFG_KERNEL_5_13) += backport-5.13.o
@@ -55,7 +56,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  static const struct genl_family *find_family_real_ops(const struct genl_ops **ops)
  {
  	const struct genl_family *family;
-@@ -249,3 +250,63 @@ int backport_genlmsg_multicast_allns(con
+@@ -249,3 +250,63 @@
  	return genlmsg_mcast(skb, portid, group);
  }
  EXPORT_SYMBOL_GPL(backport_genlmsg_multicast_allns);

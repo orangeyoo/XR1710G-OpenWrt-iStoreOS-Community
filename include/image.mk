@@ -428,7 +428,7 @@ else
 	-$(CP) -T $(mkfs_cur_target_dir).opkg/ $(mkfs_cur_target_dir)/etc/opkg/
 	rm -rf $(mkfs_cur_target_dir).opkg $(mkfs_cur_target_dir).conf
 endif
-	$(call prepare_rootfs,$(mkfs_cur_target_dir),$(TOPDIR)/files)
+	$(call prepare_rootfs,$(mkfs_cur_target_dir),$(TOPDIR)/files,adguardhome dockerd airoha_fan)
 
 $(KDIR)/root.%: kernel_prepare
 	$(call Image/mkfs/$(word 1,$(target_params)),$(target_params))

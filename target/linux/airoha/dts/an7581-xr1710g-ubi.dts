@@ -326,6 +326,7 @@
 
 &eth {
 	status = "okay";
+	airoha,dsa-dram-forwarding;
 };
 
 &pon_pcs {

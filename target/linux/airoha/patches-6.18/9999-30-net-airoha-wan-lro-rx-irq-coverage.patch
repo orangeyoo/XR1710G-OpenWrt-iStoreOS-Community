@@ -1,0 +1,30 @@
+--- a/drivers/net/ethernet/airoha/airoha_eth.c
++++ b/drivers/net/ethernet/airoha/airoha_eth.c
+@@ -26,7 +26,7 @@
+ /* QDMA1 uses a different RX IRQ bank layout than QDMA0 on AN7581. */
+ #define AIROHA_QDMA_WAN_RX_IRQ0_BANK_PIN_MASK 0x0000839f
+ #define AIROHA_QDMA_WAN_RX_IRQ1_BANK_PIN_MASK 0x7f800400
+-#define AIROHA_QDMA_WAN_RX_IRQ2_BANK_PIN_MASK 0x00000000
++#define AIROHA_QDMA_WAN_RX_IRQ2_BANK_PIN_MASK (BIT(5) | BIT(21) | BIT(22))
+ #define AIROHA_QDMA_WAN_RX_IRQ3_BANK_PIN_MASK 0x00000040
+ 
+ static unsigned int airoha_qdma0_rx_irq_bank_mask[AIROHA_MAX_NUM_IRQ_BANKS] = {
+@@ -712,6 +712,18 @@
+ 	int qdma_id = qdma - &eth->qdma[0];
+ 	int i, lro_queue_index = 0;
+ 
++	/* LRO producers share the ring set on both QDMAs. */
++	BUILD_BUG_ON(AIROHA_RXQ_LRO_EN_MASK &
++		     ~(AIROHA_QDMA_WAN_RX_IRQ0_BANK_PIN_MASK |
++		       AIROHA_QDMA_WAN_RX_IRQ1_BANK_PIN_MASK |
++		       AIROHA_QDMA_WAN_RX_IRQ2_BANK_PIN_MASK |
++		       AIROHA_QDMA_WAN_RX_IRQ3_BANK_PIN_MASK));
++	/* A ring must not be acknowledged by two IRQ banks. */
++	BUILD_BUG_ON(AIROHA_QDMA_WAN_RX_IRQ2_BANK_PIN_MASK &
++		     (AIROHA_QDMA_WAN_RX_IRQ0_BANK_PIN_MASK |
++		      AIROHA_QDMA_WAN_RX_IRQ1_BANK_PIN_MASK |
++		      AIROHA_QDMA_WAN_RX_IRQ3_BANK_PIN_MASK));
++
+ 	for (i = 0; i < ARRAY_SIZE(qdma->q_rx); i++) {
+ 		struct airoha_queue *q = &qdma->q_rx[i];
+ 		u32 size;

@@ -1,9 +1,12 @@
+
 --- a/Makefile.real
 +++ b/Makefile.real
-@@ -6,6 +6,18 @@ else
+@@ -4,6 +4,18 @@
+ export BACKPORTS_GIT_TRACKER_DEF=-DBACKPORTS_GIT_TRACKED=\"$(BACKPORTS_GIT_TRACKED)\"
+ else
  export BACKPORTS_GIT_TRACKER_DEF=
- endif
- 
++endif
++
 +ifneq ($(LLVM),)
 +ifneq ($(filter %/,$(LLVM)),)
 +LLVM_PREFIX := $(LLVM)
@@ -14,12 +17,10 @@
 +HOSTCC	= $(LLVM_PREFIX)clang$(LLVM_SUFFIX)
 +else
 +HOSTCC	= gcc
-+endif
-+
- # disable built-in rules for this file
- .SUFFIXES:
+ endif
  
-@@ -24,21 +36,21 @@ listnewconfig oldaskconfig oldconfig \
+ # disable built-in rules for this file
+@@ -24,21 +36,21 @@
  silentoldconfig olddefconfig oldnoconfig \
  allnoconfig allyesconfig allmodconfig \
  alldefconfig randconfig:

@@ -249,7 +249,7 @@ function collectSummary(runtime, radios) {
 
 		summary.mloIfaces++;
 
-		if (devices.length < 2)
+		if (devices.length < 1)
 			summary.invalidMlo++;
 
 		if (section.ifname)
@@ -259,8 +259,8 @@ function collectSummary(runtime, radios) {
 			summary.activeMlo++;
 	}
 
-	if (radios.length < 2)
-		summary.warnings.push(_('Only one radio is configured. MLO needs at least two radios.'));
+	if (radios.length < 1)
+		summary.warnings.push(_('No radio is configured.'));
 
 	if (!summary.totalIfaces)
 		summary.warnings.push(_('No wireless interfaces are configured yet.'));
@@ -268,7 +268,7 @@ function collectSummary(runtime, radios) {
 		summary.warnings.push(_('No MLO-enabled wireless interface is configured yet.'));
 
 	if (summary.invalidMlo)
-		summary.warnings.push(_('%d MLO interface(s) still have fewer than two radios selected.').format(summary.invalidMlo));
+		summary.warnings.push(_('%d MLO interface(s) have no radio selected.').format(summary.invalidMlo));
 
 	if (summary.mloIfaces && !runtime.activeMldIfnames.length)
 		summary.warnings.push(_('MLO is configured, but no active runtime MLD interface is currently reported.'));
@@ -343,8 +343,8 @@ function renderSectionOverview(section_id, radiosByName) {
 	let networks = uniqueValues(cfg.network);
 	let issues = [];
 
-	if (cfg.mlo == '1' && devices.length < 2)
-		issues.push(E('div', { 'style': 'color:#b94a48;margin-top:.25em;' }, _('Needs at least two radios')));
+	if (cfg.mlo == '1' && devices.length < 1)
+		issues.push(E('div', { 'style': 'color:#b94a48;margin-top:.25em;' }, _('Needs at least one radio')));
 
 	if (cfg.mlo == '1' && cfg.mode == 'ap' && ![ 'sae', 'sae-mixed', 'owe' ].includes(cfg.encryption))
 		issues.push(E('div', { 'style': 'color:#8a6d3b;margin-top:.25em;' }, _('AP MLO is usually paired with WPA3-SAE or OWE')));
@@ -357,7 +357,9 @@ function renderSectionOverview(section_id, radiosByName) {
 			'style': 'min-width:17em;'
 		}, [
 			E('div', { 'style': 'margin-bottom:.2em;' }, [
-			renderBadge(cfg.mlo == '1' ? _('MLO') : _('Single-link'), cfg.mlo == '1' ? '#2d6cdf' : '#6c757d'),
+			renderBadge(cfg.mlo == '1'
+			? (devices.length == 1 ? _('Single-link MLO') : _('MLO'))
+			: _('Single-link'), cfg.mlo == '1' ? '#2d6cdf' : '#6c757d'),
 			renderBadge((cfg.mode || 'ap').toUpperCase(), '#495057'),
 			renderBadge(cfg.disabled == '1' ? _('Disabled') : _('Enabled'), cfg.disabled == '1' ? '#b94a48' : '#2f6f3e')
 			]),
@@ -451,12 +453,12 @@ return view.extend({
 		};
 
 		quickAdd = function(mode) {
-			let selectedRadios = radios.slice(0, 2).map(r => r['.name']);
+			let selectedRadios = radios.slice(0, 1).map(r => r['.name']);
 			let sid;
 			let defaultNetworks = [];
 
-			if (selectedRadios.length < 2) {
-				ui.addNotification(null, E('p', _('At least two configured radios are required before an MLO interface can be created.')));
+			if (selectedRadios.length < 1) {
+				ui.addNotification(null, E('p', _('At least one configured radio is required before an MLO interface can be created.')));
 				return Promise.resolve();
 			}
 
@@ -520,8 +522,9 @@ return view.extend({
 		o.rmempty = false;
 
 		o = s.taboption('general', form.Flag, 'mlo', _('Enable MLO'),
-			_('When enabled, this <code>wifi-iface</code> spans multiple radios through a multi-value <code>device</code> list.'));
-		o.default = o.enabled;
+			_('Enable MLO on one radio for single-link operation, or select multiple radios to combine links.'));
+		/* quickAdd() explicitly enables MLO for new profiles. */
+		o.default = o.disabled;
 		o.rmempty = false;
 
 		o = s.taboption('general', form.ListValue, 'mode', _('Mode'));
@@ -531,21 +534,16 @@ return view.extend({
 		o.rmempty = false;
 
 		o = s.taboption('general', form.MultiValue, 'device', _('Radio devices'),
-			_('Select one radio for normal Wi-Fi, or two or more radios for MLO.'));
+			_('Select one radio for normal Wi-Fi or single-link MLO, or multiple radios for multi-link MLO.'));
 		for (let radio of radios)
 			o.value(radio['.name'], radioLabel(radio));
 		o.rmempty = true;
 		o.widget = 'select';
 		o.validate = function(section_id, value) {
 			let values = uniqueValues(value);
-			let mloOption = this.section.children.find(opt => opt.option == 'mlo');
-			let mloEnabled = mloOption ? mloOption.formvalue(section_id) : optionValue(section_id, 'mlo');
 
 			if (!values.length)
 				return _('Select at least one radio device');
-
-			if (mloEnabled == '1' && values.length < 2)
-				return _('MLO requires at least two radio devices');
 
 			return true;
 		};

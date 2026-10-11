@@ -1,0 +1,11 @@
+--- a/net/netfilter/nft_flow_offload.c
++++ b/net/netfilter/nft_flow_offload.c
+@@ -160,7 +160,7 @@
+ 	if (tcp_not_established &&
+ 	    route.tuple[IP_CT_DIR_ORIGINAL].xmit_type != FLOW_OFFLOAD_XMIT_XFRM &&
+ 	    route.tuple[IP_CT_DIR_REPLY].xmit_type != FLOW_OFFLOAD_XMIT_XFRM)
+-		goto err_flow_route;
++		goto err_flow_alloc;
+ 
+ 	flow = flow_offload_alloc(ct);
+ 	if (!flow)

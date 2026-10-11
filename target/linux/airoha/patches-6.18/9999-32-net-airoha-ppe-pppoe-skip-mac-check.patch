@@ -1,0 +1,24 @@
+--- a/drivers/net/ethernet/airoha/airoha_ppe.c
++++ b/drivers/net/ethernet/airoha/airoha_ppe.c
+@@ -1884,8 +1884,15 @@ static int airoha_ppe_flow_offload_replace(struct airoha_eth *eth,
+ 		}
+ 	}
+ 
+-	if (!is_valid_ether_addr(data.eth.h_source) ||
+-	    !is_valid_ether_addr(data.eth.h_dest))
+-		return -EINVAL;
++	/*
++	 * For PPPoE flows the nf_flow_table offload path (FLOW_OFFLOAD_XMIT_DIRECT)
++	 * does not emit FLOW_ACTION_MANGLE/FLOW_ACT_MANGLE_HDR_TYPE_ETH, so
++	 * data.eth.h_dest/h_source remain zero.  The PPE hardware resolves the
++	 * outer L2 header from the physical egress port and the PPPoE session ID
++	 * (already stored in data.pppoe.sid via FLOW_ACTION_PPPOE_PUSH), so the
++	 * MAC check is incorrect for this path and must be skipped.
++	 */
++	if (!data.pppoe.num &&
++	    (!is_valid_ether_addr(data.eth.h_source) ||
++	     !is_valid_ether_addr(data.eth.h_dest)))
++		return -EINVAL;
+ 
+ 	err = airoha_ppe_foe_entry_prepare(eth, &hwe, odev, offload_type,
+ 					   &data, l4proto, dsfield);

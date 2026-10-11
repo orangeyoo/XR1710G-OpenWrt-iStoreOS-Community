@@ -1,0 +1,22 @@
+Subject: [PATCH] dt-bindings: net: airoha: describe DSA forwarding queue quirk
+
+Describe the board-specific hardware descriptor-queue selection.
+---
+diff --git a/Documentation/devicetree/bindings/net/airoha,en7581-eth.yaml b/Documentation/devicetree/bindings/net/airoha,en7581-eth.yaml
+--- a/Documentation/devicetree/bindings/net/airoha,en7581-eth.yaml
++++ b/Documentation/devicetree/bindings/net/airoha,en7581-eth.yaml
+@@ -72,6 +72,14 @@
+ 
+   "#size-cells":
+     const: 0
++
++  airoha,dsa-dram-forwarding:
++    type: boolean
++    description:
++      The attached DSA switch has slower user ports whose burst traffic can
++      exhaust the SRAM hardware-forwarding descriptor queue. Select the DRAM
++      descriptor queue for DSA destinations while retaining PPE hardware
++      forwarding. Direct GMAC and wireless destinations are unaffected.
+ 
+   airoha,npu:
+     $ref: /schemas/types.yaml#/definitions/phandle

@@ -1,0 +1,147 @@
+--- a/drivers/net/ethernet/airoha/airoha_eth.c
++++ b/drivers/net/ethernet/airoha/airoha_eth.c
+@@ -858,6 +858,15 @@
+ 	airoha_fe_vip_setup(eth);
+ 	airoha_fe_pse_ports_init(eth);
+ 
++	/* Board-only buffered egress: reassociate GDM4 flow control without
++	 * changing channel0, which remains shared with DSA0.
++	 */
++	if (eth->xr_buffered_tx_fix)
++		airoha_fe_rmw(eth, REG_FE_QDMA1_FC_MAP6,
++				      FE_QDMA1_FC_MAP6_CHAN_MASK,
++				      FIELD_PREP(FE_QDMA1_FC_MAP6_CHAN_MASK,
++							 ((FE_PSE_PORT_GDM4 << 5) | 0)));
++
+ 	airoha_fe_set(eth, REG_GDM_MISC_CFG,
+ 		      GDM2_RDM_ACK_WAIT_PREF_MASK |
+ 		      GDM2_CHN_VLD_MODE_MASK);
+@@ -2013,6 +2022,13 @@
+ 			return -ENOMEM;
+ 	}
+ 
++	/* Board-only buffered egress reserves the measured descriptor count;
++	 * fail closed rather than changing the existing geometry.
++	 */
++	if (eth->xr_buffered_tx_fix && id == 0 && num_desc < 16384)
++		return dev_err_probe(eth->dev, -EINVAL,
++				     "insufficient buffered TX descriptors\n");
++
+ 	airoha_qdma_wr(qdma, REG_FWD_BUF_BASE, dma_addr);
+ 
+ 	size = num_desc * sizeof(struct airoha_qdma_fwd_desc);
+@@ -2152,6 +2168,31 @@
+ 
+ 	airoha_qdma_init_qos(qdma);
+ 
++	/* Raise the QDMA0 buffer floors and initialize the dedicated GDM4
++	 * channel without changing Linux TX rings.
++	 */
++	if (qdma->eth->xr_buffered_tx_fix &&
++	    qdma == &qdma->eth->qdma[0]) {
++		airoha_qdma_rmw(qdma, REG_QDMA_CHAN_TOTAL_FLOOR,
++				QDMA_CHAN_FLOOR_LOW_MASK,
++				FIELD_PREP(QDMA_CHAN_FLOOR_LOW_MASK, 8192));
++		airoha_qdma_rmw(qdma, REG_QDMA_CHAN_DSCP_FLOOR,
++				QDMA_CHAN_FLOOR_LOW_MASK,
++				FIELD_PREP(QDMA_CHAN_FLOOR_LOW_MASK, 1024));
++		airoha_qdma_rmw(qdma, REG_QDMA_CHAN_QUEUE_FLOOR,
++				QDMA_CHAN_FLOOR_LOW_MASK,
++				FIELD_PREP(QDMA_CHAN_FLOOR_LOW_MASK, 128));
++		airoha_qdma_rmw(qdma, REG_CHAN_QOS_MODE(13 >> 3),
++				GENMASK(2 + ((13 % 8) << 2),
++					 (13 % 8) << 2),
++				__field_prep(GENMASK(2 + ((13 % 8) << 2),
++						    (13 % 8) << 2),
++						    TC_SCH_SP));
++		for (i = 0; i < AIROHA_NUM_QOS_QUEUES; i++)
++			airoha_qdma_clear(qdma, REG_QUEUE_CLOSE_CFG(13),
++					  TXQ_DISABLE_CHAN_QUEUE_MASK(13, i));
++	}
++
+ 	/* disable qdma rx delay interrupt */
+ 	for (i = 0; i < ARRAY_SIZE(qdma->q_rx); i++) {
+ 		if (!qdma->q_rx[i].ndesc)
+@@ -3216,6 +3257,9 @@
+ 	tag = airoha_get_dsa_tag(skb, netdev);
+ 
+ 	msg0 = FIELD_PREP(QDMA_ETH_TXMSG_CHAN_MASK,
++			  (airoha_gdm4_dedicated_channel(dev) &&
++			   !netdev_uses_dsa(netdev)) ?
++			  AIROHA_GDM4_LAN_QOS_CHANNEL :
+ 			  qid / AIROHA_NUM_QOS_QUEUES) |
+ 	       FIELD_PREP(QDMA_ETH_TXMSG_QUEUE_MASK,
+ 			  qid % AIROHA_NUM_QOS_QUEUES) |
+@@ -4697,6 +4741,9 @@
+ 	eth->dsa_dram_forwarding =
+ 		of_property_read_bool(eth->dev->of_node,
+ 				      "airoha,dsa-dram-forwarding");
++	eth->xr_buffered_tx_fix = eth->dsa_dram_forwarding &&
++		airoha_is_7581(eth) &&
++		of_machine_is_compatible("gemtek,xr1710g-ubi");
+ 
+ 	err = dma_set_mask_and_coherent(eth->dev, DMA_BIT_MASK(32));
+ 	if (err) {
+--- a/drivers/net/ethernet/airoha/airoha_eth.h
++++ b/drivers/net/ethernet/airoha/airoha_eth.h
+@@ -153,6 +153,8 @@
+ 	AIROHA_GDM4_IDX = 4,
+ };
+ 
++#define AIROHA_GDM4_LAN_QOS_CHANNEL 13
++
+ enum {
+ 	FE_PSE_PORT_CDM1,
+ 	FE_PSE_PORT_GDM1,
+@@ -682,6 +684,7 @@
+ struct airoha_eth {
+ 	struct device *dev;
+ 	bool dsa_dram_forwarding;
++	bool xr_buffered_tx_fix;
+ 
+ 	const struct airoha_eth_soc_data *soc;
+ 
+@@ -743,6 +746,14 @@
+ 	return !(dev->flags & AIROHA_PRIV_F_WAN);
+ }
+ 
++/* Board-only buffered egress keeps GDM4 isolated from the DSA0 channel. */
++static inline bool airoha_gdm4_dedicated_channel(struct airoha_gdm_dev *dev)
++{
++	return dev->eth->xr_buffered_tx_fix &&
++	       dev->port->id == AIROHA_GDM4_IDX &&
++	       airoha_is_lan_gdm_dev(dev);
++}
++
+ static inline bool airoha_is_7581(struct airoha_eth *eth)
+ {
+ 	return eth->soc->version == 0x7581;
+--- a/drivers/net/ethernet/airoha/airoha_ppe.c
++++ b/drivers/net/ethernet/airoha/airoha_ppe.c
+@@ -448,6 +448,9 @@
+ 			 */
+ 			channel = dsa_port >= 0 ? dsa_port : port->id;
+ 			channel = channel % AIROHA_NUM_QOS_CHANNELS;
++			if (dsa_port < 0 &&
++			    airoha_gdm4_dedicated_channel(dev))
++				channel = AIROHA_GDM4_LAN_QOS_CHANNEL;
+ 			priority = rt_tos2priority(dsfield);
+ 			priority = priority % AIROHA_NUM_QOS_QUEUES;
+ 			qdata |= FIELD_PREP(AIROHA_FOE_CHANNEL, channel) |
+--- a/drivers/net/ethernet/airoha/airoha_regs.h
++++ b/drivers/net/ethernet/airoha/airoha_regs.h
+@@ -412,6 +412,14 @@
+ #define FC_ID_OF_SRC_PORT_MASK(_n)	GENMASK(4 + ((_n) << 3), ((_n) << 3))
+ #define FC_MAP6_DEF_VALUE		0x1b1a1918
+ 
++/* Board-only GDM4 buffered egress flow-control and channel-floor controls. */
++#define REG_FE_QDMA1_FC_MAP6		0x01c8
++#define FE_QDMA1_FC_MAP6_CHAN_MASK	GENMASK(31, 16)
++#define REG_QDMA_CHAN_TOTAL_FLOOR	0x10a4
++#define REG_QDMA_CHAN_DSCP_FLOOR	0x10a8
++#define REG_QDMA_CHAN_QUEUE_FLOOR	0x10ac
++#define QDMA_CHAN_FLOOR_LOW_MASK	GENMASK(15, 0)
++
+ #define REG_WAN_MTU0			0x2300
+ #define WAN_MTU1_MASK			GENMASK(29, 16)
+ #define WAN_MTU0_MASK			GENMASK(13, 0)

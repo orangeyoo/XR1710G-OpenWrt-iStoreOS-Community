@@ -1,3 +1,16 @@
+
+--- a/drivers/net/wireless/ath/Kconfig
++++ b/drivers/net/wireless/ath/Kconfig
+@@ -23,6 +23,9 @@
+ 	  https://wireless.wiki.kernel.org/en/users/Drivers/Atheros
+ 
+ if WLAN_VENDOR_ATH
++
++config ATH_USER_REGD
++	bool "Do not enforce EEPROM regulatory restrictions"
+ 
+ config ATH_DEBUG
+ 	bool "Atheros wireless debugging"
 --- a/drivers/net/wireless/ath/regd.c
 +++ b/drivers/net/wireless/ath/regd.c
 @@ -24,6 +24,7 @@
@@ -8,7 +21,7 @@
  
  /*
   * This is a set of common rules used by our world regulatory domains.
-@@ -116,6 +117,9 @@ static const struct ieee80211_regdomain
+@@ -116,6 +117,9 @@
  
  static bool dynamic_country_user_possible(struct ath_regulatory *reg)
  {
@@ -18,7 +31,7 @@
  	if (IS_ENABLED(CPTCFG_ATH_REG_DYNAMIC_USER_CERT_TESTING))
  		return true;
  
-@@ -188,6 +192,8 @@ static bool dynamic_country_user_possibl
+@@ -188,6 +192,8 @@
  
  static bool ath_reg_dyn_country_user_allow(struct ath_regulatory *reg)
  {
@@ -27,7 +40,7 @@
  	if (!IS_ENABLED(CPTCFG_ATH_REG_DYNAMIC_USER_REG_HINTS))
  		return false;
  	if (!dynamic_country_user_possible(reg))
-@@ -345,6 +351,9 @@ ath_reg_apply_beaconing_flags(struct wip
+@@ -345,6 +351,9 @@
  	struct ieee80211_channel *ch;
  	unsigned int i;
  
@@ -37,7 +50,7 @@
  	for (band = 0; band < NUM_NL80211_BANDS; band++) {
  		if (!wiphy->bands[band])
  			continue;
-@@ -379,6 +388,9 @@ ath_reg_apply_ir_flags(struct wiphy *wip
+@@ -379,6 +388,9 @@
  {
  	struct ieee80211_supported_band *sband;
  
@@ -47,17 +60,17 @@
  	sband = wiphy->bands[NL80211_BAND_2GHZ];
  	if (!sband)
  		return;
-@@ -408,6 +420,9 @@ static void ath_reg_apply_radar_flags(st
+@@ -407,6 +419,9 @@
+ 	struct ieee80211_supported_band *sband;
  	struct ieee80211_channel *ch;
  	unsigned int i;
- 
++
 +	if (IS_ENABLED(CPTCFG_ATH_USER_REGD))
 +		return;
-+
+ 
  	if (!wiphy->bands[NL80211_BAND_5GHZ])
  		return;
- 
-@@ -640,6 +655,10 @@ ath_regd_init_wiphy(struct ath_regulator
+@@ -640,6 +655,10 @@
  	const struct ieee80211_regdomain *regd;
  
  	wiphy->reg_notifier = reg_notifier;
@@ -68,21 +81,9 @@
  	wiphy->regulatory_flags |= REGULATORY_STRICT_REG |
  				   REGULATORY_CUSTOM_REG;
  
---- a/drivers/net/wireless/ath/Kconfig
-+++ b/drivers/net/wireless/ath/Kconfig
-@@ -24,6 +24,9 @@ config WLAN_VENDOR_ATH
- 
- if WLAN_VENDOR_ATH
- 
-+config ATH_USER_REGD
-+	bool "Do not enforce EEPROM regulatory restrictions"
-+
- config ATH_DEBUG
- 	bool "Atheros wireless debugging"
- 	help
 --- a/local-symbols
 +++ b/local-symbols
-@@ -91,6 +91,7 @@ ADM8211=
+@@ -93,6 +93,7 @@
  ATH_COMMON=
  WLAN_VENDOR_ATH=
  ATH_DEBUG=

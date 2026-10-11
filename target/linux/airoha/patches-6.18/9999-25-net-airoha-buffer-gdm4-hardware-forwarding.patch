@@ -1,0 +1,29 @@
+Subject: [PATCH] net: airoha: extend buffered LAN forwarding to GDM4
+
+Keep PPE hardware offload and extend the board opt-in to direct GDM4 LAN
+destinations. Preserve WAN, other GMAC, WDMA and SOE rules. Only fresh
+flows change; no module selector, register writes or live FOE mutations.
+The existing DT opt-in name is retained for board compatibility.
+---
+--- a/drivers/net/ethernet/airoha/airoha_ppe.c
++++ b/drivers/net/ethernet/airoha/airoha_ppe.c
+@@ -456,13 +456,14 @@
+ 			val |= FIELD_PREP(AIROHA_FOE_IB2_PSE_PORT, pse_port) |
+ 			       FIELD_PREP(AIROHA_FOE_IB2_DSCP, dsfield) |
+ 			       AIROHA_FOE_IB2_PSE_QOS;
+-			/* Slow DSA egress can exhaust the SRAM descriptor queue
+-			 * under bursts from a faster ingress. Use buffered DRAM
+-			 * hardware forwarding on boards with this limitation.
+-			 * Direct GDM and WDMA output paths are unchanged.
++			/* Use buffered hardware forwarding for opted-in DSA and
++			 * GDM4 LAN destinations. SRAM forwarding can amplify TCP
++			 * retransmissions under bursts on affected boards.
++			 * WAN, other GDM and WDMA paths remain unchanged.
+ 			 */
+ 			if (airoha_is_lan_gdm_dev(dev) &&
+-			    (dsa_port < 0 || !eth->dsa_dram_forwarding))
++			    (!eth->dsa_dram_forwarding ||
++			     (dsa_port < 0 && port->id != AIROHA_GDM4_IDX)))
+ 				val |= AIROHA_FOE_IB2_FAST_PATH;
+ 			if (dsa_port >= 0)
+ 				val |= FIELD_PREP(AIROHA_FOE_IB2_NBQ,

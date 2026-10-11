@@ -1,3 +1,4 @@
+
 --- a/Makefile
 +++ b/Makefile
 @@ -5,7 +5,7 @@
@@ -9,7 +10,7 @@
  BACKPORT_DIR := $(shell pwd)
  
  KMODDIR ?= updates
-@@ -19,6 +19,7 @@ KLIB_BUILD ?= $(KLIB)/build/
+@@ -19,6 +19,7 @@
  KERNEL_CONFIG := $(KLIB_BUILD)/.config
  KERNEL_MAKEFILE := $(KLIB_BUILD)/Makefile
  CONFIG_MD5 := $(shell md5sum $(KERNEL_CONFIG) 2>/dev/null | sed 's/\s.*//')
@@ -17,7 +18,7 @@
  
  export KLIB KLIB_BUILD BACKPORT_DIR KMODDIR KMODPATH_ARG
  
-@@ -36,7 +37,8 @@ mrproper:
+@@ -36,7 +37,8 @@
  	@rm -f .kernel_config_md5 Kconfig.versions Kconfig.kernel
  	@rm -f backport-include/backport/autoconf.h
  
@@ -27,7 +28,7 @@
  	@set -e ; test -f local-symbols || (						\
  	echo "/--------------"								;\
  	echo "| You shouldn't run make in the backports tree, but only in"		;\
-@@ -60,57 +62,62 @@ mrproper:
+@@ -60,57 +62,62 @@
  	echo "| (that isn't currently running.)"					;\
  	echo "\\--"									;\
  	false)
@@ -143,7 +144,7 @@
  .PHONY: defconfig-help
 --- a/Makefile.real
 +++ b/Makefile.real
-@@ -59,7 +59,7 @@ defconfig-%::
+@@ -59,7 +59,7 @@
  
  backport-include/backport/autoconf.h: .config Kconfig.versions Kconfig.kernel
  	@$(MAKE) oldconfig
@@ -152,7 +153,7 @@
  	@grep -f local-symbols .config | (				\
  		echo "#ifndef COMPAT_AUTOCONF_INCLUDED"			;\
  		echo "#define COMPAT_AUTOCONF_INCLUDED"			;\
-@@ -80,7 +80,12 @@ backport-include/backport/autoconf.h: .c
+@@ -80,7 +80,12 @@
  			esac						;\
  		done							;\
  		echo "#endif /* COMPAT_AUTOCONF_INCLUDED */"		;\

@@ -1,0 +1,52 @@
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -631,8 +631,22 @@
+ 		return;
+ 	}
+ 
+-	if (sta->max_idle_period)
+-		max_inactivity = (sta->max_idle_period * 1024 + 999) / 1000;
++	if (sta->max_idle_period) {
++		/*
++		 * Never disconnect a station sooner than the AP-wide
++		 * ap_max_inactivity: some clients (e.g. Apple) advertise a
++		 * short BSS Max Idle Period for power saving and expect
++		 * buffered keep-alives, not disassociation. Adopting the
++		 * value as-is made idle stations get kicked ~20s after
++		 * association when the data poll went unanswered
++		 * (XR1710G MLO, 2026-09-26).
++		 */
++		int adopted = (sta->max_idle_period * 1024 + 999) / 1000;
++
++		if (adopted < max_inactivity)
++			adopted = max_inactivity;
++		max_inactivity = adopted;
++	}
+ 
+ 	if ((sta->flags & WLAN_STA_ASSOC) &&
+ 	    (sta->timeout_next == STA_NULLFUNC ||
+@@ -945,8 +959,22 @@
+ 	}
+ 	sta->supported_rates_len = i;
+ 
+-	if (sta->max_idle_period)
+-		max_inactivity = (sta->max_idle_period * 1024 + 999) / 1000;
++	if (sta->max_idle_period) {
++		/*
++		 * Never disconnect a station sooner than the AP-wide
++		 * ap_max_inactivity: some clients (e.g. Apple) advertise a
++		 * short BSS Max Idle Period for power saving and expect
++		 * buffered keep-alives, not disassociation. Adopting the
++		 * value as-is made idle stations get kicked ~20s after
++		 * association when the data poll went unanswered
++		 * (XR1710G MLO, 2026-09-26).
++		 */
++		int adopted = (sta->max_idle_period * 1024 + 999) / 1000;
++
++		if (adopted < max_inactivity)
++			adopted = max_inactivity;
++		max_inactivity = adopted;
++	}
+ 
+ 	if (!(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_INACTIVITY_TIMER)) {
+ 		wpa_printf(MSG_DEBUG, "%s: register ap_handle_timer timeout "

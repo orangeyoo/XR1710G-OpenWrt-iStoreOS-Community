@@ -10,11 +10,10 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
  net/wireless/nl80211.c | 22 ++++++++++++++++++----
  1 file changed, 18 insertions(+), 4 deletions(-)
 
-diff --git a/net/wireless/nl80211.c b/net/wireless/nl80211.c
-index 432085f..b67b1e0 100644
+
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -2570,7 +2570,8 @@ nla_put_failure:
+@@ -2916,7 +2916,8 @@
  	return -ENOBUFS;
  }
  
@@ -24,7 +23,7 @@ index 432085f..b67b1e0 100644
  {
  	struct nlattr *radios;
  	int i;
-@@ -2582,12 +2583,16 @@ static int nl80211_put_radios(struct wiphy *wiphy, struct sk_buff *msg)
+@@ -2928,11 +2929,15 @@
  	if (!radios)
  		return -ENOBUFS;
  
@@ -35,14 +34,13 @@ index 432085f..b67b1e0 100644
 +	}
  
  	nla_nest_end(msg, radios);
- 
++
 +	if (split)
 +		return 0;
-+
+ 
  	if (nl80211_put_iface_combinations(wiphy, msg,
  					   NL80211_ATTR_WIPHY_INTERFACE_COMBINATIONS,
- 					   -1, true, NLA_F_NESTED))
-@@ -3284,12 +3289,21 @@ static int nl80211_send_wiphy(struct cfg80211_registered_device *rdev,
+@@ -3696,12 +3701,21 @@
  		state->split_start++;
  		break;
  	case 17:
@@ -65,7 +63,7 @@ index 432085f..b67b1e0 100644
  		if (nl80211_put_nan_capa(&rdev->wiphy, msg))
  			goto nla_put_failure;
  
-@@ -3442,7 +3456,7 @@ static int nl80211_get_wiphy(struct sk_buff *skb, struct genl_info *info)
+@@ -3854,7 +3868,7 @@
  	struct cfg80211_registered_device *rdev = info->user_ptr[0];
  	struct nl80211_dump_wiphy_state state = {};
  

@@ -16,6 +16,13 @@ proto_send_update "$PPP_IPPARAM"
 	done
 }
 
+if [ -n "$AUTOIPV6" ] && [ -r /lib/netifd/xr1710g-dhcpv6-guard.sh ]; then
+	. /lib/netifd/xr1710g-dhcpv6-guard.sh
+	if xr_dhcpv6_has_explicit "$PPP_IPPARAM" "$IFNAME"; then
+		AUTOIPV6=
+	fi
+fi
+
 if [ -n "$AUTOIPV6" ]; then
 	ZONE=$(fw3 -q network $PPP_IPPARAM 2>/dev/null)
 

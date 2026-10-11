@@ -1,0 +1,19 @@
+Subject: [PATCH] dt-bindings: net: airoha: include buffered GDM4 LAN egress
+
+Describe the GDM4 extension of the existing board opt-in. Keep the DT
+property name for compatibility with existing board descriptions.
+---
+--- a/Documentation/devicetree/bindings/net/airoha,en7581-eth.yaml
++++ b/Documentation/devicetree/bindings/net/airoha,en7581-eth.yaml
+@@ -78,8 +78,9 @@
+     description:
+       The attached DSA switch has slower user ports whose burst traffic can
+       exhaust the SRAM hardware-forwarding descriptor queue. Select the DRAM
+-      descriptor queue for DSA destinations while retaining PPE hardware
+-      forwarding. Direct GMAC and wireless destinations are unaffected.
++      descriptor queue for DSA and direct GDM4 LAN destinations while
++      retaining PPE hardware forwarding. WAN, other GMAC and wireless
++      destinations are unaffected.
+ 
+   airoha,npu:
+     $ref: /schemas/types.yaml#/definitions/phandle

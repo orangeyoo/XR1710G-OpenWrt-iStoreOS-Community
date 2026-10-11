@@ -39,7 +39,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	struct resource scu_adc_res;
  
  	u32 pllrg_protect;
-@@ -219,22 +228,29 @@ static int airoha_get_thermal_ADC(struct
+@@ -219,22 +228,29 @@
  {
  	u32 val;
  
@@ -76,7 +76,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	/* Restore PLLRG value on exit */
  	regmap_write(priv->chip_scu, EN7581_PLLRG_PROTECT, pllrg);
-@@ -343,10 +359,8 @@ static void en7581_thermal_setup_adc_val
+@@ -343,10 +359,8 @@
  {
  	u32 efuse_calib_info, cpu_sensor;
  
@@ -89,7 +89,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	regmap_read(priv->map, EN7581_EFUSE_TEMP_OFFSET_REG, &efuse_calib_info);
  	if (efuse_calib_info) {
-@@ -429,13 +443,18 @@ static const struct regmap_config en7581
+@@ -429,13 +443,18 @@
  	.val_bits		= 32,
  };
  
@@ -109,7 +109,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	base = devm_platform_ioremap_resource(pdev, 0);
  	if (IS_ERR(base))
-@@ -454,6 +473,17 @@ static int en7581_thermal_probe(struct p
+@@ -454,6 +473,17 @@
  	if (IS_ERR(priv->chip_scu))
  		return PTR_ERR(priv->chip_scu);
  

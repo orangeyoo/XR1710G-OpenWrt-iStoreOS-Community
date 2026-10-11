@@ -14,11 +14,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  net/mac80211/chan.c | 21 ++++++++++++++++++---
  1 file changed, 18 insertions(+), 3 deletions(-)
 
-diff --git a/net/mac80211/chan.c b/net/mac80211/chan.c
-index 9af49683..edeb88e5 100644
+
 --- a/net/mac80211/chan.c
 +++ b/net/mac80211/chan.c
-@@ -1268,11 +1268,13 @@ static struct ieee80211_chanctx *
+@@ -1448,11 +1448,13 @@
  ieee80211_replace_chanctx(struct ieee80211_local *local,
  			  const struct ieee80211_chan_req *chanreq,
  			  enum ieee80211_chanctx_mode mode,
@@ -33,7 +32,7 @@ index 9af49683..edeb88e5 100644
  
  	if (!curr_ctx ||
  	    curr_ctx->replace_state == IEEE80211_CHANCTX_WILL_BE_REPLACED ||
-@@ -1322,7 +1324,19 @@ ieee80211_replace_chanctx(struct ieee80211_local *local,
+@@ -1502,7 +1504,19 @@
  	    ieee80211_chanctx_num_reserved(local, curr_ctx) != 0)
  		return ERR_PTR(-EBUSY);
  
@@ -54,7 +53,7 @@ index 9af49683..edeb88e5 100644
  	if (!new_ctx)
  		return ERR_PTR(-ENOMEM);
  
-@@ -1394,7 +1408,8 @@ int ieee80211_link_reserve_chanctx(struct ieee80211_link_data *link,
+@@ -1574,7 +1588,8 @@
  							false, radio_idx);
  		else
  			new_ctx = ieee80211_replace_chanctx(local, chanreq,
@@ -64,6 +63,3 @@ index 9af49683..edeb88e5 100644
  		if (IS_ERR(new_ctx))
  			return PTR_ERR(new_ctx);
  	}
--- 
-2.45.2
-

@@ -21,7 +21,7 @@ Signed-off-by: Mark Brown <broonie@kernel.org>
 
 --- a/drivers/spi/spi-airoha-snfi.c
 +++ b/drivers/spi/spi-airoha-snfi.c
-@@ -519,7 +519,7 @@ static int airoha_snand_nfi_config(struc
+@@ -515,7 +515,7 @@
  		return err;
  
  	/* sec num */
@@ -30,7 +30,7 @@ Signed-off-by: Mark Brown <broonie@kernel.org>
  	err = regmap_update_bits(as_ctrl->regmap_nfi, REG_SPI_NFI_CON,
  				 SPI_NFI_SEC_NUM, val);
  	if (err)
-@@ -532,7 +532,8 @@ static int airoha_snand_nfi_config(struc
+@@ -528,7 +528,8 @@
  		return err;
  
  	/* set cust sec size */
@@ -40,21 +40,25 @@ Signed-off-by: Mark Brown <broonie@kernel.org>
  	return regmap_update_bits(as_ctrl->regmap_nfi,
  				  REG_SPI_NFI_SECCUS_SIZE,
  				  SPI_NFI_CUS_SEC_SIZE, val);
-@@ -635,10 +636,13 @@ static ssize_t airoha_snand_dirmap_read(
+@@ -632,6 +633,7 @@
  	u8 *txrx_buf = spi_get_ctldata(spi);
  	dma_addr_t dma_addr;
- 	u32 val, rd_mode, opcode;
+ 	u32 val, rd_mode;
 +	size_t bytes;
  	int err;
  
- 	as_ctrl = spi_controller_get_devdata(spi->controller);
+ 	switch (op->cmd.opcode) {
+@@ -647,6 +649,9 @@
+ 	}
  
+ 	as_ctrl = spi_controller_get_devdata(spi->controller);
++
 +	bytes = as_ctrl->nfi_cfg.sec_num * as_ctrl->nfi_cfg.sec_size;
 +
- 	/*
- 	 * DUALIO and QUADIO opcodes are not supported by the spi controller,
- 	 * replace them with supported opcodes.
-@@ -697,18 +701,17 @@ static ssize_t airoha_snand_dirmap_read(
+ 	err = airoha_snand_set_mode(as_ctrl, SPI_MODE_DMA);
+ 	if (err < 0)
+ 		return err;
+@@ -680,18 +685,17 @@
  		goto error_dma_mode_off;
  
  	/* Set number of sector will be read */
@@ -76,7 +80,7 @@ Signed-off-by: Mark Brown <broonie@kernel.org>
  				 SPI_NFI_CUS_SEC_SIZE_EN);
  	if (err)
  		goto error_dma_mode_off;
-@@ -733,11 +736,10 @@ static ssize_t airoha_snand_dirmap_read(
+@@ -716,11 +720,10 @@
  	 *        = NFI_SNF_MISC_CTL2.read_data_byte_number =
  	 *        = NFI_CON.sector_number * NFI_SECCUS.custom_sector_size
  	 */
@@ -90,21 +94,21 @@ Signed-off-by: Mark Brown <broonie@kernel.org>
  	if (err)
  		goto error_dma_unmap;
  
-@@ -826,10 +828,13 @@ static ssize_t airoha_snand_dirmap_write
+@@ -810,9 +813,13 @@
  	struct airoha_snand_ctrl *as_ctrl;
  	dma_addr_t dma_addr;
- 	u32 wr_mode, val, opcode;
+ 	u32 wr_mode, val;
 +	size_t bytes;
  	int err;
  
  	as_ctrl = spi_controller_get_devdata(spi->controller);
- 
++
 +	bytes = as_ctrl->nfi_cfg.sec_num * as_ctrl->nfi_cfg.sec_size;
 +
- 	opcode = desc->info.op_tmpl.cmd.opcode;
- 	switch (opcode) {
- 	case SPI_NAND_OP_PROGRAM_LOAD_SINGLE:
-@@ -880,18 +885,17 @@ static ssize_t airoha_snand_dirmap_write
+ 	err = airoha_snand_set_mode(as_ctrl, SPI_MODE_MANUAL);
+ 	if (err < 0)
+ 		return err;
+@@ -857,18 +864,17 @@
  		goto error_dma_mode_off;
  
  	/* Set number of sector will be written */
@@ -125,8 +129,8 @@ Signed-off-by: Mark Brown <broonie@kernel.org>
 +				 FIELD_PREP(SPI_NFI_CUS_SEC_SIZE, bytes) |
  				 SPI_NFI_CUS_SEC_SIZE_EN);
  	if (err)
- 		goto error_dma_mode_off;
-@@ -916,11 +920,10 @@ static ssize_t airoha_snand_dirmap_write
+ 		goto error_dma_unmap;
+@@ -892,11 +898,10 @@
  	 *        = NFI_SNF_MISC_CTL2.write_data_byte_number =
  	 *        = NFI_CON.sector_number * NFI_SECCUS.custom_sector_size
  	 */
@@ -140,3 +144,31 @@ Signed-off-by: Mark Brown <broonie@kernel.org>
  	if (err)
  		goto error_dma_unmap;
  
+--- a/drivers/spi/spi-airoha-snfi.c
++++ b/drivers/spi/spi-airoha-snfi.c
+@@ -839,7 +839,7 @@
+ 	err = regmap_write(as_ctrl->regmap_nfi, REG_SPI_NFI_CON,
+ 			   SPI_NFI_FIFO_FLUSH | SPI_NFI_RST);
+ 	if (err)
+-		goto error_dma_mode_off;
++		goto error_dma_unmap;
+ 
+ 	/*
+ 	 * NFI configure:
+@@ -861,14 +861,14 @@
+ 				 SPI_NFI_DMA_BURST_EN |
+ 				 FIELD_PREP(SPI_NFI_OPMODE, 3));
+ 	if (err)
+-		goto error_dma_mode_off;
++		goto error_dma_unmap;
+ 
+ 	/* Set number of sector will be written */
+ 	err = regmap_update_bits(as_ctrl->regmap_nfi, REG_SPI_NFI_CON,
+ 				 SPI_NFI_SEC_NUM,
+ 				 FIELD_PREP(SPI_NFI_SEC_NUM, 1));
+ 	if (err)
+-		goto error_dma_mode_off;
++		goto error_dma_unmap;
+ 
+ 	/* Set custom sector size */
+ 	err = regmap_update_bits(as_ctrl->regmap_nfi, REG_SPI_NFI_SECCUS_SIZE,

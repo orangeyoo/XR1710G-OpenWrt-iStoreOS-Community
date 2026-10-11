@@ -14,7 +14,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
 
 --- a/drivers/clk/clk-en7523.c
 +++ b/drivers/clk/clk-en7523.c
-@@ -881,25 +881,27 @@ static int en7581_clk_hw_init(struct pla
+@@ -881,25 +881,27 @@
  
  static int en7523_clk_probe(struct platform_device *pdev)
  {

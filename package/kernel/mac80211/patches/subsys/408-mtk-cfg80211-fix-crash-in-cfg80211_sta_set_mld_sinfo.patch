@@ -8,11 +8,10 @@ Subject: [PATCH 109/137] mtk: cfg80211: fix crash in
  net/wireless/nl80211.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/wireless/nl80211.c b/net/wireless/nl80211.c
-index 29d8b48a..8fd78f35 100644
+
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -7966,7 +7966,7 @@ static void cfg80211_sta_set_mld_sinfo(struct station_info *sinfo)
+@@ -8493,7 +8493,7 @@
  		init++;
  
  		/* pertid stats accumulate for rx/tx fields */
@@ -21,6 +20,3 @@ index 29d8b48a..8fd78f35 100644
  			sinfo->pertid->rx_msdu +=
  				link_sinfo->pertid->rx_msdu;
  			sinfo->pertid->tx_msdu +=
--- 
-2.45.2
-

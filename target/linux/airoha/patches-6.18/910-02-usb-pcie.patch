@@ -12,7 +12,7 @@
  #define REG_CRYPTO_CLKSRC2		0x20c
  
  #define REG_RST_CTRL2			0x830
-@@ -1128,7 +1129,8 @@ static int en7581_clk_hw_init(struct pla
+@@ -1143,7 +1144,8 @@
  		return err;
  
  	regmap_clear_bits(clk_map, REG_NP_SCU_SSTR,

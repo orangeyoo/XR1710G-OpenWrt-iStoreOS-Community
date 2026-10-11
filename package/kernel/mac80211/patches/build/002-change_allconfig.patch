@@ -1,6 +1,7 @@
+
 --- a/kconf/conf.c
 +++ b/kconf/conf.c
-@@ -598,40 +598,12 @@ int main(int ac, char **av)
+@@ -598,40 +598,12 @@
  	case oldconfig:
  	case listnewconfig:
  	case olddefconfig:
@@ -44,7 +45,7 @@
  		break;
 --- a/kconf/confdata.c
 +++ b/kconf/confdata.c
-@@ -1170,6 +1170,8 @@ bool conf_set_all_new_symbols(enum conf_
+@@ -1170,6 +1170,8 @@
  	}
  	bool has_changed = false;
  
@@ -53,12 +54,12 @@
  	for_all_symbols(i, sym) {
  		if (sym_has_value(sym) || (sym->flags & SYMBOL_VALID))
  			continue;
-@@ -1213,8 +1215,6 @@ bool conf_set_all_new_symbols(enum conf_
+@@ -1212,8 +1214,6 @@
+ 		}
  
  	}
- 
--	sym_clear_all_valid();
 -
+-	sym_clear_all_valid();
+ 
  	/*
  	 * We have different type of choice blocks.
- 	 * If curr.tri equals to mod then we can select several

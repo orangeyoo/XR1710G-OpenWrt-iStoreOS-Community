@@ -33,6 +33,7 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
  .../net/wireless/ralink/rt2x00/rt2x00queue.h  | 20 ++++++++++
  4 files changed, 67 insertions(+), 35 deletions(-)
 
+
 --- a/drivers/net/wireless/ralink/rt2x00/rt2800.h
 +++ b/drivers/net/wireless/ralink/rt2x00/rt2800.h
 @@ -379,10 +379,10 @@
@@ -82,7 +83,7 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
  #define WMM_CWMAX_CFG_CWMAX0		FIELD32(0x0000000f)
 --- a/drivers/net/wireless/ralink/rt2x00/rt2800lib.c
 +++ b/drivers/net/wireless/ralink/rt2x00/rt2800lib.c
-@@ -835,7 +835,8 @@ void rt2800_write_tx_data(struct queue_e
+@@ -836,7 +836,8 @@
  			   txdesc->key_idx : txdesc->u.ht.wcid);
  	rt2x00_set_field32(&word, TXWI_W1_MPDU_TOTAL_BYTE_COUNT,
  			   txdesc->length);
@@ -92,7 +93,7 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
  	rt2x00_set_field32(&word, TXWI_W1_PACKETID_ENTRY, (entry->entry_idx % 3) + 1);
  	rt2x00_desc_write(txwi, 1, word);
  
-@@ -1125,6 +1126,12 @@ void rt2800_txdone(struct rt2x00_dev *rt
+@@ -1126,6 +1127,12 @@
  	u32 reg;
  	u8 qid;
  	bool match;
@@ -105,7 +106,7 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
  
  	while (quota-- > 0 && kfifo_get(&rt2x00dev->txstatus_fifo, &reg)) {
  		/*
-@@ -1132,6 +1139,8 @@ void rt2800_txdone(struct rt2x00_dev *rt
+@@ -1133,6 +1140,8 @@
  		 * guaranteed to be one of the TX QIDs .
  		 */
  		qid = rt2x00_get_field32(reg, TX_STA_FIFO_PID_QUEUE);
@@ -114,7 +115,7 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
  		queue = rt2x00queue_get_tx_queue(rt2x00dev, qid);
  
  		if (unlikely(rt2x00queue_empty(queue))) {
-@@ -12182,8 +12191,9 @@ int rt2800_conf_tx(struct ieee80211_hw *
+@@ -12214,8 +12223,9 @@
  	queue = rt2x00queue_get_tx_queue(rt2x00dev, queue_idx);
  
  	/* Update WMM TXOP register */
@@ -126,7 +127,7 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
  	field.bit_mask = 0xffff << field.bit_offset;
  
  	reg = rt2800_register_read(rt2x00dev, offset);
-@@ -12191,7 +12201,7 @@ int rt2800_conf_tx(struct ieee80211_hw *
+@@ -12223,7 +12233,7 @@
  	rt2800_register_write(rt2x00dev, offset, reg);
  
  	/* Update WMM registers */
@@ -135,7 +136,7 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
  	field.bit_mask = 0xf << field.bit_offset;
  
  	reg = rt2800_register_read(rt2x00dev, WMM_AIFSN_CFG);
-@@ -12207,7 +12217,7 @@ int rt2800_conf_tx(struct ieee80211_hw *
+@@ -12239,7 +12249,7 @@
  	rt2800_register_write(rt2x00dev, WMM_CWMAX_CFG, reg);
  
  	/* Update EDCA registers */
@@ -146,7 +147,7 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
  	rt2x00_set_field32(&reg, EDCA_AC0_CFG_TX_OP, queue->txop);
 --- a/drivers/net/wireless/ralink/rt2x00/rt2800mmio.c
 +++ b/drivers/net/wireless/ralink/rt2x00/rt2800mmio.c
-@@ -35,7 +35,7 @@ unsigned int rt2800mmio_get_dma_done(str
+@@ -35,7 +35,7 @@
  	case QID_AC_VI:
  	case QID_AC_BE:
  	case QID_AC_BK:
@@ -155,7 +156,7 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
  		idx = rt2x00mmio_register_read(rt2x00dev, TX_DTX_IDX(qid));
  		break;
  	case QID_MGMT:
-@@ -456,6 +456,7 @@ void rt2800mmio_kick_queue(struct data_q
+@@ -456,6 +456,7 @@
  {
  	struct rt2x00_dev *rt2x00dev = queue->rt2x00dev;
  	struct queue_entry *entry;
@@ -163,7 +164,7 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
  
  	switch (queue->qid) {
  	case QID_AC_VO:
-@@ -464,7 +465,8 @@ void rt2800mmio_kick_queue(struct data_q
+@@ -464,7 +465,8 @@
  	case QID_AC_BK:
  		WARN_ON_ONCE(rt2x00queue_empty(queue));
  		entry = rt2x00queue_get_entry(queue, Q_INDEX);
@@ -173,65 +174,70 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
  					  entry->entry_idx);
  		hrtimer_start(&rt2x00dev->txstatus_timer,
  			      TXSTATUS_TIMEOUT, HRTIMER_MODE_REL);
-@@ -666,36 +668,36 @@ int rt2800mmio_init_queues(struct rt2x00
+@@ -666,36 +668,36 @@
  	 * Initialize registers.
  	 */
  	entry_priv = rt2x00dev->tx[0].entries[0].priv_data;
--	rt2x00mmio_register_write(rt2x00dev, TX_BASE_PTR0,
 +	rt2x00mmio_register_write(rt2x00dev, TX_BASE_PTR3,
- 				  entry_priv->desc_dma);
--	rt2x00mmio_register_write(rt2x00dev, TX_MAX_CNT0,
++				  entry_priv->desc_dma);
 +	rt2x00mmio_register_write(rt2x00dev, TX_MAX_CNT3,
- 				  rt2x00dev->tx[0].limit);
--	rt2x00mmio_register_write(rt2x00dev, TX_CTX_IDX0, 0);
--	rt2x00mmio_register_write(rt2x00dev, TX_DTX_IDX0, 0);
++				  rt2x00dev->tx[0].limit);
 +	rt2x00mmio_register_write(rt2x00dev, TX_CTX_IDX3, 0);
 +	rt2x00mmio_register_write(rt2x00dev, TX_DTX_IDX3, 0);
- 
- 	entry_priv = rt2x00dev->tx[1].entries[0].priv_data;
--	rt2x00mmio_register_write(rt2x00dev, TX_BASE_PTR1,
++
++	entry_priv = rt2x00dev->tx[1].entries[0].priv_data;
 +	rt2x00mmio_register_write(rt2x00dev, TX_BASE_PTR2,
- 				  entry_priv->desc_dma);
--	rt2x00mmio_register_write(rt2x00dev, TX_MAX_CNT1,
++				  entry_priv->desc_dma);
 +	rt2x00mmio_register_write(rt2x00dev, TX_MAX_CNT2,
- 				  rt2x00dev->tx[1].limit);
--	rt2x00mmio_register_write(rt2x00dev, TX_CTX_IDX1, 0);
--	rt2x00mmio_register_write(rt2x00dev, TX_DTX_IDX1, 0);
++				  rt2x00dev->tx[1].limit);
 +	rt2x00mmio_register_write(rt2x00dev, TX_CTX_IDX2, 0);
 +	rt2x00mmio_register_write(rt2x00dev, TX_DTX_IDX2, 0);
- 
- 	entry_priv = rt2x00dev->tx[2].entries[0].priv_data;
--	rt2x00mmio_register_write(rt2x00dev, TX_BASE_PTR2,
-+	rt2x00mmio_register_write(rt2x00dev, TX_BASE_PTR0,
++
++	entry_priv = rt2x00dev->tx[2].entries[0].priv_data;
+ 	rt2x00mmio_register_write(rt2x00dev, TX_BASE_PTR0,
  				  entry_priv->desc_dma);
+ 	rt2x00mmio_register_write(rt2x00dev, TX_MAX_CNT0,
+-				  rt2x00dev->tx[0].limit);
++				  rt2x00dev->tx[2].limit);
+ 	rt2x00mmio_register_write(rt2x00dev, TX_CTX_IDX0, 0);
+ 	rt2x00mmio_register_write(rt2x00dev, TX_DTX_IDX0, 0);
+ 
+-	entry_priv = rt2x00dev->tx[1].entries[0].priv_data;
++	entry_priv = rt2x00dev->tx[3].entries[0].priv_data;
+ 	rt2x00mmio_register_write(rt2x00dev, TX_BASE_PTR1,
+ 				  entry_priv->desc_dma);
+ 	rt2x00mmio_register_write(rt2x00dev, TX_MAX_CNT1,
+-				  rt2x00dev->tx[1].limit);
++				  rt2x00dev->tx[3].limit);
+ 	rt2x00mmio_register_write(rt2x00dev, TX_CTX_IDX1, 0);
+ 	rt2x00mmio_register_write(rt2x00dev, TX_DTX_IDX1, 0);
+-
+-	entry_priv = rt2x00dev->tx[2].entries[0].priv_data;
+-	rt2x00mmio_register_write(rt2x00dev, TX_BASE_PTR2,
+-				  entry_priv->desc_dma);
 -	rt2x00mmio_register_write(rt2x00dev, TX_MAX_CNT2,
-+	rt2x00mmio_register_write(rt2x00dev, TX_MAX_CNT0,
- 				  rt2x00dev->tx[2].limit);
+-				  rt2x00dev->tx[2].limit);
 -	rt2x00mmio_register_write(rt2x00dev, TX_CTX_IDX2, 0);
 -	rt2x00mmio_register_write(rt2x00dev, TX_DTX_IDX2, 0);
-+	rt2x00mmio_register_write(rt2x00dev, TX_CTX_IDX0, 0);
-+	rt2x00mmio_register_write(rt2x00dev, TX_DTX_IDX0, 0);
- 
- 	entry_priv = rt2x00dev->tx[3].entries[0].priv_data;
+-
+-	entry_priv = rt2x00dev->tx[3].entries[0].priv_data;
 -	rt2x00mmio_register_write(rt2x00dev, TX_BASE_PTR3,
-+	rt2x00mmio_register_write(rt2x00dev, TX_BASE_PTR1,
- 				  entry_priv->desc_dma);
+-				  entry_priv->desc_dma);
 -	rt2x00mmio_register_write(rt2x00dev, TX_MAX_CNT3,
-+	rt2x00mmio_register_write(rt2x00dev, TX_MAX_CNT1,
- 				  rt2x00dev->tx[3].limit);
+-				  rt2x00dev->tx[3].limit);
 -	rt2x00mmio_register_write(rt2x00dev, TX_CTX_IDX3, 0);
 -	rt2x00mmio_register_write(rt2x00dev, TX_DTX_IDX3, 0);
-+	rt2x00mmio_register_write(rt2x00dev, TX_CTX_IDX1, 0);
-+	rt2x00mmio_register_write(rt2x00dev, TX_DTX_IDX1, 0);
  
  	rt2x00mmio_register_write(rt2x00dev, TX_BASE_PTR4, 0);
  	rt2x00mmio_register_write(rt2x00dev, TX_MAX_CNT4, 0);
 --- a/drivers/net/wireless/ralink/rt2x00/rt2x00queue.h
 +++ b/drivers/net/wireless/ralink/rt2x00/rt2x00queue.h
-@@ -57,6 +57,26 @@ enum data_queue_qid {
+@@ -55,6 +55,26 @@
+ 	QID_BEACON,
+ 	QID_ATIM,
  };
- 
- /**
++
++/**
 + * rt2x00_ac_to_hwq - Convert IEEE80211 queue id to Ralink hardware
 + * queue register index.
 + * @ac: TX queue id.
@@ -250,8 +256,6 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
 +
 +	return ralink_queue_map[ac];
 +}
-+
-+/**
+ 
+ /**
   * enum skb_frame_desc_flags: Flags for &struct skb_frame_desc
-  *
-  * @SKBDESC_DMA_MAPPED_RX: &skb_dma field has been mapped for RX

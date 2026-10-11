@@ -1,0 +1,26 @@
+Subject: [PATCH] perf: align no-slang annotation stubs with current prototypes
+
+The real functions and callers no longer take al_addr. Remove the stale
+argument in the no-SLANG stubs so NO_SLANG=1 builds retain stdio support.
+
+--- a/tools/perf/util/hist.h
++++ b/tools/perf/util/hist.h
+@@ -748,16 +748,14 @@
+ static inline int __hist_entry__tui_annotate(struct hist_entry *he __maybe_unused,
+ 					     struct map_symbol *ms __maybe_unused,
+ 					     struct evsel *evsel __maybe_unused,
+-					     struct hist_browser_timer *hbt __maybe_unused,
+-					     u64 al_addr __maybe_unused)
++					     struct hist_browser_timer *hbt __maybe_unused)
+ {
+ 	return 0;
+ }
+ 
+ static inline int hist_entry__tui_annotate(struct hist_entry *he __maybe_unused,
+ 					   struct evsel *evsel __maybe_unused,
+-					   struct hist_browser_timer *hbt __maybe_unused,
+-					   u64 al_addr __maybe_unused)
++					   struct hist_browser_timer *hbt __maybe_unused)
+ {
+ 	return 0;
+ }

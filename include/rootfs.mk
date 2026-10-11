@@ -123,5 +123,6 @@ define prepare_rootfs
 		$(1)/var/lock/*.lock
 	$(call clean_ipkg,$(1))
 	$(call mklibs,$(1))
+	$(STAGING_DIR_HOST)/bin/python3 $(SCRIPT_DIR)/luci-static-version.py "$(1)"
 	$(if $(SOURCE_DATE_EPOCH),find $(1)/ -mindepth 1 -execdir touch -hcd "@$(SOURCE_DATE_EPOCH)" "{}" +)
 endef

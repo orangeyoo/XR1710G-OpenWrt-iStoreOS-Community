@@ -1,0 +1,41 @@
+XR1710G v2.0: reject local FDB forwarding and metadata-less VLAN fallback.
+
+--- a/net/bridge/br_device.c
++++ b/net/bridge/br_device.c
+@@ -397,7 +397,7 @@
+ 	br_vlan_fill_forward_path_pvid(br, ctx, path);
+ 
+ 	f = br_fdb_find_rcu(br, ctx->daddr, path->bridge.vlan_id);
+-	if (!f)
++	if (!f || test_bit(BR_FDB_LOCAL, &f->flags))
+ 		return -1;
+ 
+ 	dst = READ_ONCE(f->dst);
+--- a/drivers/net/ethernet/airoha/airoha_ppe.c
++++ b/drivers/net/ethernet/airoha/airoha_ppe.c
+@@ -1277,7 +1277,12 @@
+ 	ether_addr_copy(data.eth.h_dest, eh->h_dest);
+ 	ether_addr_copy(data.eth.h_source, eh->h_source);
+ 
+-	if (!skb->dev)
++	/* This opportunistic path has no VLAN output metadata. Tagged input
++	 * must wait for the normal flowtable path, which supplies it. Never
++	 * create a VLAN-zero bridge template for routed or VLAN traffic.
++	 */
++	if (!skb->dev || skb_vlan_tag_present(skb) ||
++	    eth_type_vlan(eh->h_proto) || is_vlan_dev(skb->dev))
+ 		return false;
+ 
+ 	/* Unbound hits can arrive before flowtable creates the L2 master flow
+@@ -1302,7 +1307,10 @@
+ 	 * GDM netdev, or a DSA user port.
+ 	 */
+ 	egress = (struct net_device *)stack.path[1].dev;
+-	if (!egress) {
++	/* A same-ingress path is not evidence of bridge forwarding. Local
++	 * delivery and hairpin require the normal stack/flowtable decision.
++	 */
++	if (!egress || egress == skb->dev) {
+ 		rcu_read_unlock();
+ 		dev_put(master);
+ 		return false;

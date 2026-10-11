@@ -127,11 +127,10 @@ define Device/econet_xr1710g-ubi
   DEVICE_MODEL := XR1710G
   DEVICE_VARIANT := UBI
   DEVICE_DTS := an7581-xr1710g-ubi
-  DEVICE_COMPAT_VERSION := 2.0
-  DEVICE_COMPAT_MESSAGE := The XR1710G BMT/BBT boundary has changed. Install \
-       an XR1710G chainloader/U-Boot using the new layout first, then boot \
-       recovery/initramfs and fully recreate UBI. A normal sysupgrade that \
-       preserves configuration is unsafe.
+  # Compatibility is decided from the live MTD boundaries because a clean
+  # UBI install does not persist OpenWrt's generic compat_version marker.
+  # platform_check_image rejects every device that is not actually UBI 2.0.
+  DEVICE_COMPAT_VERSION := 1.0
   DEVICE_PACKAGES := -airoha-en7581-npu-firmware \
 		    -kmod-input-gpio-keys-polled -kmod-leds-pwm \
 		    -kmod-pwm-airoha \
@@ -147,14 +146,13 @@ define Device/econet_xr1710g-ubi
 		    luci-i18n-airoha-npu-zh-cn \
 		    luci-i18n-base-zh-cn \
 		    luci-i18n-firewall-zh-cn \
-		    luci-i18n-glass-zh-cn \
 		    luci-i18n-mlo-zh-cn \
 		    luci-i18n-package-manager-zh-cn \
 		    luci-i18n-w1700k-fancontrol-zh-cn \
 		    luci-mod-admin-full \
-		    luci-proto-ppp luci-theme-bootstrap luci-theme-glass \
+		    luci-proto-ppp luci-theme-bootstrap \
 		    rpcd-mod-rrdns uhttpd uhttpd-mod-ubus \
-		    wpad-basic-mbedtls
+		    wpad-mesh-openssl
   UBINIZE_OPTS := -E 5
   BLOCKSIZE := 128k
   PAGESIZE := 2048

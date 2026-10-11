@@ -15,8 +15,8 @@ msgid "%d MLO interface(s) override the auto-generated MLD ifname."
 msgstr "%d 个 MLO 接口覆盖了自动生成的 MLD ifname。"
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:197
-msgid "%d MLO interface(s) still have fewer than two radios selected."
-msgstr "%d 个 MLO 接口当前选择的 radio 少于 2 个。"
+msgid "%d MLO interface(s) have no radio selected."
+msgstr "%d 个 MLO 接口尚未选择 radio。"
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:529
 msgid "802.11w Management Frame Protection"
@@ -57,10 +57,8 @@ msgid "Advanced"
 msgstr "高级"
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:392
-msgid ""
-"At least two configured radios are required before an MLO interface can be "
-"created."
-msgstr "至少需要 2 个已配置 radio 才能创建 MLO 接口。"
+msgid "At least one configured radio is required before an MLO interface can be created."
+msgstr "至少需要 1 个已配置的 radio 才能创建 MLO 接口。"
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:485
 msgid "Attached network(s)"
@@ -180,10 +178,6 @@ msgid ""
 "MLO is configured, but no active runtime MLD interface is currently reported."
 msgstr "已配置 MLO，但当前没有检测到活动的运行时 MLD 接口。"
 
-#: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:480
-msgid "MLO requires at least two radio devices"
-msgstr "MLO 至少需要 2 个 radio 设备"
-
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:236
 msgid "MLO-enabled"
 msgstr "已启用 MLO"
@@ -193,8 +187,8 @@ msgid "Mode"
 msgstr "模式"
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:275
-msgid "Needs at least two radios"
-msgstr "至少需要 2 个 radio"
+msgid "Needs at least one radio"
+msgstr "至少需要 1 个 radio"
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:299
 msgid "Networks"
@@ -225,8 +219,8 @@ msgid "OWE"
 msgstr "OWE"
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:189
-msgid "Only one radio is configured. MLO needs at least two radios."
-msgstr "当前只配置了 1 个 radio。MLO 至少需要 2 个 radio。"
+msgid "No radio is configured."
+msgstr "尚未配置 radio。"
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:531
 msgid "Optional"
@@ -319,8 +313,8 @@ msgid "Select at least one radio device"
 msgstr "至少选择 1 个 radio 设备"
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:467
-msgid "Select one radio for normal Wi-Fi, or two or more radios for MLO."
-msgstr "普通 Wi-Fi 请选择 1 个 radio；MLO 请至少选择 2 个 radio。"
+msgid "Select one radio for normal Wi-Fi or single-link MLO, or multiple radios for multi-link MLO."
+msgstr "普通 Wi-Fi 或单链路 MLO 请选择 1 个 radio；多链路 MLO 请选择 2 个及以上 radio。"
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:288
 msgid "Single-link"
@@ -354,10 +348,8 @@ msgid "WPA3-SAE"
 msgstr "WPA3-SAE"
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:456
-msgid ""
-"When enabled, this <code>wifi-iface</code> spans multiple radios through a "
-"multi-value <code>device</code> list."
-msgstr "启用后，此 <code>wifi-iface</code> 会通过多值 <code>device</code> 列表跨多个 radio 工作。"
+msgid "Enable MLO on one radio for single-link operation, or select multiple radios to combine links."
+msgstr "在 1 个 radio 上启用单链路 MLO，或选择多个 radio 组合成多链路。"
 
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:368
 msgid "Wi-Fi MLO"
@@ -393,3 +385,7 @@ msgstr "未知"
 #: luci-app-mlo/htdocs/luci-static/resources/view/mlo.js:300
 msgid "unset"
 msgstr "未设置"
+
+
+msgid "Single-link MLO"
+msgstr "单链路 MLO"

@@ -11,9 +11,10 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
  .../net/wireless/ralink/rt2x00/rt2800lib.c    | 45 +++++++++++++------
  1 file changed, 32 insertions(+), 13 deletions(-)
 
+
 --- a/drivers/net/wireless/ralink/rt2x00/rt2800lib.c
 +++ b/drivers/net/wireless/ralink/rt2x00/rt2800lib.c
-@@ -1320,26 +1320,45 @@ static bool rt2800_watchdog_hung(struct
+@@ -1321,26 +1321,45 @@
  	return true;
  }
  
@@ -46,6 +47,9 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
 -		rt2x00dev->txdma_busy++;
 -	else
 -		rt2x00dev->txdma_busy = 0;
+-
+-	busy_rx = rt2x00dev->rxdma_busy > 30;
+-	busy_tx = rt2x00dev->txdma_busy > 30;
 +	rt2x00dev->rxdma_busy = check_dma_busy_rx(reg_cfg, reg_int) ?
 +				rt2x00dev->rxdma_busy + 1 : 0;
 +	rt2x00dev->txdma_busy = check_dma_busy_tx(reg_cfg, reg_int) ?
@@ -64,9 +68,7 @@ Signed-off-by: Shiji Yang <yangshiji66@outlook.com>
 +				rt2x00dev->txdma_busy = 0;
 +		}
 +	}
- 
--	busy_rx = rt2x00dev->rxdma_busy > 30;
--	busy_tx = rt2x00dev->txdma_busy > 30;
++
 +	busy_rx = rt2x00dev->rxdma_busy > 40;
 +	busy_tx = rt2x00dev->txdma_busy > 40;
  

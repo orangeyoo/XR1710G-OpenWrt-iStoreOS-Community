@@ -9,11 +9,10 @@ Signed-off-by: Shayne Chen <shayne.chen@mediatek.com>
  net/mac80211/parse.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/mac80211/parse.c b/net/mac80211/parse.c
-index 8260f6bd..59451764 100644
+
 --- a/net/mac80211/parse.c
 +++ b/net/mac80211/parse.c
-@@ -1072,7 +1072,7 @@ ieee802_11_parse_elems_full(struct ieee80211_elems_parse_params *params)
+@@ -1097,7 +1097,7 @@
  	 * In any case, we only look for one at a time, as encoded by
  	 * the WARN_ON above.
  	 */
@@ -22,6 +21,3 @@ index 8260f6bd..59451764 100644
  		int nontx_len =
  			ieee802_11_find_bssid_profile(params->start,
  						      params->len,
--- 
-2.45.2
-

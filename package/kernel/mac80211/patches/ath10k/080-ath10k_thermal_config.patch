@@ -1,6 +1,7 @@
+
 --- a/drivers/net/wireless/ath/ath10k/Kconfig
 +++ b/drivers/net/wireless/ath/ath10k/Kconfig
-@@ -94,6 +94,12 @@ config ATH10K_TRACING
+@@ -95,6 +95,12 @@
  	help
  	  Select this to ath10k use tracing infrastructure.
  
@@ -15,7 +16,7 @@
  	depends on ATH10K && CFG80211_CERTIFICATION_ONUS
 --- a/drivers/net/wireless/ath/ath10k/Makefile
 +++ b/drivers/net/wireless/ath/ath10k/Makefile
-@@ -18,7 +18,7 @@ ath10k_core-y += mac.o \
+@@ -18,7 +18,7 @@
  ath10k_core-$(CPTCFG_ATH10K_SPECTRAL) += spectral.o
  ath10k_core-$(CPTCFG_NL80211_TESTMODE) += testmode.o
  ath10k_core-$(CPTCFG_ATH10K_TRACING) += trace.o
@@ -26,7 +27,7 @@
  ath10k_core-$(CONFIG_PM) += wow.o
 --- a/drivers/net/wireless/ath/ath10k/thermal.h
 +++ b/drivers/net/wireless/ath/ath10k/thermal.h
-@@ -25,7 +25,7 @@ struct ath10k_thermal {
+@@ -25,7 +25,7 @@
  	int temperature;
  };
  
@@ -37,7 +38,7 @@
  void ath10k_thermal_event_temperature(struct ath10k *ar, int temperature);
 --- a/local-symbols
 +++ b/local-symbols
-@@ -151,6 +151,7 @@ ATH10K_DEBUG=
+@@ -153,6 +153,7 @@
  ATH10K_DEBUGFS=
  ATH10K_LEDS=
  ATH10K_SPECTRAL=

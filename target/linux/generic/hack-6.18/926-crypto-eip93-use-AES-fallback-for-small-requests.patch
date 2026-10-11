@@ -45,7 +45,7 @@ Signed-off-by: Aviana Cruz <gwencroft@proton.me>
 +
  static int eip93_skcipher_send_req(struct crypto_async_request *async)
  {
- 	struct skcipher_request *req = skcipher_request_cast(async);
+ 	struct eip93_crypto_ctx *ctx = crypto_tfm_ctx(async->tfm);
 @@ -52,12 +59,21 @@ static int eip93_skcipher_cra_init(struc
  	struct eip93_crypto_ctx *ctx = crypto_tfm_ctx(tfm);
  	struct eip93_alg_template *tmpl = container_of(tfm->__crt_alg,
@@ -72,8 +72,8 @@ Signed-off-by: Aviana Cruz <gwencroft@proton.me>
  	ctx->type = tmpl->type;
  
 @@ -75,6 +91,8 @@ static void eip93_skcipher_cra_exit(stru
- 	dma_unmap_single(ctx->eip93->dev, ctx->sa_record_base,
- 			 sizeof(*ctx->sa_record), DMA_TO_DEVICE);
+ 	struct eip93_crypto_ctx *ctx = crypto_tfm_ctx(tfm);
+ 
  	kfree(ctx->sa_record);
 +
 +	crypto_free_skcipher(ctx->fallback);

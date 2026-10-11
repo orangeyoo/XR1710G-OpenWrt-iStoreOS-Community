@@ -1,0 +1,185 @@
+From: XR1710G Community
+Date: Thu, 24 Sep 2026 21:30:00 +0800
+Subject: [PATCH] wifi: mac80211: allow RX decap offload for single-peer
+ mesh links
+
+mac80211 currently restricts RX decap offload to AP/STATION interfaces
+via ieee80211_iftype_supports_hdr_offload(), so 802.11s mesh peers never
+get IEEE80211_OFFLOAD_DECAP_ENABLED and never reach
+drv_sta_set_decap_offload(). On MT7996 the firmware side is already
+prepared: mt7996_mcu_sta_hdr_trans_tlv() sets the dedicated mesh flag in
+the sta_rec_hdr_trans TLV for MESH_POINT vifs (upstream mt76 commit
+88d1b002 "wifi: mt76: mt7996: enable mesh HW amsdu/de-amsdu support"),
+but the translation stays disabled (dis_rx_hdr_tran=1) because mac80211
+never asks for it.
+
+Hardware decap strips the 802.11 header including the Mesh Control
+field, so decapped frames bypass ieee80211_rx_mesh_data() and with it
+mesh forwarding, TTL handling, proxy (AE) learning and RMC duplicate
+suppression. Doing this unconditionally would break multi-hop and
+multi-peer meshes, which is why the iftype gate exists.
+
+Only enable it where those semantics are provably inert: a leaf mesh
+point with at most one established peer (point-to-point backhaul). With
+a single peer no mesh-layer forwarding can occur, and the local bridge
+never forwards frames back out the ingress mesh interface, so no loop
+can form. When the established peer count crosses the boundary, re-run
+the offload evaluation from mesh deferred work (wiphy locked), which
+tears down or sets up the per-peer decap state through the normal
+fast-rx path.
+
+TX is intentionally left on the software mesh path: enabling
+IEEE80211_OFFLOAD_ENCAP_ENABLED for mesh would switch the netdev to the
+802.3 xmit ops that have no mesh nexthop resolution.
+
+Security model is unchanged: with decap offload the PN/replay check runs
+in the WTBL hardware engine and A-MPDU reorder/duplicate handling runs
+in the NPU, exactly as for AP/STA/WDS; no DUP_VALIDATED flag is faked
+and no software check is skipped. Management frames (plink, HWMP) are
+never translated by the hardware and keep the full software path.
+
+Measured on Gemtek XR1710G (AN7581 + MT7996, 6GHz channel 37 EHT320,
+single-hop 802.11s backhaul, Airoha NPU active): plain mesh was limited
+to ~600-700 Mbps with 55-72% CPU on the receiving node, while the same
+link in 4-address WDS mode (which gets decap offload) reached 1006 Mbps
+with ~1-2% CPU.
+
+Signed-off-by: XR1710G Community
+---
+
+--- a/net/mac80211/ieee80211_i.h
++++ b/net/mac80211/ieee80211_i.h
+@@ -2216,6 +2216,7 @@
+ void ieee80211_recalc_txpower(struct ieee80211_link_data *link,
+ 			      bool update_bss);
+ void ieee80211_recalc_offload(struct ieee80211_local *local);
++void ieee80211_mesh_recalc_rx_decap(struct ieee80211_sub_if_data *sdata);
+ 
+ /* link handling */
+ void ieee80211_link_setup(struct ieee80211_link_data *link);
+--- a/net/mac80211/iface.c
++++ b/net/mac80211/iface.c
+@@ -1067,6 +1067,27 @@
+ 	}
+ }
+ 
++/*
++ * RX decap offload makes the hardware strip the 802.11 header including
++ * the Mesh Control field, so decapped frames bypass ieee80211_rx_mesh_data()
++ * and with it mesh forwarding, TTL handling, proxy (AE) learning and RMC
++ * duplicate suppression.
++ *
++ * This is only safe for a leaf mesh point with at most one established
++ * peer (e.g. a point-to-point wireless backhaul): with a single peer no
++ * mesh-layer forwarding can take place, and the local bridge never
++ * forwards frames back out the mesh interface, so no loop can form.
++ * Meshes with more than one established peer must keep the full software
++ * mesh RX path.
++ */
++static bool ieee80211_mesh_rx_decap_allowed(struct ieee80211_sub_if_data *sdata)
++{
++	if (sdata->vif.type != NL80211_IFTYPE_MESH_POINT)
++		return false;
++
++	return atomic_read(&sdata->u.mesh.estab_plinks) <= 1;
++}
++
+ static bool ieee80211_set_sdata_offload_flags(struct ieee80211_sub_if_data *sdata)
+ {
+ 	struct ieee80211_local *local = sdata->local;
+@@ -1089,7 +1110,8 @@
+ 	}
+ 
+ 	if (ieee80211_hw_check(&local->hw, SUPPORTS_RX_DECAP_OFFLOAD) &&
+-	    ieee80211_iftype_supports_hdr_offload(sdata->vif.type)) {
++	    (ieee80211_iftype_supports_hdr_offload(sdata->vif.type) ||
++	     ieee80211_mesh_rx_decap_allowed(sdata))) {
+ 		flags |= IEEE80211_OFFLOAD_DECAP_ENABLED;
+ 
+ 		if (local->virt_monitors &&
+@@ -1152,6 +1174,14 @@
+ 	}
+ }
+ 
++/* called from mesh deferred work when the established peer count changes */
++void ieee80211_mesh_recalc_rx_decap(struct ieee80211_sub_if_data *sdata)
++{
++	lockdep_assert_wiphy(sdata->local->hw.wiphy);
++
++	ieee80211_recalc_sdata_offload(sdata);
++}
++
+ void ieee80211_recalc_offload(struct ieee80211_local *local)
+ {
+ 	struct ieee80211_sub_if_data *sdata;
+--- a/net/mac80211/mesh.c
++++ b/net/mac80211/mesh.c
+@@ -1751,6 +1751,9 @@
+ 
+ 	if (test_and_clear_bit(MESH_WORK_MBSS_CHANGED, &ifmsh->wrkq_flags))
+ 		mesh_bss_info_changed(sdata);
++
++	if (test_and_clear_bit(MESH_WORK_RX_DECAP_RECALC, &ifmsh->wrkq_flags))
++		ieee80211_mesh_recalc_rx_decap(sdata);
+ }
+ 
+ 
+--- a/net/mac80211/mesh.h
++++ b/net/mac80211/mesh.h
+@@ -54,12 +54,15 @@
+  * @MESH_WORK_DRIFT_ADJUST: time to compensate for clock drift relative to other
+  * mesh nodes
+  * @MESH_WORK_MBSS_CHANGED: rebuild beacon and notify driver of BSS changes
++ * @MESH_WORK_RX_DECAP_RECALC: re-evaluate mesh RX decap offload after the
++ *	established peer count changed
+  */
+ enum mesh_deferred_task_flags {
+ 	MESH_WORK_HOUSEKEEPING,
+ 	MESH_WORK_ROOT,
+ 	MESH_WORK_DRIFT_ADJUST,
+ 	MESH_WORK_MBSS_CHANGED,
++	MESH_WORK_RX_DECAP_RECALC,
+ };
+ 
+ /**
+@@ -393,6 +396,12 @@
+ 	return mesh_accept_plinks_update(sdata) | BSS_CHANGED_BEACON;
+ }
+ 
++static inline void mesh_request_rx_decap_recalc(struct ieee80211_sub_if_data *sdata)
++{
++	set_bit(MESH_WORK_RX_DECAP_RECALC, &sdata->u.mesh.wrkq_flags);
++	wiphy_work_queue(sdata->local->hw.wiphy, &sdata->work);
++}
++
+ static inline int mesh_plink_free_count(struct ieee80211_sub_if_data *sdata)
+ {
+ 	return sdata->u.mesh.mshcfg.dot11MeshMaxPeerLinks -
+--- a/net/mac80211/mesh_plink.c
++++ b/net/mac80211/mesh_plink.c
+@@ -375,8 +375,13 @@
+ 
+ 	lockdep_assert_held(&sta->mesh->plink_lock);
+ 
+-	if (sta->mesh->plink_state == NL80211_PLINK_ESTAB)
++	if (sta->mesh->plink_state == NL80211_PLINK_ESTAB) {
+ 		changed = mesh_plink_dec_estab_count(sdata);
++		/* the link may have dropped to a single established peer;
++		 * re-evaluate RX decap offload from deferred work
++		 */
++		mesh_request_rx_decap_recalc(sdata);
++	}
+ 	sta->mesh->plink_state = NL80211_PLINK_BLOCKED;
+ 
+ 	ieee80211_mps_sta_status_update(sta);
+@@ -849,6 +854,10 @@
+ 	timer_delete(&sta->mesh->plink_timer);
+ 	sta->mesh->plink_state = NL80211_PLINK_ESTAB;
+ 	changed |= mesh_plink_inc_estab_count(sdata);
++	/* the new peer may have taken the link past the single-peer
++	 * boundary; re-evaluate RX decap offload from deferred work
++	 */
++	mesh_request_rx_decap_recalc(sdata);
+ 	changed |= mesh_set_ht_prot_mode(sdata);
+ 	changed |= mesh_set_short_slot_time(sdata);
+ 	mpl_dbg(sdata, "Mesh plink with %pM ESTABLISHED\n", sta->sta.addr);

@@ -1,0 +1,24 @@
+--- a/drivers/net/ethernet/airoha/airoha_ppe.c
++++ b/drivers/net/ethernet/airoha/airoha_ppe.c
+@@ -1120,10 +1120,21 @@
+ 
+ 	hlist_del_init(&e->list);
+ 	if (e->hash != 0xffff) {
++		if (e->type == FLOW_TYPE_L4) {
++			struct airoha_foe_entry *hwe;
++
++			hwe = airoha_ppe_foe_get_entry_locked(ppe, e->hash);
++			if (hwe &&
++			    (((hwe->ib1 ^ e->data.ib1) &
++			      AIROHA_FOE_IB1_BIND_PACKET_TYPE) ||
++			     !airoha_ppe_foe_compare_entry(e, hwe)))
++				goto clear_hash;
++		}
+ 		e->data.ib1 &= ~AIROHA_FOE_IB1_BIND_STATE;
+ 		e->data.ib1 |= FIELD_PREP(AIROHA_FOE_IB1_BIND_STATE,
+ 					  AIROHA_FOE_STATE_INVALID);
+ 		airoha_ppe_foe_commit_entry(ppe, &e->data, e->hash, false);
++clear_hash:
+ 		e->hash = 0xffff;
+ 	}
+ 	if (e->type == FLOW_TYPE_L2_SUBFLOW) {

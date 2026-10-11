@@ -995,7 +995,7 @@ index edd1942dcd73..a581252b5b06 100644
  {
  	return (BOND_MODE(bond) == BOND_MODE_8023AD ||
 @@ -712,6 +735,10 @@ void bond_slave_arr_work_rearm(struct bonding *bond, unsigned long delay);
- void bond_peer_notify_work_rearm(struct bonding *bond, unsigned long delay);
+ void bond_slave_arr_work_rearm(struct bonding *bond, unsigned long delay);
  void bond_work_init_all(struct bonding *bond);
  void bond_work_cancel_all(struct bonding *bond);
 +#if IS_ENABLED(CONFIG_XFRM_OFFLOAD)

@@ -1,3 +1,4 @@
+
 --- a/drivers/net/wireless/broadcom/brcm80211/Kconfig
 +++ b/drivers/net/wireless/broadcom/brcm80211/Kconfig
 @@ -1,6 +1,6 @@

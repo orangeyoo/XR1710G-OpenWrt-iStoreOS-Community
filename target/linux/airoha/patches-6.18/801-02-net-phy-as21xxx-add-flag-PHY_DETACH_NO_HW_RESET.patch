@@ -16,7 +16,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
 
 --- a/drivers/net/phy/as21xxx.c
 +++ b/drivers/net/phy/as21xxx.c
-@@ -965,7 +965,7 @@ static struct phy_driver as21xxx_drivers
+@@ -965,7 +965,7 @@
  		.led_hw_control_set = as21xxx_led_hw_control_set,
  		.led_hw_control_get = as21xxx_led_hw_control_get,
  		.led_polarity_set = as21xxx_led_polarity_set,
@@ -25,7 +25,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	},
  	{
  		PHY_ID_MATCH_EXACT(PHY_ID_AS21011PB1),
-@@ -978,7 +978,7 @@ static struct phy_driver as21xxx_drivers
+@@ -978,7 +978,7 @@
  		.led_hw_control_set = as21xxx_led_hw_control_set,
  		.led_hw_control_get = as21xxx_led_hw_control_get,
  		.led_polarity_set = as21xxx_led_polarity_set,
@@ -34,7 +34,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	},
  	{
  		PHY_ID_MATCH_EXACT(PHY_ID_AS21010PB1),
-@@ -991,7 +991,7 @@ static struct phy_driver as21xxx_drivers
+@@ -991,7 +991,7 @@
  		.led_hw_control_set = as21xxx_led_hw_control_set,
  		.led_hw_control_get = as21xxx_led_hw_control_get,
  		.led_polarity_set = as21xxx_led_polarity_set,
@@ -43,7 +43,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	},
  	{
  		PHY_ID_MATCH_EXACT(PHY_ID_AS21010JB1),
-@@ -1004,7 +1004,7 @@ static struct phy_driver as21xxx_drivers
+@@ -1004,7 +1004,7 @@
  		.led_hw_control_set = as21xxx_led_hw_control_set,
  		.led_hw_control_get = as21xxx_led_hw_control_get,
  		.led_polarity_set = as21xxx_led_polarity_set,
@@ -52,7 +52,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	},
  	{
  		PHY_ID_MATCH_EXACT(PHY_ID_AS21210PB1),
-@@ -1017,7 +1017,7 @@ static struct phy_driver as21xxx_drivers
+@@ -1017,7 +1017,7 @@
  		.led_hw_control_set = as21xxx_led_hw_control_set,
  		.led_hw_control_get = as21xxx_led_hw_control_get,
  		.led_polarity_set = as21xxx_led_polarity_set,
@@ -61,7 +61,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	},
  	{
  		PHY_ID_MATCH_EXACT(PHY_ID_AS21510JB1),
-@@ -1030,7 +1030,7 @@ static struct phy_driver as21xxx_drivers
+@@ -1030,7 +1030,7 @@
  		.led_hw_control_set = as21xxx_led_hw_control_set,
  		.led_hw_control_get = as21xxx_led_hw_control_get,
  		.led_polarity_set = as21xxx_led_polarity_set,
@@ -70,7 +70,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	},
  	{
  		PHY_ID_MATCH_EXACT(PHY_ID_AS21510PB1),
-@@ -1043,7 +1043,7 @@ static struct phy_driver as21xxx_drivers
+@@ -1043,7 +1043,7 @@
  		.led_hw_control_set = as21xxx_led_hw_control_set,
  		.led_hw_control_get = as21xxx_led_hw_control_get,
  		.led_polarity_set = as21xxx_led_polarity_set,
@@ -79,7 +79,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	},
  	{
  		PHY_ID_MATCH_EXACT(PHY_ID_AS21511JB1),
-@@ -1056,7 +1056,7 @@ static struct phy_driver as21xxx_drivers
+@@ -1056,7 +1056,7 @@
  		.led_hw_control_set = as21xxx_led_hw_control_set,
  		.led_hw_control_get = as21xxx_led_hw_control_get,
  		.led_polarity_set = as21xxx_led_polarity_set,
@@ -88,7 +88,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	},
  	{
  		PHY_ID_MATCH_EXACT(PHY_ID_AS21210JB1),
-@@ -1069,7 +1069,7 @@ static struct phy_driver as21xxx_drivers
+@@ -1069,7 +1069,7 @@
  		.led_hw_control_set = as21xxx_led_hw_control_set,
  		.led_hw_control_get = as21xxx_led_hw_control_get,
  		.led_polarity_set = as21xxx_led_polarity_set,
@@ -97,7 +97,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	},
  	{
  		PHY_ID_MATCH_EXACT(PHY_ID_AS21511PB1),
-@@ -1082,7 +1082,7 @@ static struct phy_driver as21xxx_drivers
+@@ -1082,7 +1082,7 @@
  		.led_hw_control_set = as21xxx_led_hw_control_set,
  		.led_hw_control_get = as21xxx_led_hw_control_get,
  		.led_polarity_set = as21xxx_led_polarity_set,

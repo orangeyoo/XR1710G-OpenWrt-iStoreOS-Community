@@ -4,8 +4,10 @@
 
 [ "$(board_name)" = "econet,xr1710g-ubi" ] || exit 0
 
-uci -q set firewall.@defaults[0].flow_offloading='1'
-uci -q set firewall.@defaults[0].flow_offloading_hw='1'
+# 14-airoha-hw-flow-offload owns the initial 1/1 defaults. Do not undo
+# them here, or override explicit choices restored by a keep-config upgrade.
+# FullCone NAT stays enabled on IPv4 (v1.9 factory parity); fullcone6 stays off.
+uci -q set firewall.@defaults[0].fullcone='1'
 uci -q commit firewall
 
 firewall_whiteout=/overlay/upper/etc/rc.d/S19firewall

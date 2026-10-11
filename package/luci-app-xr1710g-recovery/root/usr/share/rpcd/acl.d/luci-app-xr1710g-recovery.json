@@ -1,0 +1,15 @@
+{
+	"luci-app-xr1710g-recovery": {
+		"description": "XR1710G recovery and factory reset controls",
+		"read": {
+			"ubus": {
+				"luci.xr1710g_recovery": [ "getStatus" ]
+			}
+		},
+		"write": {
+			"ubus": {
+				"luci.xr1710g_recovery": [ "rebootToUboot", "factoryReset" ]
+			}
+		}
+	}
+}

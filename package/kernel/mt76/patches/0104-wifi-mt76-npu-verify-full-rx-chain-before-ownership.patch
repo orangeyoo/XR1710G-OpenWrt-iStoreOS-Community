@@ -1,0 +1,39 @@
+From: XR1710G Community
+Subject: wifi: mt76: npu: verify full RX descriptor chain before buffer ownership
+
+Avoid recycling page-pool buffers that ring entries still reference
+when the NPU publishes a partially completed multi-descriptor frame.
+Validate DONE on the entire chain first; otherwise retry on a later
+poll with ring state untouched.
+---
+--- a/npu.c
++++ b/npu.c
+@@ -70,16 +70,23 @@
+ 	nframes = FIELD_GET(NPU_RX_DMA_PKT_COUNT_MASK, desc[index].info);
+ 	nframes = max_t(int, nframes, 1);
+ 
++	/* Verify the whole descriptor chain is DONE before moving any buffer
++	 * out of the ring. A partially completed chain must be retried on a
++	 * later poll: consuming the leading buffers here would recycle them
++	 * to the page pool while q->tail / q->queued still reference them.
++	 */
++	for (i = 0; i < nframes; i++) {
++		int pos = (q->tail + i) % q->ndesc;
++
++		if (!FIELD_GET(NPU_RX_DMA_DESC_DONE_MASK, desc[pos].ctrl))
++			return NULL;
++	}
++
+ 	for (i = 0; i < nframes; i++) {
+ 		struct mt76_queue_entry *e = &q->entry[index];
+ 		int len = FIELD_GET(NPU_RX_DMA_DESC_CUR_LEN_MASK,
+ 				    desc[index].ctrl);
+ 
+-		if (!FIELD_GET(NPU_RX_DMA_DESC_DONE_MASK, desc[index].ctrl)) {
+-			dev_kfree_skb(skb);
+-			return NULL;
+-		}
+-
+ 		dma_sync_single_for_cpu(dev->dma_dev, e->dma_addr[0],
+ 					e->dma_len[0],
+ 					page_pool_get_dma_dir(q->page_pool));

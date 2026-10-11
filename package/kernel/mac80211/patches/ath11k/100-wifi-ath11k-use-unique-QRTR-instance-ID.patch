@@ -47,12 +47,15 @@ Signed-off-by: Robert Marko <robimarko@gmail.com>
  drivers/net/wireless/ath/ath11k/pci.c |  9 ++++-
  3 files changed, 44 insertions(+), 17 deletions(-)
 
+
 --- a/drivers/net/wireless/ath/ath11k/mhi.c
 +++ b/drivers/net/wireless/ath/ath11k/mhi.c
-@@ -235,6 +235,34 @@ static void ath11k_mhi_op_runtime_put(st
- {
- }
+@@ -233,6 +233,34 @@
  
+ static void ath11k_mhi_op_runtime_put(struct mhi_controller *mhi_cntrl)
+ {
++}
++
 +static int ath11k_mhi_op_read_reg(struct mhi_controller *mhi_cntrl,
 +				  void __iomem *addr,
 +				  u32 *out)
@@ -79,12 +82,10 @@ Signed-off-by: Robert Marko <robimarko@gmail.com>
 +					FIELD_PREP(QRTR_INSTANCE_MASK,
 +					ab->qmi.service_ins_id - ab->hw_params.qmi_service_ins_id));
 +	}
-+}
-+
+ }
+ 
  static char *ath11k_mhi_op_callback_to_str(enum mhi_callback reason)
- {
- 	switch (reason) {
-@@ -256,6 +284,8 @@ static char *ath11k_mhi_op_callback_to_s
+@@ -256,6 +284,8 @@
  		return "MHI_CB_FATAL_ERROR";
  	case MHI_CB_BW_REQ:
  		return "MHI_CB_BW_REQ";
@@ -93,8 +94,8 @@ Signed-off-by: Robert Marko <robimarko@gmail.com>
  	default:
  		return "UNKNOWN";
  	}
-@@ -286,6 +316,9 @@ static void ath11k_mhi_op_status_cb(stru
- 			queue_work(ab->workqueue_aux, &ab->reset_work);
+@@ -288,27 +318,14 @@
+ 		spin_unlock_bh(&ab->base_lock);
  
  		break;
 +	case MHI_CB_EE_SBL_MODE:
@@ -103,10 +104,10 @@ Signed-off-by: Robert Marko <robimarko@gmail.com>
  	default:
  		break;
  	}
-@@ -293,22 +326,6 @@ static void ath11k_mhi_op_status_cb(stru
- 	ab_pci->mhi_pre_cb = cb;
- }
  
+ 	ab_pci->mhi_pre_cb = cb;
+-}
+-
 -static int ath11k_mhi_op_read_reg(struct mhi_controller *mhi_cntrl,
 -				  void __iomem *addr,
 -				  u32 *out)
@@ -121,11 +122,9 @@ Signed-off-by: Robert Marko <robimarko@gmail.com>
 -				    u32 val)
 -{
 -	writel(val, addr);
--}
--
+ }
+ 
  static int ath11k_mhi_read_addr_from_dt(struct mhi_controller *mhi_ctrl)
- {
- 	struct device_node *np;
 --- a/drivers/net/wireless/ath/ath11k/mhi.h
 +++ b/drivers/net/wireless/ath/ath11k/mhi.h
 @@ -17,6 +17,9 @@
@@ -140,7 +139,7 @@ Signed-off-by: Robert Marko <robimarko@gmail.com>
  int ath11k_mhi_register(struct ath11k_pci *ar_pci);
 --- a/drivers/net/wireless/ath/ath11k/pci.c
 +++ b/drivers/net/wireless/ath/ath11k/pci.c
-@@ -394,13 +394,20 @@ static void ath11k_pci_sw_reset(struct a
+@@ -398,13 +398,20 @@
  static void ath11k_pci_init_qmi_ce_config(struct ath11k_base *ab)
  {
  	struct ath11k_qmi_ce_cfg *cfg = &ab->qmi.ce_cfg;

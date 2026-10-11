@@ -12,11 +12,10 @@ Signed-off-by: Peter Chiu <chui-hao.chiu@mediatek.com>
  net/mac80211/airtime.c | 22 ++++++++++++++++++----
  1 file changed, 18 insertions(+), 4 deletions(-)
 
-diff --git a/net/mac80211/airtime.c b/net/mac80211/airtime.c
-index c61df637..f9cad05b 100644
+
 --- a/net/mac80211/airtime.c
 +++ b/net/mac80211/airtime.c
-@@ -759,7 +759,8 @@ u32 ieee80211_calc_expected_tx_airtime(struct ieee80211_hw *hw,
+@@ -806,7 +806,8 @@
  				       int len, bool ampdu)
  {
  	struct ieee80211_supported_band *sband;
@@ -26,7 +25,7 @@ index c61df637..f9cad05b 100644
  	int rateidx;
  	bool cck, short_pream;
  	u32 basic_rates;
-@@ -768,7 +769,20 @@ u32 ieee80211_calc_expected_tx_airtime(struct ieee80211_hw *hw,
+@@ -815,7 +816,20 @@
  
  	len += 38; /* Ethernet header length */
  
@@ -48,7 +47,7 @@ index c61df637..f9cad05b 100644
  	if (conf)
  		band = conf->def.chan->band;
  
-@@ -826,8 +840,8 @@ u32 ieee80211_calc_expected_tx_airtime(struct ieee80211_hw *hw,
+@@ -841,8 +855,8 @@
  	 */
  	sband = hw->wiphy->bands[band];
  
@@ -59,6 +58,3 @@ index c61df637..f9cad05b 100644
  
  	rateidx = basic_rates ? ffs(basic_rates) - 1 : 0;
  	rate = sband->bitrates[rateidx].bitrate;
--- 
-2.45.2
-

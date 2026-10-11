@@ -1,9 +1,12 @@
+
 --- a/compat/main.c
 +++ b/compat/main.c
-@@ -19,31 +19,6 @@ MODULE_LICENSE("GPL");
- #error "You need a CPTCFG_VERSION"
- #endif
+@@ -17,31 +17,6 @@
  
+ #ifndef CPTCFG_VERSION
+ #error "You need a CPTCFG_VERSION"
+-#endif
+-
 -static char *backported_kernel_name = CPTCFG_KERNEL_NAME;
 -
 -module_param(backported_kernel_name, charp, 0400);
@@ -27,8 +30,6 @@
 -MODULE_PARM_DESC(backports_version,
 -		 "The git version of the backports tree used to generate this backport (" CPTCFG_VERSION ")");
 -
--#endif
--
+ #endif
+ 
  void backport_dependency_symbol(void)
- {
- }

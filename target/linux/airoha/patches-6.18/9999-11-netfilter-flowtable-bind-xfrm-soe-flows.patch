@@ -16,19 +16,17 @@ diff --git a/net/netfilter/nf_flow_table_ip.c b/net/netfilter/nf_flow_table_ip.c
 index 0b7bdfd..731545a 100644
 --- a/net/netfilter/nf_flow_table_ip.c
 +++ b/net/netfilter/nf_flow_table_ip.c
-@@ -19,8 +19,9 @@
+@@ -19,7 +19,8 @@
  #include <linux/tcp.h>
  #include <linux/udp.h>
  
 -static int nf_flow_state_check(struct flow_offload *flow, int proto,
--			       struct sk_buff *skb, unsigned int thoff)
 +static int nf_flow_state_check(struct nf_flowtable *flow_table,
 +			       struct flow_offload *flow, int proto,
-+			       struct sk_buff *skb, unsigned int thoff)
+ 			       struct sk_buff *skb, unsigned int thoff)
  {
  	struct tcphdr *tcph;
- 
-@@ -34,9 +35,18 @@ static int nf_flow_state_check(struct flow_offload *flow, int proto,
+@@ -34,8 +35,17 @@
  	}
  
  	if ((tcph->fin || tcph->rst) &&
@@ -36,7 +34,7 @@ index 0b7bdfd..731545a 100644
 +	    !test_bit(NF_FLOW_CLOSING, &flow->flags)) {
  		set_bit(NF_FLOW_CLOSING, &flow->flags);
 +		flow_offload_teardown(flow);
- 
++
 +		/* Hardware XFRM/SOE flows can otherwise keep forwarding the
 +		 * tail of short-lived TCP sessions until the next GC pass.
 +		 */
@@ -44,11 +42,10 @@ index 0b7bdfd..731545a 100644
 +		    !test_bit(NF_FLOW_HW_DYING, &flow->flags))
 +			nf_flow_offload_del(flow_table, flow);
 +	}
-+
+ 
  	return 0;
  }
- 
-@@ -387,7 +397,7 @@ static int nf_flow_offload_forward(struct nf_flowtable_ctx *ctx,
+@@ -396,7 +406,7 @@
  
  	iph = (struct iphdr *)(skb_network_header(skb) + ctx->offset);
  	thoff = (iph->ihl * 4) + ctx->offset;
@@ -57,7 +54,7 @@ index 0b7bdfd..731545a 100644
  		return 0;
  
  	if (!nf_flow_dst_check(&tuplehash->tuple)) {
-@@ -673,7 +683,7 @@ static int nf_flow_offload_ipv6_forward(struct nf_flowtable_ctx *ctx,
+@@ -692,7 +702,7 @@
  
  	ip6h = (struct ipv6hdr *)(skb_network_header(skb) + ctx->offset);
  	thoff = sizeof(*ip6h) + ctx->offset;
@@ -66,7 +63,6 @@ index 0b7bdfd..731545a 100644
  		return 0;
  
  	if (!nf_flow_dst_check(&tuplehash->tuple)) {
-diff --git a/net/netfilter/nf_flow_table_path.c b/net/netfilter/nf_flow_table_path.c
 --- a/net/netfilter/nf_flow_table_path.c
 +++ b/net/netfilter/nf_flow_table_path.c
 @@ -10,6 +10,7 @@
@@ -99,9 +95,9 @@ diff --git a/net/netfilter/nf_flow_table_path.c b/net/netfilter/nf_flow_table_pa
  static void nft_default_forward_path(struct nf_flow_route *route,
  				     struct dst_entry *dst_cache,
  				     enum ip_conntrack_dir dir)
-@@ -375,7 +391,8 @@
+@@ -377,7 +393,8 @@
+ 		memcpy(route->tuple[dir].out.h_source, info.h_source, ETH_ALEN);
  		memcpy(route->tuple[dir].out.h_dest, info.h_dest, ETH_ALEN);
- 		route->tuple[dir].out.ifindex = info.outdev->ifindex;
  		route->tuple[dir].out.hw_ifindex = info.hw_outdev->ifindex;
 -		route->tuple[dir].xmit_type = info.xmit_type;
 +		if (route->tuple[dir].xmit_type == FLOW_OFFLOAD_XMIT_NEIGH)
@@ -109,7 +105,7 @@ diff --git a/net/netfilter/nf_flow_table_path.c b/net/netfilter/nf_flow_table_pa
  	}
  
  	return 0;
-@@ -389,6 +406,9 @@
+@@ -391,6 +408,9 @@
  {
  	struct dst_entry *this_dst = skb_dst(pkt->skb);
  	struct dst_entry *other_dst = NULL;
@@ -119,7 +115,7 @@ diff --git a/net/netfilter/nf_flow_table_path.c b/net/netfilter/nf_flow_table_pa
  	struct flowi fl;
  
  	memset(&fl, 0, sizeof(fl));
-@@ -413,7 +433,53 @@
+@@ -415,7 +435,53 @@
  		break;
  	}
  
@@ -174,24 +170,25 @@ diff --git a/net/netfilter/nf_flow_table_path.c b/net/netfilter/nf_flow_table_pa
  		return -ENOENT;
  
  	nf_route(nft_net(pkt), &other_dst, &fl, false, nft_pf(pkt));
-@@ -421,18 +487,32 @@
- 		dst_release(this_dst);
+@@ -424,17 +490,32 @@
  		return -ENOENT;
  	}
+ 
 +	other_dst = xfrm_lookup(nft_net(pkt), other_dst, &fl, NULL, 0);
 +	if (IS_ERR(other_dst)) {
 +		dst_release(this_dst);
 +		return -ENOENT;
 +	}
- 
++
  	nft_default_forward_path(route, this_dst, dir);
  	nft_default_forward_path(route, other_dst, !dir);
  
 -	if (route->tuple[dir].xmit_type == FLOW_OFFLOAD_XMIT_NEIGH &&
--	    route->tuple[!dir].xmit_type == FLOW_OFFLOAD_XMIT_NEIGH) {
--		if (nft_dev_forward_path(pkt, route, ct, dir, ft) ||
--		    nft_dev_forward_path(pkt, route, ct, !dir, ft))
--			return -ENOENT;
+-	    nft_dev_forward_path(pkt, route, ct, dir, ft))
+-		return -ENOENT;
+-	if (route->tuple[!dir].xmit_type == FLOW_OFFLOAD_XMIT_NEIGH &&
+-	    nft_dev_forward_path(pkt, route, ct, !dir, ft))
+-		return -ENOENT;
 +	if (route->tuple[dir].xmit_type == FLOW_OFFLOAD_XMIT_NEIGH ||
 +	    route->tuple[dir].xmit_type == FLOW_OFFLOAD_XMIT_XFRM) {
 +		if (nft_dev_forward_path(pkt, route, ct, dir, ft))
@@ -201,7 +198,7 @@ diff --git a/net/netfilter/nf_flow_table_path.c b/net/netfilter/nf_flow_table_pa
 +	    route->tuple[!dir].xmit_type == FLOW_OFFLOAD_XMIT_XFRM) {
 +		if (nft_dev_forward_path(pkt, route, ct, !dir, ft))
 +			goto err_release;
- 	}
++	}
  
  	return 0;
 +
@@ -212,7 +209,6 @@ diff --git a/net/netfilter/nf_flow_table_path.c b/net/netfilter/nf_flow_table_pa
  }
  
  static int nft_flow_route_dir(const struct nft_pktinfo *pkt,
-diff --git a/net/netfilter/nft_flow_offload.c b/net/netfilter/nft_flow_offload.c
 --- a/net/netfilter/nft_flow_offload.c
 +++ b/net/netfilter/nft_flow_offload.c
 @@ -11,6 +11,7 @@

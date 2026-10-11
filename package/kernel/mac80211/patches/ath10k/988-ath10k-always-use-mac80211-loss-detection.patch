@@ -16,9 +16,10 @@ Signed-off-by: David Bauer <mail@david-bauer.net>
  drivers/net/wireless/ath/ath10k/mac.c | 1 -
  1 file changed, 1 deletion(-)
 
+
 --- a/drivers/net/wireless/ath/ath10k/mac.c
 +++ b/drivers/net/wireless/ath/ath10k/mac.c
-@@ -10140,7 +10140,6 @@ int ath10k_mac_register(struct ath10k *a
+@@ -10138,7 +10138,6 @@
  	ieee80211_hw_set(ar->hw, CHANCTX_STA_CSA);
  	ieee80211_hw_set(ar->hw, QUEUE_CONTROL);
  	ieee80211_hw_set(ar->hw, SUPPORTS_TX_FRAG);

@@ -1,0 +1,32 @@
+Subject: [PATCH] wifi: mt7996: fill supported HE160 MCS map for EHT320 peers
+
+Include 320 MHz peers in the HE160 fallback path, retaining the existing
+bitrate-mask/NSS processing and checking the advertised HE160 capability.
+This fixes capability programming; EHT320 performance needs hardware A/B.
+
+---
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -1860,6 +1860,7 @@
+ 
+ 	mcs_map = link_sta->he_cap.he_mcs_nss_supp;
+ 	switch (link_sta->bandwidth) {
++	case IEEE80211_STA_RX_BW_320:
+ 	case IEEE80211_STA_RX_BW_160:
+ 		if (elem->phy_cap_info[0] &
+ 		    IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_80PLUS80_MHZ_IN_5G)
+@@ -1867,9 +1868,11 @@
+ 						  &he->max_nss_mcs[CMD_HE_MCS_BW8080],
+ 						  le16_to_cpu(mcs_map.rx_mcs_80p80));
+ 
+-		mt7996_mcu_set_sta_he_mcs(link_sta, link,
+-					  &he->max_nss_mcs[CMD_HE_MCS_BW160],
+-					  le16_to_cpu(mcs_map.rx_mcs_160));
++		if (elem->phy_cap_info[0] &
++		    IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G)
++			mt7996_mcu_set_sta_he_mcs(link_sta, link,
++						  &he->max_nss_mcs[CMD_HE_MCS_BW160],
++						  le16_to_cpu(mcs_map.rx_mcs_160));
+ 		fallthrough;
+ 	default:
+ 		mt7996_mcu_set_sta_he_mcs(link_sta, link,

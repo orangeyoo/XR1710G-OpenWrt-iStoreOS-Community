@@ -18,7 +18,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
 
 --- a/drivers/clk/clk-en7523.c
 +++ b/drivers/clk/clk-en7523.c
-@@ -78,8 +78,10 @@ struct en_rst_data {
+@@ -78,8 +78,10 @@
  
  struct en_clk_soc_data {
  	u32 num_clocks;
@@ -29,7 +29,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  		       struct clk_hw_onecell_data *clk_data);
  };
  
-@@ -450,10 +452,11 @@ static struct clk_hw *en7523_register_pc
+@@ -450,10 +452,11 @@
  		.ops = &soc_data->pcie_ops,
  	};
  	struct en_clk_gate *cg;
@@ -42,7 +42,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	cg->map = clk_map;
  	cg->hw.init = &init;
-@@ -461,12 +464,62 @@ static struct clk_hw *en7523_register_pc
+@@ -461,12 +464,62 @@
  	if (init.ops->unprepare)
  		init.ops->unprepare(&cg->hw);
  
@@ -107,7 +107,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  static int en7581_pci_is_enabled(struct clk_hw *hw)
  {
  	struct en_clk_gate *cg = container_of(hw, struct en_clk_gate, hw);
-@@ -504,38 +557,6 @@ static void en7581_pci_disable(struct cl
+@@ -504,38 +557,6 @@
  	usleep_range(1000, 2000);
  }
  
@@ -146,7 +146,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  static const struct regmap_config en7523_clk_regmap_config = {
  	.reg_bits = 32,
  	.val_bits = 32,
-@@ -543,6 +564,7 @@ static const struct regmap_config en7523
+@@ -543,6 +564,7 @@
  };
  
  static int en7523_clk_hw_init(struct platform_device *pdev,
@@ -154,7 +154,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  			      struct clk_hw_onecell_data *clk_data)
  {
  	void __iomem *base, *np_base;
-@@ -566,51 +588,7 @@ static int en7523_clk_hw_init(struct pla
+@@ -566,51 +588,7 @@
  	if (IS_ERR(clk_map))
  		return PTR_ERR(clk_map);
  
@@ -207,7 +207,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  }
  
  static int en7523_reset_update(struct reset_controller_dev *rcdev,
-@@ -689,10 +667,12 @@ static int en7581_reset_register(struct
+@@ -689,10 +667,12 @@
  }
  
  static int en7581_clk_hw_init(struct platform_device *pdev,
@@ -220,7 +220,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	map = syscon_regmap_lookup_by_compatible("airoha,en7581-chip-scu");
  	if (IS_ERR(map))
-@@ -706,7 +686,9 @@ static int en7581_clk_hw_init(struct pla
+@@ -706,7 +686,9 @@
  	if (IS_ERR(clk_map))
  		return PTR_ERR(clk_map);
  
@@ -231,7 +231,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	regmap_clear_bits(clk_map, REG_NP_SCU_SSTR,
  			  REG_PCIE_XSI0_SEL_MASK | REG_PCIE_XSI1_SEL_MASK);
-@@ -732,7 +714,7 @@ static int en7523_clk_probe(struct platf
+@@ -732,7 +714,7 @@
  		return -ENOMEM;
  
  	clk_data->num = soc_data->num_clocks;
@@ -240,7 +240,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	if (r)
  		return r;
  
-@@ -740,6 +722,7 @@ static int en7523_clk_probe(struct platf
+@@ -740,6 +722,7 @@
  }
  
  static const struct en_clk_soc_data en7523_data = {
@@ -248,7 +248,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	.num_clocks = ARRAY_SIZE(en7523_base_clks) + 1,
  	.pcie_ops = {
  		.is_enabled = en7523_pci_is_enabled,
-@@ -750,6 +733,7 @@ static const struct en_clk_soc_data en75
+@@ -750,6 +733,7 @@
  };
  
  static const struct en_clk_soc_data en7581_data = {

@@ -1,0 +1,41 @@
+--- a/npu.c
++++ b/npu.c
+@@ -69,9 +69,22 @@
+ 	int i, nframes, index = q->tail;
+ 	struct sk_buff *skb = NULL;
+ 	bool trunc = false;
+-
+-	nframes = FIELD_GET(NPU_RX_DMA_PKT_COUNT_MASK, desc[index].info);
++	u32 ctrl;
++
++	if (!q->queued)
++		return NULL;
++
++	ctrl = READ_ONCE(desc[index].ctrl);
++	if (!(ctrl & NPU_RX_DMA_DESC_DONE_MASK))
++		return NULL;
++
++	/* Read packet metadata only after the device releases ownership. */
++	dma_rmb();
++	nframes = FIELD_GET(NPU_RX_DMA_PKT_COUNT_MASK,
++			   READ_ONCE(desc[index].info));
+ 	nframes = max_t(int, nframes, 1);
++	if (nframes > q->queued)
++		return NULL;
+ 
+ 	/* Verify the whole descriptor chain is DONE before moving any buffer
+ 	 * out of the ring. A partially completed chain must be retried on a
+@@ -81,10 +94,12 @@
+ 	for (i = 0; i < nframes; i++) {
+ 		int pos = (q->tail + i) % q->ndesc;
+ 
+-		if (!FIELD_GET(NPU_RX_DMA_DESC_DONE_MASK, desc[pos].ctrl))
++		if (!(READ_ONCE(desc[pos].ctrl) & NPU_RX_DMA_DESC_DONE_MASK))
+ 			return NULL;
+ 	}
+ 
++	/* Order all completed descriptors before inspecting their buffers. */
++	dma_rmb();
+ 	for (i = 0; i < nframes; i++) {
+ 		struct mt76_queue_entry *e = &q->entry[index];
+ 		int len = FIELD_GET(NPU_RX_DMA_DESC_CUR_LEN_MASK,

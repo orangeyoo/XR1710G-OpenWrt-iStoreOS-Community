@@ -73,6 +73,16 @@ proto_dhcpv6_setup() {
 	local config="$1"
 	local iface="$2"
 
+	if [ -r /lib/netifd/xr1710g-dhcpv6-guard.sh ]; then
+		. /lib/netifd/xr1710g-dhcpv6-guard.sh
+		if xr_dhcpv6_conflict "$config" "$iface"; then
+			logger -t dhcpv6 'Duplicate DHCPv6 client blocked; keep one IPv6 interface per device'
+			proto_notify_error "$config" DHCPV6_DUPLICATE_CLIENT
+			proto_block_restart "$config"
+			return 1
+		fi
+	fi
+
 	local reqaddress reqprefix clientid sendclientid reqopts defaultreqopts
 	local noslaaconly forceprefix extendprefix norelease strict_rfc7550
 	local noserverunicast noclientfqdn noacceptreconfig iface_dslite

@@ -1,6 +1,7 @@
+
 --- a/net/mac80211/debugfs.c
 +++ b/net/mac80211/debugfs.c
-@@ -42,8 +42,9 @@ static ssize_t name## _read(struct file
+@@ -42,8 +42,9 @@
  }
  
  #define DEBUGFS_READONLY_FILE_OPS(name)			\
@@ -11,7 +12,7 @@
  	.llseek = generic_file_llseek,					\
  };
  
-@@ -139,9 +140,10 @@ static ssize_t aqm_write(struct file *fi
+@@ -139,9 +140,10 @@
  	return -EINVAL;
  }
  
@@ -23,7 +24,7 @@
  	.llseek = default_llseek,
  };
  
-@@ -190,9 +192,10 @@ static ssize_t airtime_flags_write(struc
+@@ -190,9 +192,10 @@
  	return count;
  }
  
@@ -35,7 +36,7 @@
  	.llseek = default_llseek,
  };
  
-@@ -220,8 +223,9 @@ static ssize_t aql_pending_read(struct f
+@@ -220,8 +223,9 @@
  				       buf, len);
  }
  
@@ -46,7 +47,7 @@
  	.llseek = default_llseek,
  };
  
-@@ -299,9 +303,10 @@ static ssize_t aql_txq_limit_write(struc
+@@ -299,9 +303,10 @@
  	return count;
  }
  
@@ -58,7 +59,7 @@
  	.llseek = default_llseek,
  };
  
-@@ -344,9 +349,10 @@ static ssize_t aql_enable_write(struct f
+@@ -335,9 +340,10 @@
  	return count;
  }
  
@@ -70,7 +71,7 @@
  	.llseek = default_llseek,
  };
  
-@@ -394,9 +400,10 @@ static ssize_t force_tx_status_write(str
+@@ -373,9 +379,10 @@
  	return count;
  }
  
@@ -82,7 +83,7 @@
  	.llseek = default_llseek,
  };
  
-@@ -421,8 +428,9 @@ static ssize_t reset_write(struct file *
+@@ -400,8 +407,9 @@
  	return count;
  }
  
@@ -93,7 +94,7 @@
  	.llseek = noop_llseek,
  };
  #endif
-@@ -649,8 +657,9 @@ static ssize_t stats_ ##name## _read(str
+@@ -629,8 +637,9 @@
  				      print_devstats_##name);		\
  }									\
  									\
@@ -106,7 +107,7 @@
  
 --- a/net/mac80211/debugfs_key.c
 +++ b/net/mac80211/debugfs_key.c
-@@ -26,15 +26,17 @@ static ssize_t key_##name##_read(struct
+@@ -26,15 +26,17 @@
  #define KEY_READ_X(name) KEY_READ(name, name, "0x%x\n")
  
  #define KEY_OPS(name)							\
@@ -126,7 +127,7 @@
  	.llseek = generic_file_llseek,					\
  }
  
-@@ -47,8 +49,9 @@ static const struct debugfs_short_fops k
+@@ -47,8 +49,9 @@
  #define KEY_CONF_READ_D(name) KEY_CONF_READ(name, "%d\n")
  
  #define KEY_CONF_OPS(name)						\
@@ -139,7 +140,7 @@
  
 --- a/net/mac80211/debugfs_netdev.c
 +++ b/net/mac80211/debugfs_netdev.c
-@@ -221,9 +221,10 @@ static ssize_t ieee80211_if_fmt_##name(
+@@ -222,9 +222,10 @@
  }
  
  #define _IEEE80211_IF_FILE_OPS(name, _read, _write)			\
@@ -153,7 +154,7 @@
  
 --- a/net/mac80211/debugfs_sta.c
 +++ b/net/mac80211/debugfs_sta.c
-@@ -30,15 +30,17 @@ static ssize_t sta_ ##name## _read(struc
+@@ -30,15 +30,17 @@
  #define STA_READ_D(name, field) STA_READ(name, field, "%d\n")
  
  #define STA_OPS(name)							\
@@ -173,7 +174,7 @@
  	.llseek = generic_file_llseek,					\
  }
  
-@@ -440,8 +442,9 @@ STA_OPS_RW(agg_status);
+@@ -440,8 +442,9 @@
  
  /* link sta attributes */
  #define LINK_STA_OPS(name)						\
@@ -186,7 +187,7 @@
  
 --- a/net/mac80211/rate.c
 +++ b/net/mac80211/rate.c
-@@ -252,8 +252,9 @@ static ssize_t rcname_read(struct file *
+@@ -250,8 +250,9 @@
  				       ref->ops->name, len);
  }
  
@@ -199,7 +200,7 @@
  #endif
 --- a/net/mac80211/rate.h
 +++ b/net/mac80211/rate.h
-@@ -62,7 +62,7 @@ static inline void rate_control_add_sta_
+@@ -62,7 +62,7 @@
  #endif
  }
  

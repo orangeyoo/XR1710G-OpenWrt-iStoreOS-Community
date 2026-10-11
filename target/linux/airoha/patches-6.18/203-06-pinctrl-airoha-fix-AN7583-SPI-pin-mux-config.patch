@@ -27,24 +27,15 @@ Signed-off-by: Daniel Schwierzeck <daniel.schwierzeck@gmail.com>
 
 --- a/drivers/pinctrl/airoha/pinctrl-airoha.c
 +++ b/drivers/pinctrl/airoha/pinctrl-airoha.c
-@@ -87,6 +87,7 @@
- #define AN7583_GPIO_MODE_MASK			(GENMASK(22, 15) | GENMASK(26, 25))
- #define AN7583_MDC_0_GPIO_MODE_MASK		BIT(25)
- #define AN7583_MDIO_0_GPIO_MODE_MASK		BIT(26)
+@@ -94,6 +94,7 @@
+ #define AN7583_SPI_MOSI_GPIO_MODE_MASK		BIT(21)
+ #define AN7583_SPI_CS_GPIO_MODE_MASK		BIT(20)
+ #define AN7583_SPI_CLK_GPIO_MODE_MASK		BIT(19)
 +#define AN7583_SPI_GPIO_MODE_MASK		GENMASK(22, 19)
  #define AN7583_I2C1_SDA_GPIO_MODE_MASK		BIT(18)
  #define AN7583_I2C1_SCL_GPIO_MODE_MASK		BIT(17)
  #define AN7583_I2C0_SDA_GPIO_MODE_MASK		BIT(16)
-@@ -736,7 +737,7 @@ static const int an7583_jtag_udi_pins[]
- static const int an7583_jtag_dfd_pins[] = { 23, 24, 22, 25, 26 };
- static const int an7583_pcm1_pins[] = { 10, 11, 12, 13, 14 };
- static const int an7583_pcm2_pins[] = { 28, 29, 30, 31, 24 };
--static const int an7583_spi_pins[] = { 28, 29, 30, 31 };
-+static const int an7583_spi_pins[] = { 45, 46, 47, 48 };
- static const int an7583_spi_quad_pins[] = { 25, 26 };
- static const int an7583_spi_cs1_pins[] = { 27 };
- static const int an7583_pcm_spi_pins[] = { 28, 29, 30, 31, 10, 11, 12, 13 };
-@@ -890,6 +891,7 @@ static const char *const an7583_i2c_grou
+@@ -911,6 +912,7 @@
  static const char *const jtag_groups[] = { "jtag_udi", "jtag_dfd" };
  static const char *const pcm_groups[] = { "pcm1", "pcm2" };
  static const char *const spi_groups[] = { "spi_quad", "spi_cs1" };
@@ -52,7 +43,7 @@ Signed-off-by: Daniel Schwierzeck <daniel.schwierzeck@gmail.com>
  static const char *const pcm_spi_groups[] = { "pcm_spi", "pcm_spi_int",
  					      "pcm_spi_rst", "pcm_spi_cs1",
  					      "pcm_spi_cs2_p156",
-@@ -1265,6 +1267,37 @@ static const struct airoha_pinctrl_func_
+@@ -1300,6 +1302,37 @@
  	},
  };
  
@@ -90,7 +81,7 @@ Signed-off-by: Daniel Schwierzeck <daniel.schwierzeck@gmail.com>
  static const struct airoha_pinctrl_func_group pcm_spi_func_group[] = {
  	{
  		.name = "pcm_spi",
-@@ -1898,7 +1931,7 @@ static const struct airoha_pinctrl_func
+@@ -2043,7 +2076,7 @@
  	PINCTRL_FUNC_DESC("i2c", an7583_i2c),
  	PINCTRL_FUNC_DESC("jtag", jtag),
  	PINCTRL_FUNC_DESC("pcm", pcm),

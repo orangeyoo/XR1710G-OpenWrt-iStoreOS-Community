@@ -8,6 +8,7 @@ div expression
 Signed-off-by: Felix Fietkau <nbd@nbd.name>
 ---
 
+
 --- a/net/mac80211/rc80211_minstrel_ht.h
 +++ b/net/mac80211/rc80211_minstrel_ht.h
 @@ -14,7 +14,7 @@

@@ -19,7 +19,7 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
 
 --- a/drivers/pci/controller/pcie-mediatek-gen3.c
 +++ b/drivers/pci/controller/pcie-mediatek-gen3.c
-@@ -33,5 +33,7 @@
+@@ -34,6 +34,8 @@
  /* AN7581 SCU register */
  #define SCU_PCIC			0x88
  #define SCU_PCIC_PCIE_CTRL		GENMASK(7, 0)
@@ -27,7 +27,8 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
 +#define EN7581_PCIE2_REG_BASE		0x1fc40000
  
  /* PCIe register */
-@@ -968,9 +970,10 @@ static int mtk_pcie_en7581_power_up(struct mtk_gen3_pcie *pcie)
+ #define PCIE_BASE_CFG_REG		0x14
+@@ -967,9 +969,10 @@
  {
  	struct pci_host_bridge *host = pci_host_bridge_from_priv(pcie);
  	unsigned int num_lanes = max(1, pcie->num_lanes);
@@ -39,7 +40,7 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
  	u32 val, args[2], size;
  	resource_size_t addr;
  	int i, err;
-@@ -978,7 +981,11 @@ static int mtk_pcie_en7581_power_up(struct mtk_gen3_pcie *pcie)
+@@ -977,7 +980,11 @@
  	if (num_lanes > 2)
  		return dev_err_probe(dev, -EINVAL, "unsupported num-lanes, maximum 2 lanes supported\n");
  
@@ -52,7 +53,7 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
  		scu = syscon_regmap_lookup_by_phandle(dev->of_node, "airoha,scu");
  		if (IS_ERR(scu))
  			return dev_err_probe(dev, PTR_ERR(scu), "failed to map SCU regmap\n");
-@@ -1098,17 +1105,19 @@ static int mtk_pcie_en7581_power_up(struct mtk_gen3_pcie *pcie)
+@@ -1097,22 +1104,34 @@
  
  		mtk_pcie_configure_link_speed(pcie, base);
  
@@ -61,18 +62,19 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
 -			FIELD_PREP(PCIE_VAL_LN0_UPSTREAM, 0x41) |
 -			FIELD_PREP(PCIE_VAL_LN1_UPSTREAM, 0x41);
 -		writel_relaxed(val, base + PCIE_EQ_PRESET_01_REG);
+-
+-		val = PCIE_K_PHYPARAM_QUERY | PCIE_K_QUERY_TIMEOUT |
+-			FIELD_PREP(PCIE_K_PRESET_TO_USE_16G, 0x80) |
+-			FIELD_PREP(PCIE_K_PRESET_TO_USE, 0x2) |
+-			FIELD_PREP(PCIE_K_FINETUNE_MAX, 0xf);
+-		writel_relaxed(val, base + PCIE_PIPE4_PIE8_REG);
 +		if (pcie->reg_base != EN7581_PCIE2_REG_BASE) {
 +			val = FIELD_PREP(PCIE_VAL_LN0_DOWNSTREAM, 0x47) |
 +				FIELD_PREP(PCIE_VAL_LN1_DOWNSTREAM, 0x47) |
 +				FIELD_PREP(PCIE_VAL_LN0_UPSTREAM, 0x41) |
 +				FIELD_PREP(PCIE_VAL_LN1_UPSTREAM, 0x41);
 +			writel_relaxed(val, base + PCIE_EQ_PRESET_01_REG);
- 
--		val = PCIE_K_PHYPARAM_QUERY | PCIE_K_QUERY_TIMEOUT |
--			FIELD_PREP(PCIE_K_PRESET_TO_USE_16G, 0x80) |
--			FIELD_PREP(PCIE_K_PRESET_TO_USE, 0x2) |
--			FIELD_PREP(PCIE_K_FINETUNE_MAX, 0xf);
--		writel_relaxed(val, base + PCIE_PIPE4_PIE8_REG);
++
 +			val = PCIE_K_PHYPARAM_QUERY | PCIE_K_QUERY_TIMEOUT |
 +				FIELD_PREP(PCIE_K_PRESET_TO_USE_16G, 0x80) |
 +				FIELD_PREP(PCIE_K_PRESET_TO_USE, 0x2) |
@@ -81,8 +83,6 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
 +		}
  	}
  
- 	dev_info(dev, "pre-training link configuration: Gen%u x%u\n",
-@@ -1112,6 +1121,16 @@ static int mtk_pcie_en7581_power_up(struct mtk_gen3_pcie *pcie)
  	dev_info(dev, "pre-training link configuration: Gen%u x%u\n",
  		 pcie->max_link_speed, pcie->num_lanes ?: 1);
  
@@ -99,5 +99,3 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
  	/* Deassert PERSTOUT for all relevant lines */
  	err = reset_control_bulk_deassert(MAX_NUM_PERSTOUT_RESETS,
  					  pcie->perstout_resets);
- 	if (err) {
- 		dev_err(dev, "failed to deassert PERSTOUTs\n");

@@ -1,6 +1,7 @@
+
 --- a/drivers/net/wireless/ralink/rt2x00/rt2800lib.h
 +++ b/drivers/net/wireless/ralink/rt2x00/rt2800lib.h
-@@ -76,6 +76,9 @@ struct rt2800_ops {
+@@ -76,6 +76,9 @@
  	int (*drv_init_registers)(struct rt2x00_dev *rt2x00dev);
  	__le32 *(*drv_get_txwi)(struct queue_entry *entry);
  	unsigned int (*drv_get_dma_done)(struct data_queue *queue);
@@ -10,10 +11,12 @@
  };
  
  static inline u32 rt2800_register_read(struct rt2x00_dev *rt2x00dev,
-@@ -184,6 +187,27 @@ static inline unsigned int rt2800_drv_ge
- 	return rt2800ops->drv_get_dma_done(queue);
- }
+@@ -182,6 +185,27 @@
+ 	const struct rt2800_ops *rt2800ops = queue->rt2x00dev->ops->drv;
  
+ 	return rt2800ops->drv_get_dma_done(queue);
++}
++
 +static inline int rt2800_hw_get_chippkg(struct rt2x00_dev *rt2x00dev)
 +{
 +	const struct rt2800_ops *rt2800ops = rt2x00dev->ops->drv;
@@ -33,25 +36,23 @@
 +	const struct rt2800_ops *rt2800ops = rt2x00dev->ops->drv;
 +
 +	return rt2800ops->hw_get_chipeco();
-+}
-+
- void rt2800_mcu_request(struct rt2x00_dev *rt2x00dev,
- 			const u8 command, const u8 token,
- 			const u8 arg0, const u8 arg1);
---- a/drivers/net/wireless/ralink/rt2x00/rt2800pci.c
-+++ b/drivers/net/wireless/ralink/rt2x00/rt2800pci.c
-@@ -289,6 +289,10 @@ static int rt2800pci_read_eeprom(struct
- 	return retval;
  }
  
+ void rt2800_mcu_request(struct rt2x00_dev *rt2x00dev,
+--- a/drivers/net/wireless/ralink/rt2x00/rt2800pci.c
++++ b/drivers/net/wireless/ralink/rt2x00/rt2800pci.c
+@@ -291,6 +291,10 @@
+ 
+ 	return retval;
+ }
++
 +static int rt2800pci_get_chippkg(void) { return 0; }
 +static int rt2800pci_get_chipver(void) { return 0; }
 +static int rt2800pci_get_chipeco(void) { return 0; }
-+
+ 
  static const struct ieee80211_ops rt2800pci_mac80211_ops = {
  	.add_chanctx = ieee80211_emulate_add_chanctx,
- 	.remove_chanctx = ieee80211_emulate_remove_chanctx,
-@@ -336,6 +340,9 @@ static const struct rt2800_ops rt2800pci
+@@ -339,6 +343,9 @@
  	.drv_init_registers	= rt2800mmio_init_registers,
  	.drv_get_txwi		= rt2800mmio_get_txwi,
  	.drv_get_dma_done	= rt2800mmio_get_dma_done,
@@ -76,10 +77,11 @@
  /* Allow hardware encryption to be disabled. */
  static bool modparam_nohwcrypt;
  module_param_named(nohwcrypt, modparam_nohwcrypt, bool, 0444);
-@@ -136,6 +142,27 @@ static int rt2800soc_resume(struct platf
+@@ -135,6 +141,27 @@
+ 	return rt2x00lib_resume(rt2x00dev);
  }
  #endif /* CONFIG_PM */
- 
++
 +#ifdef CONFIG_SOC_MT7620
 +static int rt2800soc_get_chippkg(void)
 +{
@@ -100,11 +102,10 @@
 +static int rt2800soc_get_chipver(void) { return 0; }
 +static int rt2800soc_get_chipeco(void) { return 0; }
 +#endif
-+
+ 
  static const struct ieee80211_ops rt2800soc_mac80211_ops = {
  	.add_chanctx = ieee80211_emulate_add_chanctx,
- 	.remove_chanctx = ieee80211_emulate_remove_chanctx,
-@@ -183,6 +210,9 @@ static const struct rt2800_ops rt2800soc
+@@ -183,6 +210,9 @@
  	.drv_init_registers	= rt2800mmio_init_registers,
  	.drv_get_txwi		= rt2800mmio_get_txwi,
  	.drv_get_dma_done	= rt2800mmio_get_dma_done,
@@ -116,18 +117,18 @@
  static const struct rt2x00lib_ops rt2800soc_rt2x00_ops = {
 --- a/drivers/net/wireless/ralink/rt2x00/rt2800usb.c
 +++ b/drivers/net/wireless/ralink/rt2x00/rt2800usb.c
-@@ -628,6 +628,10 @@ static int rt2800usb_probe_hw(struct rt2
+@@ -627,6 +627,10 @@
+ 
  	return 0;
  }
- 
++
 +static int rt2800usb_get_chippkg(void) { return 0; }
 +static int rt2800usb_get_chipver(void) { return 0; }
 +static int rt2800usb_get_chipeco(void) { return 0; }
-+
+ 
  static const struct ieee80211_ops rt2800usb_mac80211_ops = {
  	.add_chanctx = ieee80211_emulate_add_chanctx,
- 	.remove_chanctx = ieee80211_emulate_remove_chanctx,
-@@ -676,6 +680,9 @@ static const struct rt2800_ops rt2800usb
+@@ -676,6 +680,9 @@
  	.drv_init_registers	= rt2800usb_init_registers,
  	.drv_get_txwi		= rt2800usb_get_txwi,
  	.drv_get_dma_done	= rt2800usb_get_dma_done,

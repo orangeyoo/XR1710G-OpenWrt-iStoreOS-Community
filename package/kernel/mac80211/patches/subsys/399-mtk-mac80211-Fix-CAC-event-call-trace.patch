@@ -27,11 +27,10 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  net/wireless/mlme.c | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/wireless/mlme.c b/net/wireless/mlme.c
-index e336dd00..83a30cf9 100644
+
 --- a/net/wireless/mlme.c
 +++ b/net/wireless/mlme.c
-@@ -1138,7 +1138,8 @@ void cfg80211_cac_event(struct net_device *netdev,
+@@ -1191,7 +1191,8 @@
  	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
  	unsigned long timeout;
  
@@ -41,6 +40,3 @@ index e336dd00..83a30cf9 100644
  		    !(wdev->valid_links & BIT(link_id))))
  		return;
  
--- 
-2.45.2
-

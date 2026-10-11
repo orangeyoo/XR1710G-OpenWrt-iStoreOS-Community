@@ -1,3 +1,4 @@
+
 --- /dev/null
 +++ b/include/linux/ath5k_platform.h
 @@ -0,0 +1,30 @@

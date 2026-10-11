@@ -23,7 +23,7 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
 
 --- a/drivers/clk/clk-en7523.c
 +++ b/drivers/clk/clk-en7523.c
-@@ -451,6 +451,7 @@ static const struct en_clk_desc an7583_b
+@@ -451,6 +451,7 @@
  static const u16 en7581_rst_ofs[] = {
  	REG_RST_CTRL2,
  	REG_RST_CTRL1,
@@ -31,7 +31,7 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
  };
  
  static const u16 en7523_rst_map[] = {
-@@ -556,6 +557,11 @@ static const u16 en7581_rst_map[] = {
+@@ -556,6 +557,11 @@
  	[EN7581_CPU_TIMER_RST]		= RST_NR_PER_BANK + 28,
  	[EN7581_PCIE_HB_RST]		= RST_NR_PER_BANK + 29,
  	[EN7581_XPON_MAC_RST]		= RST_NR_PER_BANK + 31,
@@ -43,7 +43,7 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
  };
  
  static const u16 an7583_rst_map[] = {
-@@ -960,9 +966,7 @@ static int en7581_pci_enable(struct clk_
+@@ -960,9 +966,7 @@
  	struct regmap *map = cg->map;
  	u32 mask;
  
@@ -54,7 +54,7 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
  	regmap_set_bits(map, REG_PCI_CONTROL, mask);
  
  	return 0;
-@@ -974,9 +978,7 @@ static void en7581_pci_disable(struct cl
+@@ -974,9 +978,7 @@
  	struct regmap *map = cg->map;
  	u32 mask;
  
@@ -65,7 +65,7 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
  	regmap_clear_bits(map, REG_PCI_CONTROL, mask);
  	usleep_range(1000, 2000);
  }
-@@ -1027,9 +1029,16 @@ static int en7523_reset_update(struct re
+@@ -1027,9 +1029,16 @@
  {
  	struct en_rst_data *rst_data = container_of(rcdev, struct en_rst_data, rcdev);
  	u32 addr = rst_data->bank_ofs[id / RST_NR_PER_BANK];
@@ -83,7 +83,7 @@ Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
  
  	return 0;
  }
-@@ -1051,10 +1060,16 @@ static int en7523_reset_status(struct re
+@@ -1051,10 +1060,16 @@
  {
  	struct en_rst_data *rst_data = container_of(rcdev, struct en_rst_data, rcdev);
  	u32 addr = rst_data->bank_ofs[id / RST_NR_PER_BANK];

@@ -1,0 +1,124 @@
+From: XR1710G Community
+Subject: wifi: mt7996: keep mesh rx header translation disabled and count RXD outcomes
+
+The firmware builds WTBL/BA state as if mesh frames arrive translated
+to Ethernet while RXD never reports HDR_TRANS for mesh, polluting
+the PER statistics rate control depends on. Refuse to enable the
+WCID flag and clear the MCU gate for mesh peers, and count RXD
+outcomes per mesh frame in mesh_hdr_trans_stats so the gate can
+only be reopened against measured evidence.
+---
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -2161,6 +2161,15 @@
+ 	struct ieee80211_link_sta *link_sta;
+ 	unsigned int link_id;
+ 
++	/* Mesh RX header translation is unproven on MT7996 firmware: the
++	 * RXD never reports HDR_TRANS for mesh frames while the WTBL/BA
++	 * state is built as if it would, polluting the PER statistics that
++	 * rate control depends on. Keep mesh frames on the software 802.11
++	 * path until the mesh_hdr_trans_stats RXD counters prove otherwise.
++	 */
++	if (enabled && vif->type == NL80211_IFTYPE_MESH_POINT)
++		return;
++
+ 	mutex_lock(&dev->mt76.mutex);
+ 
+ 	for_each_sta_active_link(vif, sta, link_sta, link_id) {
+--- a/mt7996/mcu.c
++++ b/mt7996/mcu.c
+@@ -2507,6 +2507,9 @@
+ 		hdr_trans->to_ds = true;
+ 		hdr_trans->from_ds = true;
+ 		hdr_trans->mesh = true;
++		/* mesh rx hdr translation stays disabled (unproven); only the
++		 * address-mode bits above are programmed for mesh peers. */
++		hdr_trans->dis_rx_hdr_tran = true;
+ 	}
+ 
+ 	if (test_bit(MT_WCID_FLAG_TDLS_PEER, &wcid->flags)) {
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -11,6 +11,13 @@
+ #include "mac.h"
+ #include "mcu.h"
+ 
++/* RXD hdr_trans counters for mesh peers (exposed via debugfs
++ * mesh_hdr_trans_stats). Mesh RX header translation must stay disabled
++ * unless mesh_rx_hdr_trans proves the firmware really converts. */
++atomic64_t mt7996_mesh_rx_total = ATOMIC64_INIT(0);
++atomic64_t mt7996_mesh_rx_hdr_trans = ATOMIC64_INIT(0);
++atomic64_t mt7996_mesh_rx_hdr_trans_err = ATOMIC64_INIT(0);
++
+ #define to_rssi(field, rcpi)	((FIELD_GET(field, rcpi) - 220) / 2)
+ 
+ static struct mt76_wcid *mt7996_rx_get_wcid(struct mt7996_dev *dev,
+@@ -368,6 +375,20 @@
+ 		msta = msta_link->sta;
+ 	}
+ 
++	if (msta && msta->vif) {
++		struct ieee80211_vif *rx_vif =
++			container_of((void *)msta->vif, struct ieee80211_vif,
++				     drv_priv);
++
++		if (rx_vif->type == NL80211_IFTYPE_MESH_POINT) {
++			atomic64_inc(&mt7996_mesh_rx_total);
++			if (hdr_trans)
++				atomic64_inc(&mt7996_mesh_rx_hdr_trans);
++			if (rxd2 & MT_RXD2_NORMAL_HDR_TRANS_ERROR)
++				atomic64_inc(&mt7996_mesh_rx_hdr_trans_err);
++		}
++	}
++
+ 	status->freq = mphy->chandef.chan->center_freq;
+ 	status->band = mphy->chandef.chan->band;
+ 	if (status->band == NL80211_BAND_5GHZ)
+--- a/mt7996/debugfs.c
++++ b/mt7996/debugfs.c
+@@ -967,6 +967,35 @@
+ 	return 0;
+ }
+ 
++extern atomic64_t mt7996_mesh_rx_total;
++extern atomic64_t mt7996_mesh_rx_hdr_trans;
++extern atomic64_t mt7996_mesh_rx_hdr_trans_err;
++
++static int
++mt7996_mesh_hdr_trans_stats_read(struct seq_file *s, void *data)
++{
++	seq_printf(s, "mesh_rx_total=%llu\n"
++		     "mesh_rx_hdr_trans=%llu\n"
++		     "mesh_rx_hdr_trans_err=%llu\n",
++		   (unsigned long long)atomic64_read(&mt7996_mesh_rx_total),
++		   (unsigned long long)atomic64_read(&mt7996_mesh_rx_hdr_trans),
++		   (unsigned long long)atomic64_read(&mt7996_mesh_rx_hdr_trans_err));
++	return 0;
++}
++
++static int
++mt7996_mesh_hdr_trans_stats_open(struct inode *inode, struct file *f)
++{
++	return single_open(f, mt7996_mesh_hdr_trans_stats_read,
++			   inode->i_private);
++}
++
++static const struct file_operations mt7996_mesh_hdr_trans_stats_fops = {
++	.open = mt7996_mesh_hdr_trans_stats_open,
++	.read = seq_read,
++	.release = single_release,
++};
++
+ int mt7996_init_debugfs(struct mt7996_dev *dev)
+ {
+ 	struct dentry *dir;
+@@ -978,6 +1007,8 @@
+ 	debugfs_create_file("xmit-queues", 0400, dir, dev,
+ 			    &mt7996_xmit_queues_fops);
+ 	debugfs_create_file("tx_stats", 0400, dir, dev, &mt7996_tx_stats_fops);
++	debugfs_create_file("mesh_hdr_trans_stats", 0400, dir, dev,
++			    &mt7996_mesh_hdr_trans_stats_fops);
+ 	debugfs_create_file("sys_recovery", 0600, dir, dev,
+ 			    &mt7996_sys_recovery_ops);
+ 	debugfs_create_file("fw_debug_wm", 0600, dir, dev, &fops_fw_debug_wm);

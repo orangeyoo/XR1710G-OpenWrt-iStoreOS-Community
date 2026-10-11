@@ -1,16 +1,7 @@
---- a/drivers/net/wireless/ath/ath9k/debug.c
-+++ b/drivers/net/wireless/ath/ath9k/debug.c
-@@ -1431,6 +1431,7 @@ int ath9k_init_debug(struct ath_hw *ah)
- 	ath9k_cmn_debug_base_eeprom(sc->debug.debugfs_phy, sc->sc_ah);
- 	ath9k_cmn_debug_modal_eeprom(sc->debug.debugfs_phy, sc->sc_ah);
- 	ath9k_cmn_debug_eeprom(sc->debug.debugfs_phy, sc->sc_ah);
-+	ath9k_cmn_debug_chanbw(sc->debug.debugfs_phy, sc->sc_ah);
- 
- 	debugfs_create_u32("gpio_mask", 0600,
- 			   sc->debug.debugfs_phy, &sc->sc_ah->gpio_mask);
+
 --- a/drivers/net/wireless/ath/ath.h
 +++ b/drivers/net/wireless/ath/ath.h
-@@ -151,6 +151,7 @@ struct ath_common {
+@@ -151,6 +151,7 @@
  	int debug_mask;
  	enum ath_device_state state;
  	unsigned long op_flags;
@@ -18,7 +9,7 @@
  
  	struct ath_ani ani;
  
-@@ -181,6 +182,7 @@ struct ath_common {
+@@ -181,6 +182,7 @@
  	const struct ath_ops *ops;
  	const struct ath_bus_ops *bus_ops;
  	const struct ath_ps_ops *ps_ops;
@@ -26,60 +17,9 @@
  
  	bool btcoex_enabled;
  	bool disable_ani;
---- a/drivers/net/wireless/ath/ath9k/common.c
-+++ b/drivers/net/wireless/ath/ath9k/common.c
-@@ -298,11 +298,13 @@ EXPORT_SYMBOL(ath9k_cmn_get_hw_crypto_ke
- /*
-  * Update internal channel flags.
-  */
--static void ath9k_cmn_update_ichannel(struct ath9k_channel *ichan,
-+static void ath9k_cmn_update_ichannel(struct ath_common *common,
-+				      struct ath9k_channel *ichan,
- 				      struct cfg80211_chan_def *chandef)
- {
- 	struct ieee80211_channel *chan = chandef->chan;
- 	u16 flags = 0;
-+	int width;
- 
- 	ichan->channel = chan->center_freq;
- 	ichan->chan = chan;
-@@ -310,7 +312,19 @@ static void ath9k_cmn_update_ichannel(st
- 	if (chan->band == NL80211_BAND_5GHZ)
- 		flags |= CHANNEL_5GHZ;
- 
--	switch (chandef->width) {
-+	switch (common->chan_bw) {
-+	case 5:
-+		width = NL80211_CHAN_WIDTH_5;
-+		break;
-+	case 10:
-+		width = NL80211_CHAN_WIDTH_10;
-+		break;
-+	default:
-+		width = chandef->width;
-+		break;
-+	}
-+
-+	switch (width) {
- 	case NL80211_CHAN_WIDTH_5:
- 		flags |= CHANNEL_QUARTER;
- 		break;
-@@ -343,10 +357,11 @@ struct ath9k_channel *ath9k_cmn_get_chan
- 					    struct cfg80211_chan_def *chandef)
- {
- 	struct ieee80211_channel *curchan = chandef->chan;
-+	struct ath_common *common = ath9k_hw_common(ah);
- 	struct ath9k_channel *channel;
- 
- 	channel = &ah->channels[curchan->hw_value];
--	ath9k_cmn_update_ichannel(channel, chandef);
-+	ath9k_cmn_update_ichannel(common, channel, chandef);
- 
- 	return channel;
- }
 --- a/drivers/net/wireless/ath/ath9k/common-debug.c
 +++ b/drivers/net/wireless/ath/ath9k/common-debug.c
-@@ -316,3 +316,55 @@ void ath9k_cmn_debug_eeprom(struct dentr
+@@ -316,3 +316,55 @@
  			    &fops_eeprom);
  }
  EXPORT_SYMBOL(ath9k_cmn_debug_eeprom);
@@ -135,19 +75,9 @@
 +			    &fops_chanbw);
 +}
 +EXPORT_SYMBOL(ath9k_cmn_debug_chanbw);
---- a/drivers/net/wireless/ath/ath9k/htc_drv_debug.c
-+++ b/drivers/net/wireless/ath/ath9k/htc_drv_debug.c
-@@ -513,6 +513,7 @@ int ath9k_htc_init_debug(struct ath_hw *
- 	ath9k_cmn_debug_base_eeprom(priv->debug.debugfs_phy, priv->ah);
- 	ath9k_cmn_debug_modal_eeprom(priv->debug.debugfs_phy, priv->ah);
- 	ath9k_cmn_debug_eeprom(priv->debug.debugfs_phy, priv->ah);
-+	ath9k_cmn_debug_chanbw(priv->debug.debugfs_phy, priv->ah);
- 
- 	return 0;
- }
 --- a/drivers/net/wireless/ath/ath9k/common-debug.h
 +++ b/drivers/net/wireless/ath/ath9k/common-debug.h
-@@ -71,6 +71,8 @@ void ath9k_cmn_debug_base_eeprom(struct
+@@ -71,6 +71,8 @@
  				 struct ath_hw *ah);
  void ath9k_cmn_debug_eeprom(struct dentry *debugfs_phy,
  			    struct ath_hw *ah);
@@ -156,9 +86,80 @@
  void ath9k_cmn_debug_stat_rx(struct ath_rx_stats *rxstats,
  			     struct ath_rx_status *rs);
  void ath9k_cmn_debug_recv(struct dentry *debugfs_phy,
+--- a/drivers/net/wireless/ath/ath9k/common.c
++++ b/drivers/net/wireless/ath/ath9k/common.c
+@@ -298,11 +298,13 @@
+ /*
+  * Update internal channel flags.
+  */
+-static void ath9k_cmn_update_ichannel(struct ath9k_channel *ichan,
++static void ath9k_cmn_update_ichannel(struct ath_common *common,
++				      struct ath9k_channel *ichan,
+ 				      struct cfg80211_chan_def *chandef)
+ {
+ 	struct ieee80211_channel *chan = chandef->chan;
+ 	u16 flags = 0;
++	int width;
+ 
+ 	ichan->channel = chan->center_freq;
+ 	ichan->chan = chan;
+@@ -310,7 +312,19 @@
+ 	if (chan->band == NL80211_BAND_5GHZ)
+ 		flags |= CHANNEL_5GHZ;
+ 
+-	switch (chandef->width) {
++	switch (common->chan_bw) {
++	case 5:
++		width = NL80211_CHAN_WIDTH_5;
++		break;
++	case 10:
++		width = NL80211_CHAN_WIDTH_10;
++		break;
++	default:
++		width = chandef->width;
++		break;
++	}
++
++	switch (width) {
+ 	case NL80211_CHAN_WIDTH_5:
+ 		flags |= CHANNEL_QUARTER;
+ 		break;
+@@ -343,10 +357,11 @@
+ 					    struct cfg80211_chan_def *chandef)
+ {
+ 	struct ieee80211_channel *curchan = chandef->chan;
++	struct ath_common *common = ath9k_hw_common(ah);
+ 	struct ath9k_channel *channel;
+ 
+ 	channel = &ah->channels[curchan->hw_value];
+-	ath9k_cmn_update_ichannel(channel, chandef);
++	ath9k_cmn_update_ichannel(common, channel, chandef);
+ 
+ 	return channel;
+ }
+--- a/drivers/net/wireless/ath/ath9k/debug.c
++++ b/drivers/net/wireless/ath/ath9k/debug.c
+@@ -1431,6 +1431,7 @@
+ 	ath9k_cmn_debug_base_eeprom(sc->debug.debugfs_phy, sc->sc_ah);
+ 	ath9k_cmn_debug_modal_eeprom(sc->debug.debugfs_phy, sc->sc_ah);
+ 	ath9k_cmn_debug_eeprom(sc->debug.debugfs_phy, sc->sc_ah);
++	ath9k_cmn_debug_chanbw(sc->debug.debugfs_phy, sc->sc_ah);
+ 
+ 	debugfs_create_u32("gpio_mask", 0600,
+ 			   sc->debug.debugfs_phy, &sc->sc_ah->gpio_mask);
+--- a/drivers/net/wireless/ath/ath9k/htc_drv_debug.c
++++ b/drivers/net/wireless/ath/ath9k/htc_drv_debug.c
+@@ -513,6 +513,7 @@
+ 	ath9k_cmn_debug_base_eeprom(priv->debug.debugfs_phy, priv->ah);
+ 	ath9k_cmn_debug_modal_eeprom(priv->debug.debugfs_phy, priv->ah);
+ 	ath9k_cmn_debug_eeprom(priv->debug.debugfs_phy, priv->ah);
++	ath9k_cmn_debug_chanbw(priv->debug.debugfs_phy, priv->ah);
+ 
+ 	return 0;
+ }
 --- a/drivers/net/wireless/ath/ath9k/htc_drv_init.c
 +++ b/drivers/net/wireless/ath/ath9k/htc_drv_init.c
-@@ -631,6 +631,7 @@ static int ath9k_init_priv(struct ath9k_
+@@ -631,6 +631,7 @@
  	priv->ah = ah;
  
  	common = ath9k_hw_common(ah);
@@ -166,7 +167,7 @@
  	common->ops = &ah->reg_ops;
  	common->ps_ops = &ath9k_htc_ps_ops;
  	common->bus_ops = &ath9k_usb_bus_ops;
-@@ -746,9 +747,9 @@ static void ath9k_set_hw_capab(struct at
+@@ -746,9 +747,8 @@
  
  	hw->wiphy->flags |= WIPHY_FLAG_IBSS_RSN |
  			    WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL |
@@ -174,14 +175,13 @@
 -
 -	hw->wiphy->flags |= WIPHY_FLAG_SUPPORTS_TDLS;
 +			    WIPHY_FLAG_HAS_CHANNEL_SWITCH |
-+			    WIPHY_FLAG_SUPPORTS_5_10_MHZ |
 +			    WIPHY_FLAG_SUPPORTS_TDLS;
  
  	hw->queues = 4;
  	hw->max_listen_interval = 1;
 --- a/drivers/net/wireless/ath/ath9k/init.c
 +++ b/drivers/net/wireless/ath/ath9k/init.c
-@@ -691,6 +691,7 @@ static int ath9k_init_softc(u16 devid, s
+@@ -690,6 +690,7 @@
  	if (!ath9k_is_chanctx_enabled())
  		sc->cur_chan->hw_queue_base = 0;
  

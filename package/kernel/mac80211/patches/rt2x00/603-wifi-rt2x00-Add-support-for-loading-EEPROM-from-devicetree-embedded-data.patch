@@ -33,6 +33,7 @@ Signed-off-by: Coia Prant <coiaprant@gmail.com>
  .../net/wireless/ralink/rt2x00/rt2x00eeprom.c | 25 +++++++++++++++++++
  1 file changed, 25 insertions(+)
 
+
 --- a/drivers/net/wireless/ralink/rt2x00/rt2x00eeprom.c
 +++ b/drivers/net/wireless/ralink/rt2x00/rt2x00eeprom.c
 @@ -19,6 +19,27 @@
@@ -63,7 +64,7 @@ Signed-off-by: Coia Prant <coiaprant@gmail.com>
  #if IS_ENABLED(CONFIG_MTD)
  static int rt2800lib_read_eeprom_mtd(struct rt2x00_dev *rt2x00dev)
  {
-@@ -164,6 +185,10 @@ int rt2x00lib_read_eeprom(struct rt2x00_
+@@ -164,6 +185,10 @@
  {
  	int ret;
  

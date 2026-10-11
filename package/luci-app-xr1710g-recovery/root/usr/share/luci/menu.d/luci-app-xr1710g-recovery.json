@@ -1,0 +1,13 @@
+{
+	"admin/system/xr1710g-recovery": {
+		"title": "Recovery and Reset",
+		"order": 95,
+		"action": {
+			"type": "view",
+			"path": "system/xr1710g-recovery"
+		},
+		"depends": {
+			"acl": [ "luci-app-xr1710g-recovery" ]
+		}
+	}
+}

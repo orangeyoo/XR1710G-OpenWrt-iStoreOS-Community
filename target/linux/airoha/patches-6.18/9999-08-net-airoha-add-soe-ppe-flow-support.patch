@@ -22,11 +22,10 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  #include <linux/of_platform.h>
  #include <linux/platform_device.h>
  #include <linux/rhashtable.h>
--#include <net/ipv6.h>
 +#include <linux/sysfs.h>
 +#include <linux/tcp.h>
 +#include <linux/udp.h>
-+#include <net/ipv6.h>
+ #include <net/ipv6.h>
 +#include <net/netfilter/nf_flow_table.h>
  #include <net/pkt_cls.h>
  #include <net/route.h>
@@ -37,7 +36,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  
  /* Serialize airoha_gdm_dev flags, QDMA pointer and PPE CPU port
   * configuration.
-@@ -23,6 +30,47 @@
+@@ -22,6 +29,47 @@
  DEFINE_MUTEX(flow_offload_mutex);
  static DEFINE_SPINLOCK(ppe_lock);
  
@@ -85,7 +84,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  static const struct rhashtable_params airoha_flow_table_params = {
  	.head_offset = offsetof(struct airoha_flow_table_entry, node),
  	.key_offset = offsetof(struct airoha_flow_table_entry, cookie),
-@@ -83,6 +131,17 @@
+@@ -82,6 +130,17 @@
  	return airoha_fe_rr(eth, REG_PPE_GLO_CFG(index)) & PPE_GLO_CFG_EN_MASK;
  }
  
@@ -103,7 +102,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  static u32 airoha_ppe_get_timestamp(struct airoha_ppe *ppe)
  {
  	return airoha_fe_get(ppe->eth, REG_FE_FOE_TS,
-@@ -194,15 +253,14 @@
+@@ -186,15 +245,14 @@
  			      FIELD_PREP(PPE_DRAM_TB_NUM_ENTRY_MASK,
  					 dram_num_entries));
  
@@ -123,7 +122,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  	}
  
  	for (i = 0; i < ARRAY_SIZE(eth->ports); i++) {
-@@ -542,6 +600,164 @@
+@@ -534,6 +592,164 @@
  	return 0;
  }
  
@@ -288,7 +287,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  static u32 airoha_ppe_foe_get_entry_hash(struct airoha_ppe *ppe,
  					 struct airoha_foe_entry *hwe)
  {
-@@ -668,6 +884,9 @@
+@@ -660,6 +876,9 @@
  		meter = &hwe->ipv4.l2.meter;
  	}
  
@@ -298,7 +297,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  	pse_port = FIELD_GET(AIROHA_FOE_IB2_PSE_PORT, *ib2);
  	if (pse_port == FE_PSE_PORT_CDM4)
  		return;
-@@ -794,6 +1013,98 @@
+@@ -786,6 +1005,98 @@
  	return err;
  }
  
@@ -397,8 +396,8 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  static void airoha_ppe_foe_remove_flow(struct airoha_ppe *ppe,
  				       struct airoha_flow_table_entry *e)
  {
-@@ -981,6 +1292,255 @@
- 	return false;
+@@ -987,6 +1298,255 @@
+ 	return err;
  }
  
 +static void airoha_ppe_soe_meta_store(struct airoha_ppe_soe_meta *meta,
@@ -653,7 +652,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  static void airoha_ppe_foe_insert_entry(struct airoha_ppe *ppe,
  					struct sk_buff *skb,
  					u32 hash, bool rx_wlan)
-@@ -1064,7 +1624,9 @@
+@@ -1070,7 +1630,9 @@
  					    struct airoha_flow_table_entry *e)
  {
  	int type = FIELD_GET(AIROHA_FOE_IB1_BIND_PACKET_TYPE, e->data.ib1);
@@ -663,7 +662,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  
  	if (type == PPE_PKT_TYPE_BRIDGE)
  		return airoha_ppe_foe_l2_flow_commit_entry(ppe, e);
-@@ -1073,7 +1635,25 @@
+@@ -1079,7 +1641,25 @@
  	e->type = FLOW_TYPE_L4;
  	e->hash = 0xffff;
  
@@ -689,7 +688,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  	hlist_add_head(&e->list, &ppe->foe_flow[hash]);
  	spin_unlock_bh(&ppe_lock);
  
-@@ -1177,6 +1757,7 @@
+@@ -1183,6 +1763,7 @@
  static int airoha_ppe_flow_offload_replace(struct airoha_eth *eth,
  					   struct flow_cls_offload *f)
  {
@@ -697,7 +696,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  	struct flow_rule *rule = flow_cls_offload_flow_rule(f);
  	struct airoha_flow_table_entry *e;
  	struct airoha_flow_data data = {};
-@@ -1310,7 +1891,9 @@
+@@ -1316,7 +1897,9 @@
  		flow_rule_match_ipv4_addrs(rule, &addrs);
  		data.v4.src_addr = addrs.key->src;
  		data.v4.dst_addr = addrs.key->dst;
@@ -708,7 +707,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  	}
  
  	if (addr_type == FLOW_DISSECTOR_KEY_IPV6_ADDRS) {
-@@ -1355,6 +1938,10 @@
+@@ -1361,6 +1944,10 @@
  			return err;
  	}
  
@@ -719,7 +718,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  	e = kzalloc(sizeof(*e), GFP_KERNEL);
  	if (!e)
  		return -ENOMEM;
-@@ -1480,17 +2067,55 @@
+@@ -1486,17 +2073,55 @@
  static int airoha_ppe_flush_sram_entries(struct airoha_ppe *ppe,
  					 struct airoha_npu *npu)
  {
@@ -778,7 +777,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  static struct airoha_npu *airoha_ppe_npu_get(struct airoha_eth *eth)
  {
  	struct airoha_npu *npu = airoha_npu_get(eth->dev);
-@@ -1734,6 +2359,12 @@
+@@ -1740,6 +2365,12 @@
  	if (!ppe->foe_check_time)
  		return -ENOMEM;
  
@@ -791,7 +790,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  	err = rhashtable_init(&eth->flow_table, &airoha_flow_table_params);
  	if (err)
  		return err;
-@@ -1746,6 +2377,8 @@
+@@ -1752,6 +2383,8 @@
  	if (err)
  		goto error_l2_flow_table_destroy;
  
@@ -800,7 +799,7 @@ diff --git a/drivers/net/ethernet/airoha/airoha_ppe.c b/drivers/net/ethernet/air
  	return 0;
  
  error_l2_flow_table_destroy:
-@@ -1760,6 +2393,8 @@
+@@ -1766,6 +2399,8 @@
  {
  	struct airoha_npu *npu;
  

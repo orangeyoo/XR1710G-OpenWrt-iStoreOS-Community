@@ -8,9 +8,10 @@ Signed-off-by: Gabor Juhos <juhosg@openwrt.org>
  drivers/net/wireless/ralink/rt2x00/Kconfig |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
+
 --- a/drivers/net/wireless/ralink/rt2x00/Kconfig
 +++ b/drivers/net/wireless/ralink/rt2x00/Kconfig
-@@ -209,7 +209,7 @@ endif
+@@ -209,7 +209,7 @@
  config RT2800SOC
  	tristate "Ralink WiSoC support"
  	depends on m

@@ -28,11 +28,10 @@ Signed-off-by: Michael-CY Lee <michael-cy.lee@mediatek.com>
  net/mac80211/tx.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/mac80211/tx.c b/net/mac80211/tx.c
-index 65a73221..ac1bf1ca 100644
+
 --- a/net/mac80211/tx.c
 +++ b/net/mac80211/tx.c
-@@ -2994,7 +2994,7 @@ static struct sk_buff *ieee80211_build_hdr(struct ieee80211_sub_if_data *sdata,
+@@ -3055,7 +3055,7 @@
  						IEEE80211_TX_CTRL_MLO_LINK);
  
  		if (pre_conf_link_id != link_id &&
@@ -41,6 +40,3 @@ index 65a73221..ac1bf1ca 100644
  #ifdef CPTCFG_MAC80211_VERBOSE_DEBUG
  			net_info_ratelimited("%s: dropped frame to %pM with bad link ID request (%d vs. %d)\n",
  					     sdata->name, hdr.addr1,
--- 
-2.45.2
-

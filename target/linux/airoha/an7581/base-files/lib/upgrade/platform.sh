@@ -15,6 +15,27 @@ platform_check_image() {
 	[ "$#" -gt 1 ] && return 1
 
 	case "$board" in
+	econet,xr1710g-ubi)
+		# Clean UBI installation does not persist OpenWrt's generic
+		# compat_version marker. Decide upgrade safety from the real flash
+		# layout instead. Old BMT/BBT layouts are never written.
+		xr_mtd_size_is() {
+			awk -v label="$1" -v expected="$2" '
+				$4 == "\"" label "\"" && tolower($2) == expected { found = 1 }
+				END { exit(found ? 0 : 1) }
+			' /proc/mtd 2>/dev/null
+		}
+		if ! xr_mtd_size_is vendor 00600000 || \
+		   ! xr_mtd_size_is chainloader 00100000 || \
+		   ! xr_mtd_size_is ubi 1b700000 || \
+		   ! xr_mtd_size_is reserved_bmt 04200000; then
+			echo "XR1710G UBI 2.0 boundaries are not active; refusing normal sysupgrade." >&2
+			echo "Install the corrected chainloader/U-Boot and recreate UBI through recovery first." >&2
+			return 1
+		fi
+		fit_check_image "$1"
+		return $?
+		;;
 	nokia,xg-040g-md)
 		nand_do_platform_check "$board" "$1"
 		return $?

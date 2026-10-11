@@ -12,6 +12,7 @@ Signed-off-by: Phil Elwell <phil@raspberrypi.com>
  .../broadcom/brcm80211/brcmfmac/firmware.c    | 21 +++++++++-
  2 files changed, 47 insertions(+), 13 deletions(-)
 
+
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 @@ -9,6 +9,7 @@
@@ -22,22 +23,36 @@ Signed-off-by: Phil Elwell <phil@raspberrypi.com>
  #include <net/cfg80211.h>
  #include <net/netlink.h>
  #include <uapi/linux/if_arp.h>
-@@ -8270,31 +8271,45 @@ static void brcmf_cfg80211_reg_notifier(
+@@ -8272,23 +8273,9 @@
  	struct brcmf_if *ifp = brcmf_get_ifp(cfg->pub, 0);
  	struct brcmf_pub *drvr = cfg->pub;
  	struct brcmf_fil_country_le ccreq;
 +	char *alpha2;
  	s32 err;
  	int i;
- 
+-
 -	/* The country code gets set to "00" by default at boot, ignore */
 -	if (req->alpha2[0] == '0' && req->alpha2[1] == '0')
-+	err = brcmf_fil_iovar_data_get(ifp, "country", &ccreq, sizeof(ccreq));
-+	if (err) {
-+		bphy_err(drvr, "Country code iovar returned err = %d\n", err);
+-		return;
+-
+-	/* ignore non-ISO3166 country codes */
+-	for (i = 0; i < 2; i++)
+-		if (req->alpha2[i] < 'A' || req->alpha2[i] > 'Z') {
+-			bphy_err(drvr, "not an ISO3166 code (0x%02x 0x%02x)\n",
+-				 req->alpha2[0], req->alpha2[1]);
+-			return;
+-		}
+-
+-	brcmf_dbg(TRACE, "Enter: initiator=%d, alpha=%c%c\n", req->initiator,
+-		  req->alpha2[0], req->alpha2[1]);
+ 
+ 	err = brcmf_fil_iovar_data_get(ifp, "country", &ccreq, sizeof(ccreq));
+ 	if (err) {
+@@ -8296,7 +8283,35 @@
  		return;
-+	}
-+
+ 	}
+ 
+-	err = brcmf_translate_country_code(ifp->drvr, req->alpha2, &ccreq);
 +	/* The country code gets set to "00" by default at boot - substitute
 +	 * any saved ccode from the nvram file unless there is a valid code
 +	 * already set.
@@ -54,28 +69,18 @@ Signed-off-by: Phil Elwell <phil@raspberrypi.com>
 +		pr_debug("brcmfmac: substituting saved ccode %c%c\n",
 +			 alpha2[0], alpha2[1]);
 +	}
- 
- 	/* ignore non-ISO3166 country codes */
- 	for (i = 0; i < 2; i++)
--		if (req->alpha2[i] < 'A' || req->alpha2[i] > 'Z') {
++
++	/* ignore non-ISO3166 country codes */
++	for (i = 0; i < 2; i++)
 +		if (alpha2[i] < 'A' || alpha2[i] > 'Z') {
- 			bphy_err(drvr, "not an ISO3166 code (0x%02x 0x%02x)\n",
--				 req->alpha2[0], req->alpha2[1]);
++			bphy_err(drvr, "not an ISO3166 code (0x%02x 0x%02x)\n",
 +				 alpha2[0], alpha2[1]);
- 			return;
- 		}
- 
- 	brcmf_dbg(TRACE, "Enter: initiator=%d, alpha=%c%c\n", req->initiator,
--		  req->alpha2[0], req->alpha2[1]);
--
--	err = brcmf_fil_iovar_data_get(ifp, "country", &ccreq, sizeof(ccreq));
--	if (err) {
--		bphy_err(drvr, "Country code iovar returned err = %d\n", err);
--		return;
--	}
++			return;
++		}
++
++	brcmf_dbg(TRACE, "Enter: initiator=%d, alpha=%c%c\n", req->initiator,
 +		  alpha2[0], alpha2[1]);
- 
--	err = brcmf_translate_country_code(ifp->drvr, req->alpha2, &ccreq);
++
 +	err = brcmf_translate_country_code(ifp->drvr, alpha2, &ccreq);
  	if (err)
  		return;
@@ -90,16 +95,16 @@ Signed-off-by: Phil Elwell <phil@raspberrypi.com>
  
  #include "debug.h"
  #include "firmware.h"
-@@ -32,6 +33,8 @@ enum nvram_parser_state {
+@@ -31,6 +32,8 @@
+ 	COMMENT,
  	END
  };
- 
-+char saved_ccode[2] = {};
 +
++char saved_ccode[2] = {};
+ 
  /**
   * struct nvram_parser - internal info for parser.
-  *
-@@ -566,11 +569,27 @@ static int brcmf_fw_request_nvram_done(c
+@@ -566,11 +569,27 @@
  		}
  	}
  

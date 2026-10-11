@@ -16,7 +16,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
 
 --- a/drivers/clk/clk-en7523.c
 +++ b/drivers/clk/clk-en7523.c
-@@ -69,6 +69,12 @@ struct en_clk_gate {
+@@ -69,6 +69,12 @@
  	struct clk_hw hw;
  };
  
@@ -29,7 +29,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  struct en_rst_data {
  	const u16 *bank_ofs;
  	const u16 *idx_map;
-@@ -471,44 +477,73 @@ static struct clk_hw *en7523_register_pc
+@@ -471,44 +477,73 @@
  	return &cg->hw;
  }
  
@@ -123,7 +123,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	}
  
  	hw = en7523_register_pcie_clk(dev, clk_map);
-@@ -672,7 +707,7 @@ static int en7581_clk_hw_init(struct pla
+@@ -672,7 +707,7 @@
  {
  	struct regmap *map, *clk_map;
  	void __iomem *base;
@@ -132,7 +132,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	map = syscon_regmap_lookup_by_compatible("airoha,en7581-chip-scu");
  	if (IS_ERR(map))
-@@ -686,9 +721,9 @@ static int en7581_clk_hw_init(struct pla
+@@ -686,9 +721,9 @@
  	if (IS_ERR(clk_map))
  		return PTR_ERR(clk_map);
  

@@ -22,24 +22,26 @@ This patch:
 This targets monitor capture length correctness only and keeps the fix scoped
 to the monitor RX delivery path.
 
+
 --- a/drivers/net/wireless/ath/ath11k/dp_rx.c
 +++ b/drivers/net/wireless/ath/ath11k/dp_rx.c
-@@ -4929,8 +4929,13 @@ ath11k_dp_rx_mon_merg_msdus(struct ath11
+@@ -4941,8 +4941,13 @@
  		}
  
  		prev_buf->next = NULL;
+-
+-		skb_trim(prev_buf, prev_buf->len - HAL_RX_FCS_LEN);
 +		/* REMOVED: skb_trim(prev_buf, prev_buf->len - HAL_RX_FCS_LEN);
 +		 * Older code trimmed HAL_RX_FCS_LEN here from prev_buf.
 +		 * That only affects the last MSDU in the chain.
 +		 * Length correction is now done in
 +		 * ath11k_dp_rx_mon_deliver() for every delivered monitor skb.
 +		 */
- 
--		skb_trim(prev_buf, prev_buf->len - HAL_RX_FCS_LEN);
++
  	} else if (decap_format == DP_RX_DECAP_TYPE_NATIVE_WIFI) {
  		u8 qos_pkt = 0;
  
-@@ -4956,10 +4961,13 @@ ath11k_dp_rx_mon_merg_msdus(struct ath11
+@@ -4968,10 +4973,13 @@
  			prev_buf = msdu;
  			msdu = msdu->next;
  		}
@@ -57,7 +59,7 @@ to the monitor RX delivery path.
  		ath11k_dbg(ab, ATH11K_DBG_DATA,
  			   "mpdu_buf %p mpdu_buf->len %u",
  			   prev_buf, prev_buf->len);
-@@ -5084,12 +5092,27 @@ static int ath11k_dp_rx_mon_deliver(stru
+@@ -5096,12 +5104,27 @@
  
  	header = mon_skb;
  

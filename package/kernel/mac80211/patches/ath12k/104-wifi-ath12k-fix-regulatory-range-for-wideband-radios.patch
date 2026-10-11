@@ -16,9 +16,10 @@ Signed-off-by: Robert Marko <robert.marko@sartura.hr>
  drivers/net/wireless/ath/ath12k/reg.c | 6 ++++--
  1 file changed, 4 insertions(+), 2 deletions(-)
 
+
 --- a/drivers/net/wireless/ath/ath12k/reg.c
 +++ b/drivers/net/wireless/ath/ath12k/reg.c
-@@ -310,7 +310,8 @@ int ath12k_regd_update(struct ath12k *ar
+@@ -310,7 +310,8 @@
  		ath12k_mac_update_freq_range(ar, freq_low, freq_high);
  	}
  
@@ -28,7 +29,7 @@ Signed-off-by: Robert Marko <robert.marko@sartura.hr>
  		if (ab->hw_params->single_pdev_only) {
  			phy_id = ar->pdev->cap.band[WMI_HOST_WLAN_5GHZ_CAP].phy_id;
  			reg_cap = &ab->hal_reg_cap[phy_id];
-@@ -322,7 +323,8 @@ int ath12k_regd_update(struct ath12k *ar
+@@ -322,7 +323,8 @@
  		ath12k_mac_update_freq_range(ar, freq_low, freq_high);
  	}
  

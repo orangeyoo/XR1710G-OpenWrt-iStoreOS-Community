@@ -23,7 +23,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	struct regmap *chip_scu;
  	struct resource scu_adc_res;
  
-@@ -265,8 +265,8 @@ static int airoha_thermal_set_trips(stru
+@@ -265,8 +265,8 @@
  			       RAW_TO_TEMP(priv, FIELD_MAX(EN7581_DOUT_TADC_MASK)));
  
  		/* We offset the high temp of 1°C to trigger correct event */
@@ -34,7 +34,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  		enable_monitor = true;
  	}
-@@ -277,15 +277,15 @@ static int airoha_thermal_set_trips(stru
+@@ -277,15 +277,15 @@
  			      RAW_TO_TEMP(priv, FIELD_MAX(EN7581_DOUT_TADC_MASK)));
  
  		/* We offset the low temp of 1°C to trigger correct event */
@@ -53,7 +53,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	return 0;
  }
-@@ -302,7 +302,7 @@ static irqreturn_t airoha_thermal_irq(in
+@@ -302,7 +302,7 @@
  	bool update = false;
  	u32 status;
  
@@ -62,7 +62,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	switch (status & (EN7581_HOFSINTSTS0 | EN7581_LOFSINTSTS0)) {
  	case EN7581_HOFSINTSTS0:
  		event = THERMAL_TRIP_VIOLATED;
-@@ -318,7 +318,7 @@ static irqreturn_t airoha_thermal_irq(in
+@@ -318,7 +318,7 @@
  	}
  
  	/* Reset Interrupt */
@@ -71,7 +71,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	if (update)
  		thermal_zone_device_update(priv->tz, event);
-@@ -336,11 +336,11 @@ static void airoha_thermal_setup_adc_val
+@@ -336,11 +336,11 @@
  	/* sleep 10 ms for ADC to enable */
  	usleep_range(10 * USEC_PER_MSEC, 11 * USEC_PER_MSEC);
  
@@ -85,7 +85,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  		if (cpu_sensor) {
  			priv->default_slope = EN7581_SLOPE_X100_DIO_DEFAULT;
  			priv->init_temp = EN7581_INIT_TEMP_FTK_X10;
-@@ -359,8 +359,8 @@ static void airoha_thermal_setup_adc_val
+@@ -359,8 +359,8 @@
  static void airoha_thermal_setup_monitor(struct airoha_thermal_priv *priv)
  {
  	/* Set measure mode */
@@ -96,7 +96,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	/*
  	 * Configure ADC valid reading addr
-@@ -375,15 +375,15 @@ static void airoha_thermal_setup_monitor
+@@ -375,15 +375,15 @@
  	 * We set valid instead of volt as we don't enable valid/volt
  	 * split reading and AHB read valid addr in such case.
  	 */
@@ -116,7 +116,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	/*
  	 * AHB supports max 12 bytes for ADC voltage. Shift the read
-@@ -391,40 +391,52 @@ static void airoha_thermal_setup_monitor
+@@ -391,40 +391,52 @@
  	 * in the order of half a °C and is acceptable in the context
  	 * of triggering interrupt in critical condition.
  	 */
@@ -136,7 +136,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  	 * sen interval is 379 * 52.715us = 19.97ms
  	 */
 -	writel(FIELD_PREP(EN7581_FILT_INTERVAL, 1) |
--	       FIELD_PREP(EN7581_FILT_INTERVAL, 379),
+-	       FIELD_PREP(EN7581_SEN_INTERVAL, 379),
 -	       priv->base + EN7581_TEMPMONCTL2);
 +	regmap_write(priv->map, EN7581_TEMPMONCTL2,
 +		     FIELD_PREP(EN7581_FILT_INTERVAL, 1) |
@@ -181,7 +181,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	chip_scu_np = of_parse_phandle(dev->of_node, "airoha,chip-scu", 0);
  	if (!chip_scu_np)
-@@ -462,8 +474,8 @@ static int airoha_thermal_probe(struct p
+@@ -462,8 +474,8 @@
  	platform_set_drvdata(pdev, priv);
  
  	/* Enable LOW and HIGH interrupt */

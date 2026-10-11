@@ -17,7 +17,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
 
 --- a/drivers/clk/clk-en7523.c
 +++ b/drivers/clk/clk-en7523.c
-@@ -846,11 +846,16 @@ static int en7581_clk_hw_init(struct pla
+@@ -846,11 +846,16 @@
  			      const struct en_clk_soc_data *soc_data,
  			      struct clk_hw_onecell_data *clk_data)
  {

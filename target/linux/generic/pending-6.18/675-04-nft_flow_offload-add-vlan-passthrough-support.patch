@@ -52,7 +52,7 @@ diff --git a/net/netfilter/nf_flow_table_path.c b/net/netfilter/nf_flow_table_pa
  static void nft_dev_path_info(const struct net_device_path_stack *stack,
  			      struct nft_forward_info *info,
  			      unsigned char *ha, struct nf_flowtable *flowtable)
-@@ -286,8 +310,10 @@
+@@ -286,11 +310,13 @@
  		nft_br_vlan_dev_fill_forward_path(pkt, &ctx);
  	}
  
@@ -61,6 +61,9 @@ diff --git a/net/netfilter/nf_flow_table_path.c b/net/netfilter/nf_flow_table_pa
 +		nft_fill_vlan_passthrough_info(pkt, &info);
  		nft_dev_path_info(&stack, &info, ha, &ft->data);
 +	}
+ 
+ 	if (info.outdev)
+ 		route->tuple[dir].out.ifindex = info.outdev->ifindex;
  
  	if (!info.indev || !nft_flowtable_find_dev(info.indev, ft))
  		return -ENOENT;

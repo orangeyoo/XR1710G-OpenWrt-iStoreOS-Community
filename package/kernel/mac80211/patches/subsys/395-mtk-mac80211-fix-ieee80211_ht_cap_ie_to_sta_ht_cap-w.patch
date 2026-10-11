@@ -14,20 +14,16 @@ Signed-off-by: StanleyYP Wang <StanleyYP.Wang@mediatek.com>
  net/mac80211/mlme.c | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/mac80211/mlme.c b/net/mac80211/mlme.c
-index 29ece163..5c169411 100644
+
 --- a/net/mac80211/mlme.c
 +++ b/net/mac80211/mlme.c
-@@ -5526,7 +5526,8 @@ static bool ieee80211_assoc_config_link(struct ieee80211_link_data *link,
+@@ -6058,7 +6058,8 @@
  	sband = local->hw.wiphy->bands[link->conf->chanreq.oper.chan->band];
  
  	/* Set up internal HT/VHT capabilities */
 -	if (elems->ht_cap_elem && link->u.mgd.conn.mode >= IEEE80211_CONN_MODE_HT)
 +	if (elems->ht_cap_elem && link->u.mgd.conn.mode >= IEEE80211_CONN_MODE_HT &&
 +	    !is_6ghz)
- 		ieee80211_ht_cap_ie_to_sta_ht_cap(sdata, sband,
+ 		ieee80211_ht_cap_ie_to_sta_ht_cap(sdata, &sband->ht_cap,
  						  elems->ht_cap_elem,
  						  link_sta);
--- 
-2.45.2
-

@@ -1,26 +1,4 @@
-From 3e8e3301869c449365c284be9ab1edf5c7bce945 Mon Sep 17 00:00:00 2001
-From: Yanghan Ye <yyh94306@gmail.com>
-Date: Sun, 12 Apr 2026 18:55:52 +0800
-Subject: [PATCH] pmdomain: airoha: fall back to PLL registers when BL31
- GET_FREQ fails or ATF SMC is missing
-
-Some EN7581 boot chains either do not expose the Airoha ATF AVS
-service at all, or return an invalid value from GET_FREQ during
-cpufreq-dt setup. In both cases the CPU PM domain driver cannot provide
-a sane clock implementation and cpufreq probing aborts.
-
-Teach the driver to fall back to direct CPU PLL decoding and
-programming on EN7581 whenever the SMC path is unavailable or unusable,
-while keeping the SMC path for platforms where firmware support is
-present.
-
-Signed-off-by: Yanghan Ye <yyh94306@gmail.com>
----
- .../pmdomain/mediatek/airoha-cpu-pmdomain.c   | 189 +++++++++++++++++-
- 1 file changed, 180 insertions(+), 9 deletions(-)
-
-diff --git a/drivers/pmdomain/mediatek/airoha-cpu-pmdomain.c b/drivers/pmdomain/mediatek/airoha-cpu-pmdomain.c
-index 3b1d202..d64b7fa 100644
+XR1710G restore: regen of 0401-pmdomain-airoha-fallback-to-PLL-registers-when-BL31-GET_FREQ-fails.patch (removed as 'absorbed' by B3; kallsyms proved divergence). Zero-fuzz regen vs actual tree delta.
 --- a/drivers/pmdomain/mediatek/airoha-cpu-pmdomain.c
 +++ b/drivers/pmdomain/mediatek/airoha-cpu-pmdomain.c
 @@ -3,7 +3,10 @@
@@ -67,7 +45,7 @@ index 3b1d202..d64b7fa 100644
  };
  
  static int airoha_cpu_pmdomain_clk_determine_rate(struct clk_hw *hw,
-@@ -27,16 +53,40 @@ static int airoha_cpu_pmdomain_clk_determine_rate(struct clk_hw *hw,
+@@ -27,16 +53,40 @@
  	return 0;
  }
  
@@ -112,7 +90,7 @@ index 3b1d202..d64b7fa 100644
  }
  
  /* Airoha CPU clk SMCC is always enabled */
-@@ -51,8 +101,7 @@ static const struct clk_ops airoha_cpu_pmdomain_clk_ops = {
+@@ -51,8 +101,7 @@
  	.determine_rate = airoha_cpu_pmdomain_clk_determine_rate,
  };
  
@@ -122,7 +100,7 @@ index 3b1d202..d64b7fa 100644
  {
  	struct arm_smccc_res res;
  
-@@ -63,6 +112,106 @@ static int airoha_cpu_pmdomain_set_performance_state(struct generic_pm_domain *d
+@@ -63,6 +112,106 @@
  	return res.a0 & BIT(0) ? -EINVAL : 0;
  }
  
@@ -229,7 +207,7 @@ index 3b1d202..d64b7fa 100644
  static int airoha_cpu_pmdomain_probe(struct platform_device *pdev)
  {
  	struct airoha_cpu_pmdomain_priv *priv;
-@@ -70,18 +219,41 @@ static int airoha_cpu_pmdomain_probe(struct platform_device *pdev)
+@@ -70,18 +219,41 @@
  	const struct clk_init_data init = {
  		.name = "cpu",
  		.ops = &airoha_cpu_pmdomain_clk_ops,
@@ -273,7 +251,7 @@ index 3b1d202..d64b7fa 100644
  	ret = devm_clk_hw_register(dev, &priv->hw);
  	if (ret)
  		return ret;
-@@ -91,7 +263,6 @@ static int airoha_cpu_pmdomain_probe(struct platform_device *pdev)
+@@ -91,7 +263,6 @@
  	if (ret)
  		return ret;
  
@@ -281,5 +259,3 @@ index 3b1d202..d64b7fa 100644
  	pd = &priv->pd;
  	pd->name = "cpu_pd";
  	pd->flags = GENPD_FLAG_ALWAYS_ON;
--- 
-2.43.0

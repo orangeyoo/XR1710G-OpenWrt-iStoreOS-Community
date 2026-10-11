@@ -2,7 +2,7 @@
 import { readfile } from "fs";
 import * as uci from 'uci';
 
-const bands_order = [ "6G", "5G", "2G" ];
+const bands_order = [ "60G", "6G", "5G", "2G" ];
 const htmode_order = [ "EHT", "HE", "VHT", "HT" ];
 
 let board = json(readfile("/etc/board.json"));
@@ -115,6 +115,10 @@ set ${si}.key='${defaults?.key || ""}'
 set ${si}.disabled='${defaults ? 0 : 1}'
 
 `);
+		/* Keep the generated interface bound to this radio only. */
+		if (board.wlan.defaults?.mlo && band.eht)
+			print(`set ${si}.mlo='1'\n`);
+
 		config[name] = {};
 		commit = true;
 	}

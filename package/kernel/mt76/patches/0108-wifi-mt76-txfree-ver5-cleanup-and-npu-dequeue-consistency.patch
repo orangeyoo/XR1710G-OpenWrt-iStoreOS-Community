@@ -1,0 +1,67 @@
+From: XR1710G Community
+Subject: wifi: mt76: txfree ver5 cleanup and npu dequeue truncation consistency
+
+A tx-free message with version < 5 returned before waking TX,
+scheduling the worker and consuming the staged free_list. An NPU
+RX chain longer than the skb fragment capacity was silently
+delivered short; drop the whole truncated frame instead and count
+the event.
+---
+--- a/mt7996/mac.c
++++ b/mt7996/mac.c
+@@ -1292,7 +1292,7 @@
+ 
+ 	ver = le32_get_bits(tx_free[1], MT_TXFREE1_VER);
+ 	if (WARN_ON_ONCE(ver < 5))
+-		return;
++		goto out;
+ 
+ 	total = le32_get_bits(tx_free[0], MT_TXFREE0_MSDU_CNT);
+ 	for (cur_info = &tx_free[2]; count < total; cur_info++) {
+--- a/npu.c
++++ b/npu.c
+@@ -11,6 +11,8 @@
+ #include "dma.h"
+ #include "mt76_connac.h"
+ 
++static atomic64_t mt76_npu_rx_truncated = ATOMIC64_INIT(0);
++
+ #define MT76_NPU_RX_BUF_SIZE	(1800 + \
+ 				 SKB_DATA_ALIGN(sizeof(struct skb_shared_info)))
+ 
+@@ -66,6 +68,7 @@
+ 	struct airoha_npu_rx_dma_desc *desc = (void *)q->desc;
+ 	int i, nframes, index = q->tail;
+ 	struct sk_buff *skb = NULL;
++	bool trunc = false;
+ 
+ 	nframes = FIELD_GET(NPU_RX_DMA_PKT_COUNT_MASK, desc[index].info);
+ 	nframes = max_t(int, nframes, 1);
+@@ -108,6 +111,8 @@
+ 				skb_add_rx_frag(skb, nr_frags, page,
+ 						e->buf - page_address(page),
+ 						len, q->buf_size);
++			else
++				trunc = true;
+ 		}
+ 
+ 		*info = desc[index].info;
+@@ -117,6 +122,18 @@
+ 	q->queued -= i;
+ 	Q_WRITE(q, dma_idx, q->tail);
+ 
++	/* A chain longer than the skb frag capacity was consumed to keep the
++	 * ring consistent; drop the truncated frame instead of delivering a
++	 * silently shortened one.
++	 */
++	if (trunc) {
++		atomic64_inc(&mt76_npu_rx_truncated);
++		dev_warn_ratelimited(dev->dev,
++				     "NPU RX frame truncated, dropped\n");
++		dev_kfree_skb(skb);
++		skb = NULL;
++	}
++
+ 	return skb;
+ }
+ 

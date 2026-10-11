@@ -10,9 +10,10 @@ the expected tx airtime for a given rate and packet length in units of
 Signed-off-by: Felix Fietkau <nbd@nbd.name>
 ---
 
+
 --- a/net/mac80211/airtime.c
 +++ b/net/mac80211/airtime.c
-@@ -685,7 +685,7 @@ static int ieee80211_fill_rx_status(stru
+@@ -685,7 +685,7 @@
  	if (ieee80211_fill_rate_info(hw, stat, band, ri))
  		return 0;
  
@@ -21,10 +22,11 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  		return -1;
  
  	if (rate->flags & IEEE80211_TX_RC_160_MHZ_WIDTH)
-@@ -753,6 +753,53 @@ u32 ieee80211_calc_tx_airtime(struct iee
+@@ -752,6 +752,53 @@
+ 	return duration;
  }
  EXPORT_SYMBOL_GPL(ieee80211_calc_tx_airtime);
- 
++
 +u32 ieee80211_rate_expected_tx_airtime(struct ieee80211_hw *hw,
 +				       struct ieee80211_tx_rate *tx_rate,
 +				       struct rate_info *ri,
@@ -71,11 +73,10 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
 +
 +	return duration;
 +}
-+
+ 
  u32 ieee80211_calc_expected_tx_airtime(struct ieee80211_hw *hw,
  				       struct ieee80211_vif *vif,
- 				       struct ieee80211_sta *pubsta,
-@@ -775,45 +822,13 @@ u32 ieee80211_calc_expected_tx_airtime(s
+@@ -775,45 +822,13 @@
  	if (pubsta) {
  		struct sta_info *sta = container_of(pubsta, struct sta_info,
  						    sta);
@@ -113,10 +114,11 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
 -			agg_shift = 5;
 -		else
 -			agg_shift = 6;
-+		u32 duration;
- 
+-
 -		duration *= len;
 -		duration /= AVG_PKT_SIZE;
++		u32 duration;
++
 +		duration = ieee80211_rate_expected_tx_airtime(hw, tx_rate, ri,
 +							      band, true, len);
  		duration /= 1024;
@@ -126,7 +128,7 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
  	}
 --- a/net/mac80211/ieee80211_i.h
 +++ b/net/mac80211/ieee80211_i.h
-@@ -2837,6 +2837,11 @@ u8 *ieee80211_get_bssid(struct ieee80211
+@@ -2953,6 +2953,11 @@
  
  extern const struct ethtool_ops ieee80211_ethtool_ops;
  

@@ -1,0 +1,53 @@
+--- a/drivers/net/ethernet/airoha/airoha_eth.h
++++ b/drivers/net/ethernet/airoha/airoha_eth.h
+@@ -56,7 +56,22 @@
+ 
+ #define AIROHA_LRO_PAGE_ORDER		order_base_2(SZ_16K / PAGE_SIZE)
+ #define AIROHA_MAX_NUM_LRO_QUEUES	8
+-#define AIROHA_RXQ_LRO_EN_MASK		(BIT(0) | BIT(5) | BIT(6) | BIT(11) | BIT(15) | BIT(21) | BIT(22) | BIT(24))
++/*
++ * The CDM aggregates LRO flows into 8 hw flow queues; airoha_qdma_lro_enable()
++ * maps them to the RX rings of this mask in ascending ring order (queue i ->
++ * i-th ring).  Pick one ring per queue so that every ring is pinned to exactly
++ * one IRQ bank (RX_IRQ*_BANK_PIN_MASK) and the 8 queues are spread over all
++ * 4 IRQ banks / CPUs:
++ *	bank0 (IRQ eth.0): rings 0, 15		bank1 (eth.1): rings 21, 22, 23, 24
++ *	bank2 (eth.2): ring 5			bank3 (eth.3): ring 6
++ * Every ring here must keep RX_DSCP_NUM() >= 128 descriptors or LRO flows
++ * landing on it starve for RX buffers.
++ * Ring 11 (previously here) is covered by no bank pin mask: its RX_DONE
++ * interrupt could never be enabled by airoha_qdma_set_rx_done_irq() and flows
++ * steered to it would silently stall the ring.
++ */
++#define AIROHA_RXQ_LRO_EN_MASK		(BIT(0) | BIT(5) | BIT(6) | BIT(15) | \
++					 BIT(21) | BIT(22) | BIT(23) | BIT(24))
+ #define AIROHA_RXQ_LRO_MAX_AGG_COUNT	64
+ #define AIROHA_RXQ_LRO_MAX_AGG_TIME	100
+ #define AIROHA_RXQ_LRO_MAX_AGE_TIME	2000
+@@ -745,6 +760,14 @@
+ 	/* EN7581 SoC supports at most 8 LRO rx queues */
+ 	BUILD_BUG_ON(hweight32(AIROHA_RXQ_LRO_EN_MASK) >
+ 		     AIROHA_MAX_NUM_LRO_QUEUES);
++	/* Every LRO ring must be pinned to an IRQ bank (QDMA0 layout):
++	 * airoha_qdma_set_rx_done_irq() only enables the per-queue RX_DONE
++	 * interrupt in the banks whose pin mask contains the ring, so an
++	 * uncovered ring would never raise an interrupt and would stall.
++	 */
++	BUILD_BUG_ON(AIROHA_RXQ_LRO_EN_MASK &
++		     ~(RX_IRQ0_BANK_PIN_MASK | RX_IRQ1_BANK_PIN_MASK |
++		       RX_IRQ2_BANK_PIN_MASK | RX_IRQ3_BANK_PIN_MASK));
+ 
+ 	return !!(AIROHA_RXQ_LRO_EN_MASK & BIT(qid));
+ }
+--- a/drivers/net/ethernet/airoha/airoha_eth.c
++++ b/drivers/net/ethernet/airoha/airoha_eth.c
+@@ -726,6 +726,9 @@
+ 		size = min_t(u32, size, CDM_LRO_AGG_SIZE_MASK);
+ 		airoha_fe_lro_rxq_enable(eth, qdma_id, lro_queue_index, i,
+ 					 size);
++		dev_info(eth->dev,
++			 "QDMA%d LRO queue %d -> RX ring %d\n",
++			 qdma_id, lro_queue_index, i);
+ 		lro_queue_index++;
+ 	}
+ }
