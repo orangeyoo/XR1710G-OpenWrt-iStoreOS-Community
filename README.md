@@ -19,7 +19,7 @@
 
 面向 **Gemtek XR1710G** 的非官方社区固件：Wi-Fi 7 三频 + 6GHz 专线 Mesh 回程 + iStore 商店 + Docker，开箱即用。
 
-**[下载最新 v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · [更新了什么](#v20-更新) · [刷机指南](FLASHING-GUIDE.md) · [图文教程（新手版）](docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
+**[下载最新 v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · [更新了什么](#v20-更新) · [刷机指南](FLASHING-GUIDE.md) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
 
 ## 30 秒速览
 
