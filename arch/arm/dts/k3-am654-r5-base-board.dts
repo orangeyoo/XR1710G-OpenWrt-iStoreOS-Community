@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2016-2018 Texas Instruments Incorporated - https://www.ti.com/
+ */
+
+/dts-v1/;
+
+#include "k3-am654-base-board.dts"
+#include "k3-am654-base-board-u-boot.dtsi"
+#include "k3-am654-base-board-ddr4-1600MTs.dtsi"
+#include "k3-am654-ddr.dtsi"
+#include "k3-am654-r5.dtsi"
+
+&wkup_uart0 {
+	status = "okay";
+	bootph-pre-ram;
+};
+
+&mcu_uart0 {
+	clock-frequency = <48000000>;
+	/delete-property/ power-domains;
+	status = "okay";
+	bootph-pre-ram;
+};
+
+&wkup_vtm0 {
+	compatible = "ti,am654-vtm", "ti,am654-avs";
+	vdd-supply-3 = <&vdd_mpu>;
+	vdd-supply-4 = <&vdd_mpu>;
+};
+
+&memorycontroller {
+	vtt-supply = <&vtt_supply>;
+};
+
+/*
+ * MMC is probed to pull in firmware, so any clock
+ * or power-domain operation will fail as we do not
+ * have the firmware running at this point. Delete the
+ * power-domain properties to avoid making calls to
+ * SYSFW before it is loaded. Public ROM has already
+ * set it up for us anyway.
+ */
+&sdhci0 {
+	clock-names = "clk_xin";
+	clocks = <&clk_200mhz>;
+	/delete-property/ power-domains;
+};
+
+/*
+ * MMC is probed to pull in firmware, so any clock
+ * or power-domain operation will fail as we do not
+ * have the firmware running at this point. Delete the
+ * power-domain properties to avoid making calls to
+ * SYSFW before it is loaded. Public ROM has already
+ * set it up for us anyway.
+ */
+&sdhci1 {
+	clock-names = "clk_xin";
+	clocks = <&clk_200mhz>;
+	/delete-property/ power-domains;
+};
+
+&dwc3_0 {
+	status = "okay";
+	/delete-property/ clocks;
+	/delete-property/ power-domains;
+	/delete-property/ assigned-clocks;
+	/delete-property/ assigned-clock-parents;
+};
+
+&mcu_cpsw {
+	reg = <0x0 0x46000000 0x0 0x200000>,
+	      <0x0 0x40f00200 0x0 0x2>;
+	reg-names = "cpsw_nuss", "mac_efuse";
+	/delete-property/ ranges;
+
+	cpsw-phy-sel@40f04040 {
+		compatible = "ti,am654-cpsw-phy-sel";
+		reg= <0x0 0x40f04040 0x0 0x4>;
+		reg-names = "gmii-sel";
+	};
+};
+
+&usb1 {
+	dr_mode = "peripheral";
+};

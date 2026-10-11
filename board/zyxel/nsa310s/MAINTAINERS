@@ -1,0 +1,6 @@
+NSA310S BOARD
+M:	Tony Dinh <mibodhi@gmail.com>
+S:	Maintained
+F:	board/zyxel/nsa310s/
+F:	include/configs/nsa310s.h
+F:	configs/nsa310s_defconfig

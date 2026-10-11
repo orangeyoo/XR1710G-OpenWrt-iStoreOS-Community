@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device Tree Source extras for U-Boot for the Gray Hawk board
+ *
+ * Copyright (C) 2025 Renesas Electronics Corp.
+ */
+
+/ {
+	aliases {
+		spi0 = &rpc;
+	};
+};
+
+&rpc {
+	status = "disabled";
+
+	flash@0 {
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <1>;
+	};
+};

@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * AM67A BeagleY-AI dts file for R5 SPL
+ *
+ * Copyright (C) 2024 Texas Instruments Incorporated - https://www.ti.com/
+ * Copyright (C) 2024 Robert Nelson, BeagleBoard.org Foundation
+ */
+
+#include "k3-am67a-beagley-ai.dts"
+#include "k3-am67a-beagley-ai-u-boot.dtsi"
+
+#include "k3-am67a-beagley-ddr-lp4.dtsi"
+#include "k3-am62a-ddr.dtsi"
+#include "k3-am67a-r5.dtsi"
+
+/* WKUP UART0 is used for DM firmware logs */
+&wkup_uart0 {
+	status = "okay";
+};

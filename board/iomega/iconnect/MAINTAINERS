@@ -1,0 +1,6 @@
+ICONNECT BOARD
+M:      Tony Dinh <mibodhi@gmail.com>
+S:	Maintained
+F:	board/iomega/iconnect/
+F:	include/configs/iconnect.h
+F:	configs/iconnect_defconfig

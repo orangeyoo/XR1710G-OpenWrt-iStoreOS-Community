@@ -1,0 +1,26 @@
+/dts-v1/;
+
+#include "tegra30-tamonten.dtsi"
+
+/ {
+	model = "Avionic Design Tamonten™ NG Evaluation Carrier";
+	compatible = "ad,tec-ng", "nvidia,tegra30";
+
+	aliases {
+		i2c0 = "/i2c@7000c400";
+	};
+
+	/* GEN2 */
+	i2c@7000c400 {
+		status = "okay";
+	};
+
+	/* SD card slot */
+	mmc@78000400 {
+		status = "okay";
+	};
+};
+
+&uartd {
+	status = "okay";
+};

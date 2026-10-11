@@ -1,0 +1,92 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
+/*
+ * Copyright (c) 2004-2008 Texas Instruments
+ *
+ * (C) Copyright 2002
+ * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
+ *
+ * (C) Copyright 2022
+ * Chia-Wei Wang <chiawei_wang@aspeedtech.com>
+ */
+
+MEMORY { .nor : ORIGIN = CONFIG_SPL_TEXT_BASE,
+		LENGTH = CONFIG_SPL_SIZE_LIMIT }
+MEMORY { .bss : ORIGIN = CONFIG_SPL_BSS_START_ADDR,
+		LENGTH = CONFIG_SPL_BSS_MAX_SIZE }
+
+OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
+OUTPUT_ARCH(arm)
+ENTRY(_start)
+SECTIONS
+{
+	. = 0x00000000;
+
+	. = ALIGN(4);
+	__image_copy_start = ADDR(.text);
+	.text :
+	{
+		*(.vectors)
+		CPUDIR/start.o (.text*)
+		*(.text*)
+		*(.glue*)
+	} > .nor
+
+	. = ALIGN(4);
+	.rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) } > .nor
+
+	. = ALIGN(4);
+	.data : {
+		*(.data*)
+	} > .nor
+
+	. = ALIGN(4);
+	__u_boot_list : {
+		KEEP(*(SORT(__u_boot_list*)));
+		. = ALIGN(8);
+	} > .nor
+
+	. = ALIGN(4);
+	.binman_sym_table : {
+		__binman_sym_start = .;
+		KEEP(*(SORT(.binman_sym*)));
+		__binman_sym_end = .;
+	} > .nor
+
+	/*
+	 * These platforms enable CONFIG_POSITION_INDEPENDENT and so need
+	 * these names. The always however hold the same value.
+	 */
+	__rel_dyn_start = .;
+	__rel_dyn_end = .;
+
+	__image_copy_end = .;
+	_end = .;
+	_image_binary_end = .;
+
+	.bss : {
+		__bss_start = .;
+		*(.bss*)
+		 . = ALIGN(4);
+		__bss_end = .;
+	} > .bss
+
+	__bss_size = __bss_end - __bss_start;
+}
+
+#if defined(IMAGE_MAX_SIZE)
+ASSERT(__image_copy_end - __image_copy_start <= (IMAGE_MAX_SIZE), \
+	"SPL image too big");
+#endif
+
+ASSERT(_image_binary_end % 8 == 0, \
+       "_image_binary_end must be 8-byte aligned for device tree");
+
+#if defined(CONFIG_SPL_BSS_MAX_SIZE)
+ASSERT(__bss_end - __bss_start <= (CONFIG_SPL_BSS_MAX_SIZE), \
+	"SPL image BSS too big");
+#endif
+
+#if defined(CONFIG_SPL_MAX_FOOTPRINT)
+ASSERT(__bss_end - _start <= (CONFIG_SPL_MAX_FOOTPRINT), \
+	"SPL image plus BSS too big");
+#endif

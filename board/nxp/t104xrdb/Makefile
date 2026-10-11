@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-2.0+
+#
+# Copyright 2013 Freescale Semiconductor, Inc.
+
+ifdef CONFIG_XPL_BUILD
+obj-y += spl.o
+else
+obj-y	+= t104xrdb.o
+obj-y	+= cpld.o
+endif
+obj-y	+= ddr.o
+obj-y	+= law.o
+obj-y	+= tlb.o

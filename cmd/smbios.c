@@ -1,0 +1,843 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * The 'smbios' command displays information from the SMBIOS table.
+ *
+ * Copyright (c) 2023, Heinrich Schuchardt <heinrich.schuchardt@canonical.com>
+ */
+
+#include <command.h>
+#include <hexdump.h>
+#include <mapmem.h>
+#include <smbios.h>
+#include <tables_csum.h>
+#include <asm/global_data.h>
+
+DECLARE_GLOBAL_DATA_PTR;
+
+static const struct str_lookup_table wakeup_type_strings[] = {
+	{ SMBIOS_WAKEUP_TYPE_RESERVED,		"Reserved" },
+	{ SMBIOS_WAKEUP_TYPE_OTHER,		"Other" },
+	{ SMBIOS_WAKEUP_TYPE_UNKNOWN,		"Unknown" },
+	{ SMBIOS_WAKEUP_TYPE_APM_TIMER,		"APM Timer" },
+	{ SMBIOS_WAKEUP_TYPE_MODEM_RING,	"Modem Ring" },
+	{ SMBIOS_WAKEUP_TYPE_LAN_REMOTE,	"Lan Remote" },
+	{ SMBIOS_WAKEUP_TYPE_POWER_SWITCH,	"Power Switch" },
+	{ SMBIOS_WAKEUP_TYPE_PCI_PME,		"PCI PME#" },
+	{ SMBIOS_WAKEUP_TYPE_AC_POWER_RESTORED,	"AC Power Restored" },
+};
+
+static const struct str_lookup_table boardtype_strings[] = {
+	{ SMBIOS_BOARD_TYPE_UNKNOWN,		"Unknown" },
+	{ SMBIOS_BOARD_TYPE_OTHER,		"Other" },
+	{ SMBIOS_BOARD_TYPE_SERVER_BLADE,	"Server Blade" },
+	{ SMBIOS_BOARD_TYPE_CON_SWITCH,		"Connectivity Switch" },
+	{ SMBIOS_BOARD_TYPE_SM_MODULE,		"System Management Module" },
+	{ SMBIOS_BOARD_TYPE_PROCESSOR_MODULE,	"Processor Module" },
+	{ SMBIOS_BOARD_TYPE_IO_MODULE,		"I/O Module" },
+	{ SMBIOS_BOARD_TYPE_MEM_MODULE,		"Memory Module" },
+	{ SMBIOS_BOARD_TYPE_DAUGHTER_BOARD,	"Daughter board" },
+	{ SMBIOS_BOARD_TYPE_MOTHERBOARD,	"Motherboard" },
+	{ SMBIOS_BOARD_TYPE_PROC_MEM_MODULE,	"Processor/Memory Module" },
+	{ SMBIOS_BOARD_TYPE_PROC_IO_MODULE,	"Processor/IO Module" },
+	{ SMBIOS_BOARD_TYPE_INTERCON,		"Interconnect board" },
+};
+
+static const struct str_lookup_table chassis_state_strings[] = {
+	{ SMBIOS_STATE_OTHER,		"Other" },
+	{ SMBIOS_STATE_UNKNOWN,		"Unknown" },
+	{ SMBIOS_STATE_SAFE,		"Safe" },
+	{ SMBIOS_STATE_WARNING,		"Warning" },
+	{ SMBIOS_STATE_CRITICAL,	"Critical" },
+	{ SMBIOS_STATE_NONRECOVERABLE,	"Non-recoverable" },
+};
+
+static const struct str_lookup_table chassis_security_strings[] = {
+	{ SMBIOS_SECURITY_OTHER,	"Other" },
+	{ SMBIOS_SECURITY_UNKNOWN,	"Unknown" },
+	{ SMBIOS_SECURITY_NONE,		"None" },
+	{ SMBIOS_SECURITY_EXTINT_LOCK,	"External interface locked out" },
+	{ SMBIOS_SECURITY_EXTINT_EN,	"External interface enabled" },
+};
+
+static const struct str_lookup_table processor_type_strings[] = {
+	{ SMBIOS_PROCESSOR_TYPE_OTHER,		"Other" },
+	{ SMBIOS_PROCESSOR_TYPE_UNKNOWN,	"Unknown" },
+	{ SMBIOS_PROCESSOR_TYPE_CENTRAL,	"Central Processor" },
+	{ SMBIOS_PROCESSOR_TYPE_MATH,		"Math Processor" },
+	{ SMBIOS_PROCESSOR_TYPE_DSP,		"DSP Processor" },
+	{ SMBIOS_PROCESSOR_TYPE_VIDEO,		"Video Processor" },
+};
+
+static const struct str_lookup_table processor_family_strings[] = {
+	{ SMBIOS_PROCESSOR_FAMILY_OTHER,	"Other" },
+	{ SMBIOS_PROCESSOR_FAMILY_UNKNOWN,	"Unknown" },
+	{ SMBIOS_PROCESSOR_FAMILY_RSVD,		"Reserved" },
+	{ SMBIOS_PROCESSOR_FAMILY_ARMV7,	"ARMv7" },
+	{ SMBIOS_PROCESSOR_FAMILY_ARMV8,	"ARMv8" },
+	{ SMBIOS_PROCESSOR_FAMILY_RV32,		"RISC-V RV32" },
+	{ SMBIOS_PROCESSOR_FAMILY_RV64,		"RISC-V RV64" },
+};
+
+static const struct str_lookup_table processor_upgrade_strings[] = {
+	{ SMBIOS_PROCESSOR_UPGRADE_OTHER,	"Other" },
+	{ SMBIOS_PROCESSOR_UPGRADE_UNKNOWN,	"Unknown" },
+	{ SMBIOS_PROCESSOR_UPGRADE_NONE,	"None" },
+};
+
+static const struct str_lookup_table err_corr_type_strings[] = {
+	{ SMBIOS_CACHE_ERRCORR_OTHER,	"Other" },
+	{ SMBIOS_CACHE_ERRCORR_UNKNOWN,	"Unknown" },
+	{ SMBIOS_CACHE_ERRCORR_NONE,	"None" },
+	{ SMBIOS_CACHE_ERRCORR_PARITY,	"Parity" },
+	{ SMBIOS_CACHE_ERRCORR_SBITECC,	"Single-bit ECC" },
+	{ SMBIOS_CACHE_ERRCORR_MBITECC,	"Multi-bit ECC" },
+};
+
+static const struct str_lookup_table sys_cache_type_strings[] = {
+	{ SMBIOS_CACHE_SYSCACHE_TYPE_OTHER,	"Other" },
+	{ SMBIOS_CACHE_SYSCACHE_TYPE_UNKNOWN,	"Unknown" },
+	{ SMBIOS_CACHE_SYSCACHE_TYPE_INST,	"Instruction" },
+	{ SMBIOS_CACHE_SYSCACHE_TYPE_DATA,	"Data" },
+	{ SMBIOS_CACHE_SYSCACHE_TYPE_UNIFIED,	"Unified" },
+};
+
+static const struct str_lookup_table associativity_strings[] = {
+	{ SMBIOS_CACHE_ASSOC_OTHER,	"Other" },
+	{ SMBIOS_CACHE_ASSOC_UNKNOWN,	"Unknown" },
+	{ SMBIOS_CACHE_ASSOC_DMAPPED,	"Direct Mapped" },
+	{ SMBIOS_CACHE_ASSOC_2WAY,	"2-way Set-Associative" },
+	{ SMBIOS_CACHE_ASSOC_4WAY,	"4-way Set-Associative" },
+	{ SMBIOS_CACHE_ASSOC_FULLY,	"Fully Associative" },
+	{ SMBIOS_CACHE_ASSOC_8WAY,	"8-way Set-Associative" },
+	{ SMBIOS_CACHE_ASSOC_16WAY,	"16-way Set-Associative" },
+	{ SMBIOS_CACHE_ASSOC_12WAY,	"12-way Set-Associative" },
+	{ SMBIOS_CACHE_ASSOC_24WAY,	"24-way Set-Associative" },
+	{ SMBIOS_CACHE_ASSOC_32WAY,	"32-way Set-Associative" },
+	{ SMBIOS_CACHE_ASSOC_48WAY,	"48-way Set-Associative" },
+	{ SMBIOS_CACHE_ASSOC_64WAY,	"64-way Set-Associative" },
+	{ SMBIOS_CACHE_ASSOC_20WAY,	"20-way Set-Associative" },
+
+};
+
+static const struct str_lookup_table slot_type_strings[] = {
+	{ SMBIOS_SYSSLOT_TYPE_OTHER,		"Other" },
+	{ SMBIOS_SYSSLOT_TYPE_UNKNOWN,		"Unknown" },
+	{ SMBIOS_SYSSLOT_TYPE_ISA,		"ISA" },
+	{ SMBIOS_SYSSLOT_TYPE_PCI,		"PCI" },
+	{ SMBIOS_SYSSLOT_TYPE_PCMCIA,		"PC Card (PCMCIA)" },
+	{ SMBIOS_SYSSLOT_TYPE_PCIE,		"PCI Express" },
+	{ SMBIOS_SYSSLOT_TYPE_PCIEGEN2,		"PCI Express Gen 2" },
+	{ SMBIOS_SYSSLOT_TYPE_PCIEGEN3,		"PCI Express Gen 3" },
+	{ SMBIOS_SYSSLOT_TYPE_PCIEGEN3X16,	"PCI Express Gen 3 x16" },
+	{ SMBIOS_SYSSLOT_TYPE_PCIEGEN4,		"PCI Express Gen 4" },
+	{ SMBIOS_SYSSLOT_TYPE_PCIEGEN4X8,	"PCI Express Gen 4 x8" },
+	{ SMBIOS_SYSSLOT_TYPE_PCIEGEN4X16,	"PCI Express Gen 4 x16" },
+};
+
+static const struct str_lookup_table slot_bus_width_strings[] = {
+	{ SMBIOS_SYSSLOT_WIDTH_OTHER,	"Other" },
+	{ SMBIOS_SYSSLOT_WIDTH_UNKNOWN,	"Unknown" },
+	{ SMBIOS_SYSSLOT_WIDTH_8BIT,	"8 bit" },
+	{ SMBIOS_SYSSLOT_WIDTH_16BIT,	"16 bit" },
+	{ SMBIOS_SYSSLOT_WIDTH_32BIT,	"32 bit" },
+	{ SMBIOS_SYSSLOT_WIDTH_64BIT,	"64 bit" },
+	{ SMBIOS_SYSSLOT_WIDTH_128BIT,	"128 bit " },
+	{ SMBIOS_SYSSLOT_WIDTH_1X,	"1x or x1" },
+	{ SMBIOS_SYSSLOT_WIDTH_2X,	"2x or x2" },
+	{ SMBIOS_SYSSLOT_WIDTH_4X,	"4x or x4" },
+	{ SMBIOS_SYSSLOT_WIDTH_8X,	"8x or x8" },
+	{ SMBIOS_SYSSLOT_WIDTH_12X,	"12x or x12" },
+	{ SMBIOS_SYSSLOT_WIDTH_16X,	"16x or x16" },
+	{ SMBIOS_SYSSLOT_WIDTH_32X,	"32x or x32" },
+};
+
+static const struct str_lookup_table slot_usage_strings[] = {
+	{ SMBIOS_SYSSLOT_USAGE_OTHER,		"Other" },
+	{ SMBIOS_SYSSLOT_USAGE_UNKNOWN,		"Unknown" },
+	{ SMBIOS_SYSSLOT_USAGE_AVAILABLE,	"Available" },
+	{ SMBIOS_SYSSLOT_USAGE_INUSE,		"In use" },
+	{ SMBIOS_SYSSLOT_USAGE_NA,		"Unavailable" },
+};
+
+static const struct str_lookup_table slot_length_strings[] = {
+	{ SMBIOS_SYSSLOT_LENG_OTHER,	"Other" },
+	{ SMBIOS_SYSSLOT_LENG_UNKNOWN,	"Unknown" },
+	{ SMBIOS_SYSSLOT_LENG_SHORT,	"Short Length" },
+	{ SMBIOS_SYSSLOT_LENG_LONG,	"Long Length" },
+	{ SMBIOS_SYSSLOT_LENG_2_5INDRV,	"2.5 inch drive form factor" },
+	{ SMBIOS_SYSSLOT_LENG_3_5INDRV,	"3.5 inch drive form factor" },
+};
+
+static const struct str_lookup_table ma_location_strings[] = {
+	{ SMBIOS_MA_LOCATION_OTHER,		"Other" },
+	{ SMBIOS_MA_LOCATION_UNKNOWN,		"Unknown" },
+	{ SMBIOS_MA_LOCATION_MOTHERBOARD,	"System board or motherboard" },
+};
+
+static const struct str_lookup_table ma_use_strings[] = {
+	{ SMBIOS_MA_USE_OTHER,		"Other" },
+	{ SMBIOS_MA_USE_UNKNOWN,	"Unknown" },
+	{ SMBIOS_MA_USE_SYSTEM,		"System memory" },
+	{ SMBIOS_MA_USE_VIDEO,		"Video memory" },
+	{ SMBIOS_MA_USE_FLASH,		"Flash memory" },
+	{ SMBIOS_MA_USE_NVRAM,		"Non-volatile RAM" },
+	{ SMBIOS_MA_USE_CACHE,		"Cache memory" },
+};
+
+static const struct str_lookup_table ma_err_corr_strings[] = {
+	{ SMBIOS_MA_ERRCORR_OTHER,	"Other" },
+	{ SMBIOS_MA_ERRCORR_UNKNOWN,	"Unknown" },
+	{ SMBIOS_MA_ERRCORR_NONE,	"None" },
+	{ SMBIOS_MA_ERRCORR_PARITY,	"Parity" },
+	{ SMBIOS_MA_ERRCORR_SBITECC,	"Single-bit ECC" },
+	{ SMBIOS_MA_ERRCORR_MBITECC,	"Multi-bit ECC" },
+	{ SMBIOS_MA_ERRCORR_CRC,	"CRC" },
+};
+
+static const struct str_lookup_table md_form_factor_strings[] = {
+	{ SMBIOS_MD_FF_OTHER,		"Other" },
+	{ SMBIOS_MD_FF_UNKNOWN,		"Unknown" },
+	{ SMBIOS_MD_FF_SIMM,		"SIMM" },
+	{ SMBIOS_MD_FF_SIP,		"SIP" },
+	{ SMBIOS_MD_FF_CHIP,		"Chip" },
+	{ SMBIOS_MD_FF_DIP,		"DIP" },
+	{ SMBIOS_MD_FF_ZIP,		"ZIP" },
+	{ SMBIOS_MD_FF_PROPCARD,	"Proprietary Card" },
+	{ SMBIOS_MD_FF_DIMM,		"DIMM" },
+	{ SMBIOS_MD_FF_TSOP,		"TSOP" },
+	{ SMBIOS_MD_FF_ROC,		"Row of chips" },
+	{ SMBIOS_MD_FF_RIMM,		"RIMM" },
+	{ SMBIOS_MD_FF_SODIMM,		"SODIMM" },
+	{ SMBIOS_MD_FF_SRIMM,		"SRIMM" },
+	{ SMBIOS_MD_FF_FBDIMM,		"FB-DIMM" },
+	{ SMBIOS_MD_FF_DIE,		"Die" },
+};
+
+static const struct str_lookup_table md_type_strings[] = {
+	{ SMBIOS_MD_TYPE_OTHER,		"Other" },
+	{ SMBIOS_MD_TYPE_UNKNOWN,	"Unknown" },
+	{ SMBIOS_MD_TYPE_DRAM,		"DRAM" },
+	{ SMBIOS_MD_TYPE_EDRAM,		"EDRAM" },
+	{ SMBIOS_MD_TYPE_VRAM,		"VRAM" },
+	{ SMBIOS_MD_TYPE_SRAM,		"SRAM" },
+	{ SMBIOS_MD_TYPE_RAM,		"RAM" },
+	{ SMBIOS_MD_TYPE_ROM,		"ROM" },
+	{ SMBIOS_MD_TYPE_FLASH,		"FLASH" },
+	{ SMBIOS_MD_TYPE_EEPROM,	"EEPROM" },
+	{ SMBIOS_MD_TYPE_FEPROM,	"FEPROM" },
+	{ SMBIOS_MD_TYPE_EPROM,		"EPROM" },
+	{ SMBIOS_MD_TYPE_CDRAM,		"CDRAM" },
+	{ SMBIOS_MD_TYPE_3DRAM,		"3DRAM" },
+	{ SMBIOS_MD_TYPE_SDRAM,		"SDRAM" },
+	{ SMBIOS_MD_TYPE_SGRAM,		"SGRAM" },
+	{ SMBIOS_MD_TYPE_RDRAM,		"RDRAM" },
+	{ SMBIOS_MD_TYPE_DDR,		"DDR" },
+	{ SMBIOS_MD_TYPE_DDR2,		"DDR2" },
+	{ SMBIOS_MD_TYPE_DDR2FBD,	"DDR2 FB-DIMM" },
+	{ SMBIOS_MD_TYPE_RSVD1,		"Reserved" },
+	{ SMBIOS_MD_TYPE_RSVD2,		"Reserved" },
+	{ SMBIOS_MD_TYPE_DSVD3,		"Reserved" },
+	{ SMBIOS_MD_TYPE_DDR3,		"DDR3" },
+	{ SMBIOS_MD_TYPE_FBD2,		"FBD2" },
+	{ SMBIOS_MD_TYPE_DDR4,		"DDR4" },
+	{ SMBIOS_MD_TYPE_LPDDR,		"LPDDR" },
+	{ SMBIOS_MD_TYPE_LPDDR2,	"LPDDR2" },
+	{ SMBIOS_MD_TYPE_LPDDR3,	"LPDDR3" },
+	{ SMBIOS_MD_TYPE_LPDDR4,	"LPDDR4" },
+	{ SMBIOS_MD_TYPE_LNVD,		"Logical non-volatile device" },
+	{ SMBIOS_MD_TYPE_HBM,		"HBM" },
+	{ SMBIOS_MD_TYPE_HBM2,		"HBM2" },
+	{ SMBIOS_MD_TYPE_DDR5,		"DDR5" },
+	{ SMBIOS_MD_TYPE_LPDDR5,	"LPDDR5" },
+	{ SMBIOS_MD_TYPE_HBM3,		"HBM3" },
+};
+
+static const struct str_lookup_table md_tech_strings[] = {
+	{ SMBIOS_MD_TECH_OTHER,		"Other" },
+	{ SMBIOS_MD_TECH_UNKNOWN,	"Unknown" },
+	{ SMBIOS_MD_TECH_DRAM,		"DRAM" },
+	{ SMBIOS_MD_TECH_NVDIMMN,	"NVDIMM-N" },
+	{ SMBIOS_MD_TECH_NVDIMMF,	"NVDIMM-F" },
+	{ SMBIOS_MD_TECH_NVDIMMP,	"NVDIMM-P" },
+	{ SMBIOS_MD_TECH_OPTANE,	"Intel Optane persistent memory" },
+};
+
+/**
+ * smbios_get_string() - get SMBIOS string from table
+ *
+ * @table:	SMBIOS table
+ * @index:	index of the string
+ * Return:	address of string, may point to empty string
+ */
+static const char *smbios_get_string(void *table, int index)
+{
+	const char *str = (char *)table +
+			  ((struct smbios_header *)table)->length;
+	static const char fallback[] = "";
+
+	if (!index)
+		return fallback;
+
+	if (!*str)
+		++str;
+	for (--index; *str && index; --index)
+		str += strlen(str) + 1;
+
+	return str;
+}
+
+static struct smbios_header *next_table(struct smbios_header *table)
+{
+	const char *str;
+
+	if (table->type == SMBIOS_END_OF_TABLE)
+		return NULL;
+
+	str = smbios_get_string(table, -1);
+	return (struct smbios_header *)(++str);
+}
+
+static void smbios_print_generic(struct smbios_header *table)
+{
+	char *str = (char *)table + table->length;
+
+	if (CONFIG_IS_ENABLED(HEXDUMP)) {
+		printf("Header and Data:\n");
+		print_hex_dump("\t", DUMP_PREFIX_OFFSET, 16, 1,
+			       table, table->length, false);
+	}
+	if (*str) {
+		printf("Strings:\n");
+		for (int index = 1; *str; ++index) {
+			printf("\tString %u: %s\n", index, str);
+			str += strlen(str) + 1;
+		}
+	}
+}
+
+static void smbios_print_str(const char *label, void *table, u8 index)
+{
+	printf("\t%s: %s\n", label, smbios_get_string(table, index));
+}
+
+static void smbios_print_lookup_str(const struct str_lookup_table *table,
+				    u16 index, u16 array_size,
+				    const char *prefix)
+{
+	int i;
+	const char *str = NULL;
+
+	for (i = 0; i < array_size; i++) {
+		if ((table + i)->idx == index)
+			str = (table + i)->str;
+	}
+
+	if (str)
+		printf("\t%s: %s\n", prefix, str);
+	else
+		printf("\t%s: [%04x]\n", prefix, index);
+}
+
+static void smbios_print_type0(struct smbios_type0 *table)
+{
+	printf("BIOS Information\n");
+	smbios_print_str("Vendor", table, table->vendor);
+	smbios_print_str("BIOS Version", table, table->bios_ver);
+	/* Keep table->bios_start_segment as 0 for UEFI-based systems */
+	smbios_print_str("BIOS Release Date", table, table->bios_release_date);
+	printf("\tBIOS ROM Size: 0x%02x\n", table->bios_rom_size);
+	printf("\tBIOS Characteristics: 0x%016llx\n",
+	       table->bios_characteristics);
+	if (table->hdr.length < SMBIOS_TYPE0_LENGTH_V24)
+		return;
+	printf("\tBIOS Characteristics Extension Byte 1: 0x%02x\n",
+	       table->bios_characteristics_ext1);
+	printf("\tBIOS Characteristics Extension Byte 2: 0x%02x\n",
+	       table->bios_characteristics_ext2);
+	printf("\tSystem BIOS Major Release: 0x%02x\n",
+	       table->bios_major_release);
+	printf("\tSystem BIOS Minor Release: 0x%02x\n",
+	       table->bios_minor_release);
+	printf("\tEmbedded Controller Firmware Major Release: 0x%02x\n",
+	       table->ec_major_release);
+	printf("\tEmbedded Controller Firmware Minor Release: 0x%02x\n",
+	       table->ec_minor_release);
+	if (table->hdr.length < SMBIOS_TYPE0_LENGTH_V31)
+		return;
+	printf("\tExtended BIOS ROM Size: 0x%04x\n",
+	       table->extended_bios_rom_size);
+}
+
+static void smbios_print_type1(struct smbios_type1 *table)
+{
+	printf("System Information\n");
+	smbios_print_str("Manufacturer", table, table->manufacturer);
+	smbios_print_str("Product Name", table, table->product_name);
+	smbios_print_str("Version", table, table->version);
+	smbios_print_str("Serial Number", table, table->serial_number);
+	if (table->hdr.length < SMBIOS_TYPE1_LENGTH_V21)
+		return;
+	printf("\tUUID: %pUl\n", table->uuid);
+	smbios_print_lookup_str(wakeup_type_strings, table->wakeup_type,
+				ARRAY_SIZE(wakeup_type_strings),
+				"Wake-up Type");
+	if (table->hdr.length < SMBIOS_TYPE1_LENGTH_V24)
+		return;
+	smbios_print_str("SKU Number", table, table->sku_number);
+	smbios_print_str("Family", table, table->family);
+}
+
+static void smbios_print_type2(struct smbios_type2 *table)
+{
+	int i;
+	u8 *addr = (u8 *)table + offsetof(struct smbios_type2, eos);
+
+	printf("Baseboard Information\n");
+	smbios_print_str("Manufacturer", table, table->manufacturer);
+	smbios_print_str("Product Name", table, table->product_name);
+	smbios_print_str("Version", table, table->version);
+	smbios_print_str("Serial Number", table, table->serial_number);
+	smbios_print_str("Asset Tag", table, table->asset_tag_number);
+	printf("\tFeature Flags: 0x%02x\n", table->feature_flags);
+	smbios_print_str("Chassis Location", table, table->chassis_location);
+	printf("\tChassis Handle: 0x%04x\n", table->chassis_handle);
+	smbios_print_lookup_str(boardtype_strings,
+				table->board_type,
+				ARRAY_SIZE(boardtype_strings),
+				"Board Type");
+	printf("\tNumber of Contained Object Handles: 0x%02x\n",
+	       table->number_contained_objects);
+	if (!table->number_contained_objects)
+		return;
+
+	printf("\tContained Object Handles:\n");
+	for (i = 0; i < table->number_contained_objects; i++) {
+		printf("\t\tObject[%03d]:\n", i);
+		if (CONFIG_IS_ENABLED(HEXDUMP))
+			print_hex_dump("\t\t", DUMP_PREFIX_OFFSET, 16, 1, addr,
+				       sizeof(u16), false);
+		addr += sizeof(u16);
+	}
+	printf("\n");
+}
+
+static void smbios_print_type3(struct smbios_type3 *table)
+{
+	int i;
+	u8 *addr = (u8 *)table + offsetof(struct smbios_type3, sku_number);
+
+	printf("Chassis Information\n");
+	smbios_print_str("Manufacturer", table, table->manufacturer);
+	printf("\tType: 0x%02x\n", table->chassis_type);
+	smbios_print_str("Version", table, table->version);
+	smbios_print_str("Serial Number", table, table->serial_number);
+	smbios_print_str("Asset Tag", table, table->asset_tag_number);
+	smbios_print_lookup_str(chassis_state_strings,
+				table->bootup_state,
+				ARRAY_SIZE(chassis_state_strings),
+				"Boot-up State");
+	smbios_print_lookup_str(chassis_state_strings,
+				table->power_supply_state,
+				ARRAY_SIZE(chassis_state_strings),
+				"Power Supply State");
+	smbios_print_lookup_str(chassis_state_strings,
+				table->thermal_state,
+				ARRAY_SIZE(chassis_state_strings),
+				"Thermal State");
+	smbios_print_lookup_str(chassis_security_strings,
+				table->security_status,
+				ARRAY_SIZE(chassis_security_strings),
+				"Security Status");
+	printf("\tOEM-defined: 0x%08x\n", table->oem_defined);
+	printf("\tHeight: 0x%02x\n", table->height);
+	printf("\tNumber of Power Cords: 0x%02x\n",
+	       table->number_of_power_cords);
+	printf("\tContained Element Count: 0x%02x\n", table->element_count);
+	printf("\tContained Element Record Length: 0x%02x\n",
+	       table->element_record_length);
+	if (table->element_count) {
+		printf("\tContained Elements:\n");
+		for (i = 0; i < table->element_count; i++) {
+			printf("\t\tElement[%03d]:\n", i);
+			if (CONFIG_IS_ENABLED(HEXDUMP))
+				print_hex_dump("\t\t", DUMP_PREFIX_OFFSET, 16,
+					       1, addr,
+					       table->element_record_length,
+					       false);
+			printf("\t\tContained Element Type: 0x%02x\n", *addr);
+			printf("\t\tContained Element Minimum: 0x%02x\n",
+			       *(addr + 1));
+			printf("\t\tContained Element Maximum: 0x%02x\n",
+			       *(addr + 2));
+			addr += table->element_record_length;
+		}
+	}
+	smbios_print_str("SKU Number", table, *addr);
+}
+
+static void smbios_print_type4(struct smbios_type4 *table)
+{
+	printf("Processor Information:\n");
+	smbios_print_str("Socket Designation", table, table->socket_design);
+	smbios_print_lookup_str(processor_type_strings,
+				table->processor_type,
+				ARRAY_SIZE(processor_type_strings),
+				"Processor Type");
+	smbios_print_lookup_str(processor_family_strings,
+				table->processor_family,
+				ARRAY_SIZE(processor_family_strings),
+				"Processor Family");
+	smbios_print_str("Processor Manufacturer", table,
+			 table->processor_manufacturer);
+	printf("\tProcessor ID word 0: 0x%08x\n", table->processor_id[0]);
+	printf("\tProcessor ID word 1: 0x%08x\n", table->processor_id[1]);
+	smbios_print_str("Processor Version", table, table->processor_version);
+	printf("\tVoltage: 0x%02x\n", table->voltage);
+	printf("\tExternal Clock: 0x%04x\n", table->external_clock);
+	printf("\tMax Speed: 0x%04x\n", table->max_speed);
+	printf("\tCurrent Speed: 0x%04x\n", table->current_speed);
+	printf("\tStatus: 0x%02x\n", table->status);
+	smbios_print_lookup_str(processor_upgrade_strings,
+				table->processor_upgrade,
+				ARRAY_SIZE(processor_upgrade_strings),
+				"Processor Upgrade");
+	printf("\tL1 Cache Handle: 0x%04x\n", table->l1_cache_handle);
+	printf("\tL2 Cache Handle: 0x%04x\n", table->l2_cache_handle);
+	printf("\tL3 Cache Handle: 0x%04x\n", table->l3_cache_handle);
+	if (table->hdr.length < SMBIOS_TYPE4_LENGTH_V23)
+		return;
+	smbios_print_str("Serial Number", table, table->serial_number);
+	smbios_print_str("Asset Tag", table, table->asset_tag);
+	smbios_print_str("Part Number", table, table->part_number);
+	if (table->hdr.length < SMBIOS_TYPE4_LENGTH_V25)
+		return;
+	printf("\tCore Count: 0x%02x\n", table->core_count);
+	printf("\tCore Enabled: 0x%02x\n", table->core_enabled);
+	printf("\tThread Count: 0x%02x\n", table->thread_count);
+	printf("\tProcessor Characteristics: 0x%04x\n",
+	       table->processor_characteristics);
+	if (table->hdr.length < SMBIOS_TYPE4_LENGTH_V26)
+		return;
+	smbios_print_lookup_str(processor_family_strings,
+				table->processor_family2,
+				ARRAY_SIZE(processor_family_strings),
+				"Processor Family 2");
+	if (table->hdr.length < SMBIOS_TYPE4_LENGTH_V30)
+		return;
+	printf("\tCore Count 2: 0x%04x\n", table->core_count2);
+	printf("\tCore Enabled 2: 0x%04x\n", table->core_enabled2);
+	printf("\tThread Count 2: 0x%04x\n", table->thread_count2);
+	if (table->hdr.length < SMBIOS_TYPE4_LENGTH_V36)
+		return;
+	printf("\tThread Enabled: 0x%04x\n", table->thread_enabled);
+}
+
+static void smbios_print_type7(struct smbios_type7 *table)
+{
+	printf("Cache Information:\n");
+	smbios_print_str("Socket Designation", table,
+			 table->socket_design);
+	printf("\tCache Configuration: 0x%04x\n", table->config.data);
+	printf("\tMaximum Cache Size: 0x%04x\n", table->max_size.data);
+	printf("\tInstalled Size: 0x%04x\n", table->inst_size.data);
+	printf("\tSupported SRAM Type: 0x%04x\n", table->supp_sram_type.data);
+	printf("\tCurrent SRAM Type: 0x%04x\n", table->curr_sram_type.data);
+	if (table->hdr.length < SMBIOS_TYPE7_LENGTH_V21)
+		return;
+	printf("\tCache Speed: 0x%02x\n", table->speed);
+	smbios_print_lookup_str(err_corr_type_strings,
+				table->err_corr_type,
+				ARRAY_SIZE(err_corr_type_strings),
+				"Error Correction Type");
+	smbios_print_lookup_str(sys_cache_type_strings,
+				table->sys_cache_type,
+				ARRAY_SIZE(sys_cache_type_strings),
+				"System Cache Type");
+	smbios_print_lookup_str(associativity_strings,
+				table->associativity,
+				ARRAY_SIZE(associativity_strings),
+				"Associativity");
+	if (table->hdr.length < SMBIOS_TYPE7_LENGTH_V31)
+		return;
+	printf("\tMaximum Cache Size 2: 0x%08x\n", table->max_size2.data);
+	printf("\tInstalled Cache Size 2: 0x%08x\n", table->inst_size2.data);
+}
+
+static void smbios_print_type9(struct smbios_type9 *table)
+{
+	int i;
+	u8 *addr = (u8 *)table +
+		   offsetof(struct smbios_type9, slot_information);
+
+	printf("System Slots:\n");
+	smbios_print_str("Socket Designation", table,
+			 table->socket_design);
+	smbios_print_lookup_str(slot_type_strings,
+				table->slot_type,
+				ARRAY_SIZE(slot_type_strings),
+				"Slot Type");
+	smbios_print_lookup_str(slot_bus_width_strings,
+				table->slot_data_bus_width,
+				ARRAY_SIZE(slot_bus_width_strings),
+				"Slot Data Bus Width");
+	smbios_print_lookup_str(slot_usage_strings,
+				table->current_usage,
+				ARRAY_SIZE(slot_usage_strings),
+				"Current Usage");
+	smbios_print_lookup_str(slot_length_strings,
+				table->slot_length,
+				ARRAY_SIZE(slot_length_strings),
+				"Slot Length");
+	printf("\tSlot ID: 0x%04x\n", table->slot_id);
+	printf("\tSlot Characteristics 1: 0x%04x\n",
+	       table->slot_characteristics_1);
+	if (table->hdr.length < SMBIOS_TYPE9_LENGTH_V21)
+		return;
+	printf("\tSlot Characteristics 2: 0x%04x\n",
+	       table->slot_characteristics_2);
+	if (table->hdr.length < SMBIOS_TYPE9_LENGTH_V26)
+		return;
+	printf("\tSegment Group Number (Base): 0x%04x\n",
+	       table->segment_group_number);
+	printf("\tBus Number (Base): 0x%04x\n", table->bus_number);
+	printf("\tDevice/Function Number (Base): 0x%04x\n",
+	       table->device_function_number.data);
+	printf("\tData Bus Width (Base): 0x%04x\n",
+	       table->electrical_bus_width);
+	printf("\tPeer (S/B/D/F/Width) grouping count: 0x%04x\n",
+	       table->peer_grouping_count);
+	printf("\tPeer (S/B/D/F/Width) groups:\n");
+	for (i = 0; i < table->peer_grouping_count; i++) {
+		printf("\t\tPeer group[%03d]:\n", i);
+		if (CONFIG_IS_ENABLED(HEXDUMP))
+			print_hex_dump("\t\t", DUMP_PREFIX_OFFSET, 16, 1, addr,
+				       SMBIOS_TYPE9_PGROUP_SIZE, false);
+		addr += SMBIOS_TYPE9_PGROUP_SIZE;
+	}
+	printf("\n");
+
+	/* table->slot_information */
+	printf("\tSlot Information: 0x%04x\n", *addr);
+	/* table->slot_physical_width */
+	addr += sizeof(table->slot_information);
+	printf("\tSlot Physical Width: 0x%04x\n", *addr);
+	/* table->slot_pitch */
+	addr += sizeof(table->slot_physical_width);
+	printf("\tSlot Pitch: 0x%04x\n", *(u16 *)addr);
+	/* table->slot_height */
+	addr += sizeof(table->slot_pitch);
+	printf("\tSlot Height: 0x%04x\n", *addr);
+}
+
+static void smbios_print_type16(struct smbios_type16 *table)
+{
+	printf("Physical Memory Array:\n");
+	if (table->hdr.length < SMBIOS_TYPE16_LENGTH_V21)
+		return;
+	smbios_print_lookup_str(ma_location_strings, table->location,
+				ARRAY_SIZE(ma_location_strings), "Location");
+	smbios_print_lookup_str(ma_use_strings, table->use,
+				ARRAY_SIZE(ma_use_strings), "Use");
+	smbios_print_lookup_str(ma_err_corr_strings, table->mem_err_corr,
+				ARRAY_SIZE(ma_err_corr_strings),
+				"Memory Error Correction");
+	printf("\tMaximum Capacity: 0x%08x\n", table->max_cap);
+	printf("\tMemory Error Information Handle: 0x%04x\n",
+	       table->mem_err_info_hdl);
+	printf("\tNumber of Memory Devices: 0x%04x\n", table->num_of_mem_dev);
+	if (table->hdr.length < SMBIOS_TYPE16_LENGTH_V27)
+		return;
+	printf("\tExtended Maximum Capacity: 0x%016llx\n", table->ext_max_cap);
+}
+
+static void smbios_print_type17(struct smbios_type17 *table)
+{
+	printf("Memory Device:\n");
+	if (table->hdr.length < SMBIOS_TYPE17_LENGTH_V21)
+		return;
+	printf("\tPhysical Memory Array Handle: 0x%04x\n",
+	       table->phy_mem_array_hdl);
+	printf("\tMemory Error Information Handle: 0x%04x\n",
+	       table->mem_err_info_hdl);
+	printf("\tTotal Width: 0x%04x\n", table->total_width);
+	printf("\tData Width: 0x%04x\n", table->data_width);
+	printf("\tSize: 0x%04x\n", table->size);
+	smbios_print_lookup_str(md_form_factor_strings, table->form_factor,
+				ARRAY_SIZE(md_form_factor_strings),
+				"Form Factor");
+	printf("\tDevice Set: 0x%04x\n", table->dev_set);
+	smbios_print_str("Device Locator", table, table->dev_locator);
+	smbios_print_str("Bank Locator", table, table->bank_locator);
+	smbios_print_lookup_str(md_type_strings, table->mem_type,
+				ARRAY_SIZE(md_type_strings), "Memory Type");
+	printf("\tType Detail: 0x%04x\n", table->type_detail);
+	if (table->hdr.length < SMBIOS_TYPE17_LENGTH_V23)
+		return;
+	printf("\tSpeed: 0x%04x\n", table->speed);
+	smbios_print_str("Manufacturer", table, table->manufacturer);
+	smbios_print_str("Serial Number", table, table->serial_number);
+	smbios_print_str("Asset Tag", table, table->asset_tag);
+	smbios_print_str("Part Number", table, table->part_number);
+	if (table->hdr.length < SMBIOS_TYPE17_LENGTH_V26)
+		return;
+	printf("\tAttributes: 0x%04x\n", table->attributes);
+	if (table->hdr.length < SMBIOS_TYPE17_LENGTH_V27)
+		return;
+	printf("\tExtended Size: 0x%08x\n", table->ext_size);
+	printf("\tConfigured Memory Speed: 0x%04x\n", table->config_mem_speed);
+	if (table->hdr.length < SMBIOS_TYPE17_LENGTH_V28)
+		return;
+	printf("\tMinimum voltage: 0x%04x\n", table->min_voltage);
+	printf("\tMaximum voltage: 0x%04x\n", table->max_voltage);
+	printf("\tConfigured voltage: 0x%04x\n", table->config_voltage);
+	if (table->hdr.length < SMBIOS_TYPE17_LENGTH_V32)
+		return;
+	smbios_print_lookup_str(md_tech_strings, table->mem_tech,
+				ARRAY_SIZE(md_tech_strings),
+				"Memory Technology");
+	printf("\tMemory Operating Mode Capability: 0x%04x\n",
+	       table->mem_op_mode_cap);
+	smbios_print_str("Firmware Version", table, table->fw_ver);
+	printf("\tModule Manufacturer ID: 0x%04x\n", table->module_man_id);
+	printf("\tModule Product ID: 0x%04x\n", table->module_prod_id);
+	printf("\tMemory Subsystem Controller Manufacturer ID: 0x%04x\n",
+	       table->mem_subsys_con_man_id);
+	printf("\tMemory Subsystem Controller Product ID: 0x%04x\n",
+	       table->mem_subsys_con_prod_id);
+	printf("\tNon-volatile Size: 0x%016llx\n", table->nonvolatile_size);
+	printf("\tVolatile Size: 0x%016llx\n", table->volatile_size);
+	printf("\tCache Size: 0x%016llx\n", table->cache_size);
+	printf("\tLogical Size: 0x%016llx\n", table->logical_size);
+	if (table->hdr.length < SMBIOS_TYPE17_LENGTH_V33)
+		return;
+	printf("\tExtended Speed: 0x%04x\n", table->ext_speed);
+	printf("\tExtended Configured Memory Speed: 0x%04x\n",
+	       table->ext_config_mem_speed);
+	printf("\tPMIC0 Manufacturer ID: 0x%04x\n", table->pmic0_man_id);
+	printf("\tPMIC0 Revision Number: 0x%04x\n", table->pmic0_rev_num);
+	printf("\tRCD Manufacturer ID: 0x%04x\n", table->rcd_man_id);
+	printf("\tRCD Revision Number: 0x%04x\n", table->rcd_rev_num);
+}
+
+static void smbios_print_type19(struct smbios_type19 *table)
+{
+	printf("Memory Array Mapped Address:\n");
+	if (table->hdr.length < SMBIOS_TYPE19_LENGTH_V21)
+		return;
+	printf("\tStarting Address: 0x%08x\n", table->start_addr);
+	printf("\tEnding Address: 0x%08x\n", table->end_addr);
+	printf("\tMemory Array Handle: 0x%04x\n", table->mem_array_hdl);
+	printf("\tPartition Width: 0x%04x\n", table->partition_wid);
+	if (table->hdr.length < SMBIOS_TYPE19_LENGTH_V27)
+		return;
+	printf("\tExtended Starting Address: 0x%016llx\n", table->ext_start_addr);
+	printf("\tExtended Ending Address: 0x%016llx\n", table->ext_end_addr);
+}
+
+static void smbios_print_type127(struct smbios_type127 *table)
+{
+	printf("End Of Table\n");
+}
+
+static int do_smbios(struct cmd_tbl *cmdtp, int flag, int argc,
+		     char *const argv[])
+{
+	ulong addr;
+	void *entry;
+	u32 size;
+	char version[12];
+	struct smbios_header *table;
+	static const char smbios_sig[] = "_SM_";
+	static const char smbios3_sig[] = "_SM3_";
+	size_t count = 0;
+	u32 table_maximum_size;
+
+	addr = gd_smbios_start();
+	if (!addr) {
+		log_warning("SMBIOS not available\n");
+		return CMD_RET_FAILURE;
+	}
+	entry = map_sysmem(addr, 0);
+	if (!memcmp(entry, smbios3_sig, sizeof(smbios3_sig) - 1)) {
+		struct smbios3_entry *entry3 = entry;
+
+		table = (void *)(uintptr_t)entry3->struct_table_address;
+		snprintf(version, sizeof(version), "%d.%d.%d",
+			 entry3->major_ver, entry3->minor_ver, entry3->doc_rev);
+		table = (void *)(uintptr_t)entry3->struct_table_address;
+		size = entry3->length;
+		table_maximum_size = entry3->table_maximum_size;
+	} else if (!memcmp(entry, smbios_sig, sizeof(smbios_sig) - 1)) {
+		struct smbios_entry *entry2 = entry;
+
+		snprintf(version, sizeof(version), "%d.%d",
+			 entry2->major_ver, entry2->minor_ver);
+		table = (void *)(uintptr_t)entry2->struct_table_address;
+		size = entry2->length;
+		table_maximum_size = entry2->struct_table_length;
+	} else {
+		log_err("Unknown SMBIOS anchor format\n");
+		return CMD_RET_FAILURE;
+	}
+	if (table_compute_checksum(entry, size)) {
+		log_err("Invalid anchor checksum\n");
+		return CMD_RET_FAILURE;
+	}
+	printf("SMBIOS %s present.\n", version);
+
+	for (struct smbios_header *pos = table; pos; pos = next_table(pos))
+		++count;
+	printf("%zd structures occupying %d bytes\n", count, table_maximum_size);
+	printf("Table at 0x%llx\n", (unsigned long long)map_to_sysmem(table));
+
+	for (struct smbios_header *pos = table; pos; pos = next_table(pos)) {
+		printf("\nHandle 0x%04x, DMI type %d, %d bytes at 0x%llx\n",
+		       pos->handle, pos->type, pos->length,
+		       (unsigned long long)map_to_sysmem(pos));
+		switch (pos->type) {
+		case SMBIOS_BIOS_INFORMATION:
+			smbios_print_type0((struct smbios_type0 *)pos);
+			break;
+		case SMBIOS_SYSTEM_INFORMATION:
+			smbios_print_type1((struct smbios_type1 *)pos);
+			break;
+		case SMBIOS_BOARD_INFORMATION:
+			smbios_print_type2((struct smbios_type2 *)pos);
+			break;
+		case SMBIOS_SYSTEM_ENCLOSURE:
+			smbios_print_type3((struct smbios_type3 *)pos);
+			break;
+		case SMBIOS_PROCESSOR_INFORMATION:
+			smbios_print_type4((struct smbios_type4 *)pos);
+			break;
+		case SMBIOS_CACHE_INFORMATION:
+			smbios_print_type7((struct smbios_type7 *)pos);
+			break;
+		case SMBIOS_SYSTEM_SLOTS:
+			smbios_print_type9((struct smbios_type9 *)pos);
+			break;
+		case SMBIOS_PHYS_MEMORY_ARRAY:
+			smbios_print_type16((struct smbios_type16 *)pos);
+			break;
+		case SMBIOS_MEMORY_DEVICE:
+			smbios_print_type17((struct smbios_type17 *)pos);
+			break;
+		case SMBIOS_MEMORY_ARRAY_MAPPED_ADDRESS:
+			smbios_print_type19((struct smbios_type19 *)pos);
+			break;
+		case SMBIOS_END_OF_TABLE:
+			smbios_print_type127((struct smbios_type127 *)pos);
+			break;
+		default:
+			smbios_print_generic(pos);
+			break;
+		}
+	}
+
+	return CMD_RET_SUCCESS;
+}
+
+U_BOOT_LONGHELP(smbios, "- display SMBIOS information");
+
+U_BOOT_CMD(smbios, 1, 0, do_smbios, "display SMBIOS information",
+	   smbios_help_text);

@@ -1,0 +1,72 @@
+config MSM8916_USB_PHY
+	bool
+	select PHY
+	help
+	  Support the Qualcomm MSM8916 USB PHY
+
+	  This PHY is found on qualcomm dragonboard410c development board.
+
+config PHY_QCOM_IPQ4019_USB
+	bool "Qualcomm IPQ4019 USB PHY driver"
+	depends on PHY && ARCH_IPQ40XX
+	help
+	  Support for the USB PHY-s on Qualcomm IPQ40xx SoC-s.
+
+config PHY_QCOM_QMP_COMBO
+	bool "Qualcomm QMP USB3-DP Combo PHY driver"
+	depends on PHY && ARCH_SNAPDRAGON
+	help
+	  Enable this to support the USB3-DP Combo QMP PHY on various Qualcomm
+	  chipsets. This driver supports the USB3 PHY functionality of the combo
+	  PHY (USB3 + DisplayPort). Currently only USB3 mode is supported.
+
+config PHY_QCOM_QMP_PCIE
+	bool "Qualcomm QMP PCIe PHY driver"
+	depends on PHY && ARCH_SNAPDRAGON
+	help
+	  Enable this to support the PCIe QMP PHY on various Qualcomm chipsets.
+
+config PHY_QCOM_QMP_UFS
+	bool "Qualcomm QMP UFS PHY driver"
+	depends on PHY && ARCH_SNAPDRAGON
+	help
+	  Enable this to support the UFS QMP PHY on various Qualcomm chipsets.
+
+config PHY_QCOM_QUSB2
+	bool "Qualcomm USB QUSB2 PHY driver"
+	depends on PHY && ARCH_SNAPDRAGON
+	help
+	  Enable this to support the Super-Speed USB transceiver on various
+	  Qualcomm chipsets.
+
+config PHY_QCOM_USB_SNPS_FEMTO_V2
+	bool "Qualcomm SNPS FEMTO USB HS PHY v2"
+	depends on PHY && ARCH_SNAPDRAGON
+	help
+	  Enable this to support the Qualcomm Synopsys DesignWare Core 7nm
+	  High-Speed PHY driver. This driver supports the Hi-Speed PHY which
+	  is usually paired with Synopsys DWC3 USB IPs on MSM SOCs.
+
+config PHY_QCOM_SNPS_EUSB2
+	bool "Qualcomm Synopsys eUSB2 High-Speed PHY"
+	depends on PHY && ARCH_SNAPDRAGON
+	help
+	  Enable this to support the Qualcomm Synopsys DesignWare eUSB2
+	  High-Speed PHY driver. This driver supports the Hi-Speed PHY which
+	  is usually paired with Synopsys DWC3 USB IPs on MSM SOCs.
+
+config PHY_QCOM_USB_HS_28NM
+	bool "Qualcomm 28nm High-Speed PHY"
+	depends on PHY && ARCH_SNAPDRAGON
+	help
+	  Enable this to support the Qualcomm Synopsys DesignWare Core 28nm
+	  High-Speed PHY driver. This driver supports the Hi-Speed PHY which
+	  is usually paired with either the ChipIdea or Synopsys DWC3 USB
+	  IPs on MSM SOCs.
+
+config PHY_QCOM_USB_SS
+	bool "Qualcomm USB Super-Speed PHY driver"
+	depends on PHY && ARCH_SNAPDRAGON
+	help
+	  Enable this to support the Super-Speed USB transceiver on various
+	  Qualcomm chipsets.

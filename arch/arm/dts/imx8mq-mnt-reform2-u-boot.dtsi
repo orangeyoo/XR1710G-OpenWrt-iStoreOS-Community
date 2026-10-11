@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+
+#include "imx8mq-u-boot.dtsi"
+
+&pinctrl_uart1 {
+	bootph-pre-ram;
+};
+
+&uart1 { /* console */
+	bootph-pre-ram;
+};
+
+&{/panel} {
+	compatible = "innolux,n125hce-gn1", "simple-panel";
+};

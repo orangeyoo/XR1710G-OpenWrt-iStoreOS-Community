@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-2.0-or-later OR BSD-3-Clause
+#
+# Copyright (C) 2023, STMicroelectronics - All Rights Reserved
+#
+
+obj-y += cpu.o
+obj-y += arm64-mmu.o
+obj-y += rifsc.o
+obj-y += stm32mp2x.o
+obj-$(CONFIG_OF_SYSTEM_SETUP) += fdt.o
+obj-$(CONFIG_STM32MP21X) += stm32mp21x.o
+obj-$(CONFIG_STM32MP23X) += stm32mp23x.o
+obj-$(CONFIG_STM32MP25X) += stm32mp25x.o

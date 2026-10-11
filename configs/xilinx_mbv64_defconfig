@@ -1,0 +1,4 @@
+#include <configs/xilinx_mbv32_defconfig>
+
+CONFIG_DEFAULT_DEVICE_TREE="xilinx-mbv64"
+CONFIG_ARCH_RV64I=y

@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: GPL-2.0+ OR X11
+/*
+ * NXP LX2162AQDS device tree source
+ *
+ * Copyright 2020-2021 NXP
+ *
+ */
+
+/dts-v1/;
+
+#include "fsl-lx2160a-qds.dtsi"
+
+/ {
+	model = "NXP Layerscape LX2162AQDS Board";
+	compatible = "fsl,lx2162aqds", "fsl,lx2160a";
+
+	aliases {
+		spi1 = &dspi0;
+		spi2 = &dspi1;
+		spi3 = &dspi2;
+	};
+};
+
+&usb1 {
+	status = "disabled";
+};
+
+&pcie2 {
+	status = "disabled";
+};
+
+&pcie5 {
+	status = "disabled";
+};
+
+&pcie6 {
+	status = "disabled";
+};
+
+&esdhc1 {
+	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	bus-width = <8>;
+};

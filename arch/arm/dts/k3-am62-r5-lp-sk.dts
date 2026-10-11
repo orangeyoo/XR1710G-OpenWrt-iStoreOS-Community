@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * AM62x LP SK dts file for R5 SPL
+ * Copyright (C) 2024 Texas Instruments Incorporated - https://www.ti.com/
+ */
+
+#include "k3-am62-lp-sk.dts"
+#include "k3-am62-lp4-50-800-800.dtsi"
+#include "k3-am62-ddr.dtsi"
+
+#include "k3-am62-lp-sk-u-boot.dtsi"
+#include "k3-am625-r5.dtsi"

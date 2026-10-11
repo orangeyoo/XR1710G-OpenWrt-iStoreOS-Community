@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright 2021 NXP
+ */
+
+#include "imx8ulp-u-boot.dtsi"
+
+/ {
+	mu@27020000 {
+		compatible = "fsl,imx8ulp-mu";
+		reg = <0 0x27020000 0 0x10000>;
+		status = "okay";
+		bootph-all;
+	};
+};
+
+&soc {
+	bootph-all;
+};
+
+&per_bridge3 {
+	bootph-all;
+};
+
+&mu {
+	status = "disabled";
+};
+
+&per_bridge4 {
+	bootph-pre-ram;
+};
+
+&iomuxc1 {
+	bootph-all;
+};
+
+&pinctrl_lpuart5 {
+	bootph-all;
+};
+
+&lpuart5 {
+	bootph-all;
+};
+
+&usdhc0 {
+	bootph-pre-ram;
+};
+
+&pinctrl_usdhc0 {
+	bootph-pre-ram;
+};

@@ -1,0 +1,296 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) 2018 MediaTek Inc.
+ * Author: Ryder Lee <ryder.lee@mediatek.com>
+ */
+
+#ifndef __DRV_CLK_MTK_H
+#define __DRV_CLK_MTK_H
+
+#include <linux/bitops.h>
+
+#define MHZ				(1000 * 1000)
+
+/* flags in struct mtk_clk_tree */
+
+#define CLK_PLL_HAVE_RST_BAR		BIT(0)
+
+#define CLK_MUX_DOMAIN_SCPSYS		BIT(0)
+#define CLK_MUX_SETCLR_UPD		BIT(1)
+
+#define CLK_GATE_SETCLR			BIT(0)
+#define CLK_GATE_SETCLR_INV		BIT(1)
+#define CLK_GATE_NO_SETCLR		BIT(2)
+#define CLK_GATE_NO_SETCLR_INV		BIT(3)
+#define CLK_GATE_MASK			GENMASK(3, 0)
+
+#define CLK_PARENT_APMIXED		BIT(4)
+#define CLK_PARENT_TOPCKGEN		BIT(5)
+#define CLK_PARENT_INFRASYS		BIT(6)
+#define CLK_PARENT_EXT			BIT(7)
+#define CLK_PARENT_MASK			GENMASK(7, 4)
+
+#define ETHSYS_HIFSYS_RST_CTRL_OFS	0x34
+
+/* struct mtk_pll_data - hardware-specific PLLs data */
+struct mtk_pll_data {
+	/* unmapped ID of clock */
+	const int id;
+	u32 reg;
+	u32 pwr_reg;
+	u32 en_mask;
+	u32 pd_reg;
+	int pd_shift;
+	u32 flags;
+	u32 rst_bar_mask;
+	u64 fmax;
+	u64 fmin;
+	int pcwbits;
+	int pcwibits;
+	u32 pcw_reg;
+	int pcw_shift;
+	u32 pcw_chg_reg;
+};
+
+/**
+ * struct mtk_fixed_clk - fixed clocks
+ *
+ * @id:		unmapped ID of clock
+ * @parent:	unmapped ID of parent clock
+ * @rate:	fixed rate
+ */
+struct mtk_fixed_clk {
+	const int id;
+	const int parent;
+	const int flags;
+	unsigned long rate;
+};
+
+#define FIXED_CLK(_id, _parent, _flags, _rate) {	\
+		.id = _id,				\
+		.parent = _parent,			\
+		.flags = _flags,			\
+		.rate = _rate,				\
+	}
+
+/**
+ * struct mtk_fixed_factor - fixed multiplier and divider clocks
+ *
+ * @id:		unmapped ID of clock
+ * @parent:	unmapped ID of parent clock
+ * @mult:	multiplier
+ * @div:	divider
+ * @flag:	hardware-specific flags
+ */
+struct mtk_fixed_factor {
+	const int id;
+	const int parent;
+	u32 mult;
+	u32 div;
+	u32 flags;
+};
+
+#define FACTOR(_id, _parent, _mult, _div, _flags) {	\
+		.id = _id,				\
+		.parent = _parent,			\
+		.mult = _mult,				\
+		.div = _div,				\
+		.flags = _flags,			\
+	}
+
+/**
+ * struct mtk_parent -  clock parent with flags. Needed for MUX that
+ *			parent with mixed infracfg and topckgen.
+ *
+ * @id:			unmapped ID of parent clocks
+ * @flags:		hardware-specific flags (parent location,
+ *			infracfg, topckgen, APMIXED, xtal ...)
+ */
+struct mtk_parent {
+	const int id;
+	u16 flags;
+};
+
+#define PARENT(_id, _flags) {				\
+		.id = _id,				\
+		.flags = _flags,			\
+	}
+
+#define APMIXED_PARENT(id)	PARENT(id, CLK_PARENT_APMIXED)
+#define TOP_PARENT(id)		PARENT(id, CLK_PARENT_TOPCKGEN)
+#define INFRA_PARENT(id)	PARENT(id, CLK_PARENT_INFRASYS)
+#define EXT_PARENT(id)		PARENT(id, CLK_PARENT_EXT)
+#define VOID_PARENT		PARENT(-1, 0)
+
+/**
+ * struct mtk_composite - aggregate clock of mux, divider and gate clocks
+ *
+ * @id:			unmapped ID of clocks
+ * @parent:		array of parent clocks
+ * @mux_reg:		hardware-specific mux register
+ * @gate_reg:		hardware-specific gate register
+ * @mux_mask:		mask to the mux bit field
+ * @mux_shift:		shift to the mux bit field
+ * @gate_shift:		shift to the gate bit field
+ * @num_parents:	number of parent clocks
+ * @flags:		hardware-specific flags
+ */
+struct mtk_composite {
+	const int id;
+	const struct mtk_parent *parent;
+	u32 mux_reg;
+	u32 mux_set_reg;
+	u32 mux_clr_reg;
+	u32 upd_reg;
+	u32 gate_reg;
+	u32 mux_mask;
+	signed char mux_shift;
+	signed char upd_shift;
+	signed char gate_shift;
+	signed char num_parents;
+	u16 flags;
+};
+
+#define MUX_GATE_FLAGS(_id, _parents, _reg, _shift, _width, _gate,	\
+		       _flags) {					\
+		.id = _id,						\
+		.mux_reg = _reg,					\
+		.mux_shift = _shift,					\
+		.mux_mask = BIT(_width) - 1,				\
+		.gate_reg = _reg,					\
+		.gate_shift = _gate,					\
+		.parent = _parents,					\
+		.num_parents = ARRAY_SIZE(_parents),			\
+		.flags = _flags,					\
+	}
+
+#define MUX_GATE(_id, _parents, _reg, _shift, _width, _gate)		\
+	MUX_GATE_FLAGS(_id, _parents, _reg, _shift, _width, _gate, 0)
+
+#define MUX_FLAGS(_id, _parents, _reg, _shift, _width, _flags) {	\
+		.id = _id,						\
+		.mux_reg = _reg,					\
+		.mux_shift = _shift,					\
+		.mux_mask = BIT(_width) - 1,				\
+		.gate_shift = -1,					\
+		.parent = _parents,					\
+		.num_parents = ARRAY_SIZE(_parents),			\
+		.flags = _flags,					\
+	}
+#define MUX(_id, _parents, _reg, _shift, _width)			\
+	MUX_FLAGS(_id, _parents, _reg, _shift, _width, 0)
+
+#define MUX_CLR_SET_UPD_FLAGS(_id, _parents, _mux_ofs, _mux_set_ofs,\
+			_mux_clr_ofs, _shift, _width, _gate,		\
+			_upd_ofs, _upd, _flags) {			\
+		.id = _id,						\
+		.mux_reg = _mux_ofs,					\
+		.mux_set_reg = _mux_set_ofs,			\
+		.mux_clr_reg = _mux_clr_ofs,			\
+		.upd_reg = _upd_ofs,					\
+		.upd_shift = _upd,					\
+		.mux_shift = _shift,					\
+		.mux_mask = BIT(_width) - 1,				\
+		.gate_reg = _mux_ofs,					\
+		.gate_shift = _gate,					\
+		.parent = _parents,					\
+		.num_parents = ARRAY_SIZE(_parents),			\
+		.flags = _flags,					\
+	}
+
+struct mtk_gate_regs {
+	u32 sta_ofs;
+	u32 clr_ofs;
+	u32 set_ofs;
+};
+
+/**
+ * struct mtk_gate - gate clocks
+ *
+ * @id:		unmapped ID of gate clocks
+ * @parent:	unmapped ID of parent clocks
+ * @regs:	hardware-specific mux register
+ * @shift:	shift to the gate bit field
+ * @flags:	hardware-specific flags
+ */
+struct mtk_gate {
+	const int id;
+	const int parent;
+	const struct mtk_gate_regs *regs;
+	int shift;
+	u32 flags;
+};
+
+#define GATE_FLAGS(_id, _parent, _regs, _shift, _flags) {	\
+		.id = _id,					\
+		.parent = _parent,				\
+		.regs = _regs,					\
+		.shift = _shift,				\
+		.flags = _flags,				\
+	}
+
+/* struct mtk_clk_tree - clock tree */
+struct mtk_clk_tree {
+	const struct mtk_parent pll_parent;
+	/* External fixed clocks - excluded from mapping. */
+	const ulong *ext_clk_rates;
+	const int num_ext_clks;
+	/*
+	 * Clock IDs may be remapped with an auxiliary table. Enable this by
+	 * defining .id_offs_map and .id_offs_map_size. This is needed e.g. when
+	 * the upstream Linux kernel <soc>-clk.h has mixed clk IDs and doesn't
+	 * have clear distinction between ID for factor, mux and gates. When
+	 * this is enabled, the struct clk->id will contained the mapped ID that
+	 * is the index in the various arrays in this struct. The .id and
+	 * .parent fields in the various mtk_* structs will contain the
+	 * unmapped IDs as defined in the upstream Linux kernel <soc>-clk.h.
+	 */
+	const int *id_offs_map; /* optional, maps clk.h ID to array index */
+	const int id_offs_map_size;
+	const int fdivs_offs;
+	const int muxes_offs;
+	const int gates_offs;
+	const struct mtk_pll_data *plls;
+	const struct mtk_fixed_clk *fclks;
+	const struct mtk_fixed_factor *fdivs;
+	const struct mtk_composite *muxes;
+	const struct mtk_gate *gates;
+	const int num_plls;
+	const int num_fclks;
+	const int num_fdivs;
+	const int num_muxes;
+	const int num_gates;
+	u32 flags;
+};
+
+struct mtk_clk_priv {
+	struct udevice *parent;
+	void __iomem *base;
+	const struct mtk_clk_tree *tree;
+};
+
+struct mtk_cg_priv {
+	struct udevice *parent;
+	void __iomem *base;
+	const struct mtk_clk_tree *tree;
+	const struct mtk_gate *gates;
+	int num_gates;
+	int gates_offs;
+};
+
+extern const struct clk_ops mtk_clk_apmixedsys_ops;
+extern const struct clk_ops mtk_clk_fixed_pll_ops;
+extern const struct clk_ops mtk_clk_topckgen_ops;
+extern const struct clk_ops mtk_clk_infrasys_ops;
+extern const struct clk_ops mtk_clk_gate_ops;
+
+int mtk_common_clk_init(struct udevice *dev,
+			const struct mtk_clk_tree *tree);
+int mtk_common_clk_infrasys_init(struct udevice *dev,
+				 const struct mtk_clk_tree *tree);
+int mtk_common_clk_gate_init(struct udevice *dev,
+			     const struct mtk_clk_tree *tree,
+			     const struct mtk_gate *gates, int num_gates,
+			     int gates_offs);
+
+#endif /* __DRV_CLK_MTK_H */

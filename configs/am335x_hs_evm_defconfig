@@ -1,0 +1,5 @@
+#include <configs/am335x_hs_evm.config>
+
+CONFIG_SPL_TEXT_BASE=0x40300350
+CONFIG_SPL_MAX_SIZE=0xb0b0
+# CONFIG_SPL_YMODEM_SUPPORT is not set

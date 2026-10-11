@@ -1,0 +1,86 @@
+#
+# Memory devices
+#
+
+menu "Memory Controller drivers"
+
+config MEMORY
+	bool "Enable Driver Model for Memory Controller drivers"
+	depends on DM
+	help
+	  Enable driver model for Memory Controller devices.
+	  These devices provide Memory bus interface to various devices like
+	  SRAM, Ethernet adapters, FPGAs, etc.
+	  For now this uclass has no methods yet.
+
+config ATMEL_EBI
+	bool
+	help
+	  Driver for Atmel EBI controller. This is a dummy
+	  driver. Doesn't provide an access to EBI controller. Select
+	  this option to enable the NAND flash controller driver
+
+config SANDBOX_MEMORY
+	bool "Enable Sandbox Memory Controller driver"
+	depends on SANDBOX && MEMORY
+	help
+	  This is a driver model based Memory Controller driver for sandbox.
+	  Currently it is a stub only, as there are no usable uclass methods
+	  yet.
+
+config STM32_FMC2_EBI
+	bool "Support for FMC2 External Bus Interface on STM32MP SoCs"
+	depends on ARCH_STM32MP
+	help
+	  Select this option to enable the STM32 FMC2 External Bus Interface
+	  controller. This driver configures the transactions with external
+	  devices (like SRAM, ethernet adapters, FPGAs, LCD displays, ...) on
+	  SOCs containing the FMC2 External Bus Interface.
+
+config STM32_OMM
+	bool "STM32 Octo Memory Manager"
+	depends on ARCH_STM32MP
+	help
+	  This driver manages the muxing between the 2 OSPI busses and
+	  the 2 output ports. There are 4 possible muxing configurations:
+	  - direct mode (no multiplexing): OSPI1 output is on port 1 and OSPI2
+	  output is on port 2
+	  - OSPI1 and OSPI2 are multiplexed over the same output port 1
+	  - swapped mode (no multiplexing), OSPI1 output is on port 2,
+	  OSPI2 output is on port 1
+	  - OSPI1 and OSPI2 are multiplexed over the same output port 2
+	  It also manages :
+	  - the split of the memory area shared between the 2 OSPI instances.
+	  - chip select selection override.
+	  - the time between 2 transactions in multiplexed mode.
+
+config TI_AEMIF
+	bool "Texas Instruments AEMIF driver"
+	depends on ARCH_KEYSTONE || ARCH_DAVINCI
+	help
+	  This driver is for the AEMIF module available in Texas Instruments
+	  SoCs. AEMIF stands for Asynchronous External Memory Interface and
+	  is intended to provide a glue-less interface to a variety of
+	  asynchronuous memory devices like ASRAM, NOR and NAND memory. A total
+	  of 256M bytes of any of these memories can be accessed at a given
+	  time via four chip selects with 64M byte access per chip select.
+
+config TI_GPMC
+	bool "Texas Instruments GPMC driver"
+	depends on ARCH_OMAP2PLUS || ARCH_KEYSTONE || ARCH_K3
+	depends on MEMORY && CLK && OF_CONTROL
+	help
+	  This driver is for the General Purpose Memory Controller (GPMC)
+	  present on Texas Instruments SoCs (e.g. OMAP2+). GPMC allows
+	  interfacing to a variety of asynchronous as well as synchronous
+	  memory drives like NOR, NAND, OneNAND, SRAM.
+
+if TI_GPMC
+config TI_GPMC_DEBUG
+	bool "Debug Texas Instruments GPMC timings"
+	help
+	  Enable this to print GPMC timings before and after the GPMC registers
+	  are programmed. This should not be left enabled on production systems.
+endif
+
+endmenu

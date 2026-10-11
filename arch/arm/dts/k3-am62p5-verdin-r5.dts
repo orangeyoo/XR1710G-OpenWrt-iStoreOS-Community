@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+ * Toradex Verdin AM62P dts file for R5 SPL
+ * Copyright 2025 Toradex - https://www.toradex.com/
+ */
+
+#include "k3-am62p5-verdin-wifi-dev.dts"
+#include "k3-am62p5-verdin-lpddr4-1600.dtsi"
+#include "k3-am62a-ddr.dtsi"
+
+#include "k3-am62p5-verdin-wifi-dev-u-boot.dtsi"
+#include "k3-am62p5-r5.dtsi"
+
+&a53_0 {
+	assigned-clocks = <&k3_clks 61 0>, <&k3_clks 135 0>, <&k3_clks 157 36>;
+	assigned-clock-parents = <&k3_clks 61 2>, <0>, <&k3_clks 157 38>;
+	assigned-clock-rates = <200000000>, <1200000000>, <25000000>;
+};

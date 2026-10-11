@@ -1,0 +1,128 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright 2017 NXP
+ *
+ * Copyright 2019 Siemens AG
+ *
+ */
+
+/dts-v1/;
+
+#include "fsl-imx8qxp.dtsi"
+#include "imx8-capricorn-u-boot.dtsi"
+
+/ {
+	chosen {
+		bootargs = "console=ttyLP2,115200 earlycon=lpuart32,0x5a080000,115200";
+		stdout-path = &lpuart2;
+	};
+
+	/* create device for u-boot wdt command */
+	scu-wdt {
+		compatible = "siemens,scu-wdt";
+	};
+
+};
+
+&iomuxc {
+	pinctrl-names = "default";
+
+	muxcgrp: imx8qxp-som {
+		pinctrl_lpi2c0: lpi2c0grp {
+			fsl,pins = <
+			SC_P_MIPI_CSI0_GPIO0_00_ADMA_I2C0_SCL	0x0C000020
+			SC_P_MIPI_CSI0_GPIO0_01_ADMA_I2C0_SDA	0x0C000020
+			>;
+		};
+
+		pinctrl_lpi2c1: lpi2c1grp {
+			fsl,pins = <
+			SC_P_MIPI_DSI0_GPIO0_00_ADMA_I2C1_SCL	0x0C000020
+			SC_P_MIPI_DSI0_GPIO0_01_ADMA_I2C1_SDA	0x0C000020
+			>;
+		};
+
+		pinctrl_lpuart2: lpuart2grp {
+			fsl,pins = <
+				SC_P_UART2_RX_ADMA_UART2_RX	0x06000020
+				SC_P_UART2_TX_ADMA_UART2_TX	0x06000020
+			>;
+		};
+
+		pinctrl_usdhc1: usdhc1grp {
+			fsl,pins = <
+				SC_P_EMMC0_CLK_CONN_EMMC0_CLK		0x06000041
+				SC_P_EMMC0_CMD_CONN_EMMC0_CMD		0x00000021
+				SC_P_EMMC0_DATA0_CONN_EMMC0_DATA0	0x00000021
+				SC_P_EMMC0_DATA1_CONN_EMMC0_DATA1	0x00000021
+				SC_P_EMMC0_DATA2_CONN_EMMC0_DATA2	0x00000021
+				SC_P_EMMC0_DATA3_CONN_EMMC0_DATA3	0x00000021
+				SC_P_EMMC0_DATA4_CONN_EMMC0_DATA4	0x00000021
+				SC_P_EMMC0_DATA5_CONN_EMMC0_DATA5	0x00000021
+				SC_P_EMMC0_DATA6_CONN_EMMC0_DATA6	0x00000021
+				SC_P_EMMC0_DATA7_CONN_EMMC0_DATA7	0x00000021
+				SC_P_EMMC0_STROBE_CONN_EMMC0_STROBE	0x06000041
+				SC_P_EMMC0_RESET_B_CONN_EMMC0_RESET_B	0x00000021
+			>;
+		};
+	};
+};
+
+&i2c0 {
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpi2c0>;
+	status = "okay";
+};
+
+&i2c1 {
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpi2c1>;
+	status = "okay";
+};
+
+&lpuart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpuart2>;
+	status = "okay";
+};
+
+&usdhc1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usdhc1>;
+	max-frequency = <52000000>;
+	clock-frequency=<52000000>;
+	no-1-8-v;
+	bus-width = <8>;
+	non-removable;
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&gpio2 {
+	status = "okay";
+};
+
+&gpio3 {
+	status = "okay";
+};
+
+&gpio4 {
+	status = "okay";
+};
+
+&gpio5 {
+	status = "okay";
+};
+
+&fec1 {
+	status ="disabled";
+};

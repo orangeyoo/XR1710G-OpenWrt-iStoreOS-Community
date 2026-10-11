@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * AM62A7 SK dts file for R5 SPL
+ * Copyright (C) 2022 Texas Instruments Incorporated - https://www.ti.com/
+ */
+
+#include "k3-am62a7-sk.dts"
+#include "k3-am62a-ddr-1866mhz-32bit.dtsi"
+#include "k3-am62a-ddr.dtsi"
+
+#include "k3-am62a7-sk-u-boot.dtsi"
+#include "k3-am62a7-r5.dtsi"
+
+/ {
+	aliases {
+		tick-timer = &main_timer0;
+	};
+};
+
+&secure_proxy_sa3 {
+	/* Needed for initial handshake with ROM */
+	status = "okay";
+	bootph-pre-ram;
+};
+
+&wkup_uart0_pins_default {
+	bootph-pre-ram;
+};
+
+&main_uart1_pins_default {
+	bootph-pre-ram;
+};
+
+/* WKUP UART0 is used for DM firmware logs */
+&wkup_uart0 {
+	status = "okay";
+	bootph-pre-ram;
+};
+
+/* Main UART1 is used for TIFS firmware logs */
+&main_uart1 {
+	status = "okay";
+	bootph-pre-ram;
+};

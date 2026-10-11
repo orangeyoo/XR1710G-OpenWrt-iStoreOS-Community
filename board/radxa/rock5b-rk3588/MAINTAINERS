@@ -1,0 +1,8 @@
+ROCK5B-RK3588
+M:	Eugen Hristev <ehristev@kernel.org>
+R:	Jonas Karlman <jonas@kwiboo.se>
+S:	Maintained
+F:	board/radxa/rock5b-rk3588
+F:	include/configs/rock5b-rk3588.h
+F:	configs/rock5b-rk3588_defconfig
+F:	arch/arm/dts/rk3588-rock-5b*

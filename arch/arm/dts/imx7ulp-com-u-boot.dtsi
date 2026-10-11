@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: GPL-2.0+ OR X11
+/*
+ * Copyright 2019 Foundries.io
+ */
+
+#include "imx7ulp-u-boot.dtsi"
+
+&iomuxc1 {
+	bootph-pre-ram;
+};
+
+&ahbbridge0 {
+	bootph-pre-ram;
+};
+
+&ahbbridge1 {
+	bootph-pre-ram;
+};
+
+&lpuart4 {
+	bootph-pre-ram;
+};
+
+&usbotg1 {
+	extcon = <&usbphy1>;
+	bootph-pre-ram;
+};
+
+&usbphy1 {
+	bootph-pre-ram;
+};
+
+&usdhc0 {
+	bootph-pre-ram;
+};
+
+&gpio_ptc {
+	bootph-pre-ram;
+};

@@ -1,0 +1,33 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
+/*
+ * Copyright 2020 NXP
+ */
+
+#ifndef __IMX8ULP_EVK_H
+#define __IMX8ULP_EVK_H
+
+#include <linux/sizes.h>
+#include <asm/arch/imx-regs.h>
+
+#define CFG_SYS_UBOOT_BASE	(QSPI0_AMBA_BASE + CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR * 512)
+
+#ifdef CONFIG_XPL_BUILD
+#define CFG_MALLOC_F_ADDR		0x22040000
+
+#endif
+
+/* ENET Config */
+#if defined(CONFIG_FEC_MXC)
+#define CFG_FEC_MXC_PHYADDR		1
+#endif
+
+/* Link Definitions */
+
+#define CFG_SYS_INIT_RAM_ADDR	0x80000000
+#define CFG_SYS_INIT_RAM_SIZE	0x80000
+
+#define CFG_SYS_SDRAM_BASE		0x80000000
+#define PHYS_SDRAM			0x80000000
+#define PHYS_SDRAM_SIZE			0x80000000 /* 2GB DDR */
+
+#endif

@@ -1,0 +1,7 @@
+PURISM LIBREM5 PHONE
+M:	Angus Ainslie <angus@akkea.ca>
+R:	kernel@puri.sm
+S:	Supported
+F:	board/purism/librem5/
+F:	configs/librem5_defconfig
+F:	include/configs/librem5.h

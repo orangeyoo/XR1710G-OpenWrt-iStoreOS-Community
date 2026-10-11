@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * J722S EVM dts file for R5 SPL
+ * Copyright (C) 2024 Texas Instruments Incorporated - https://www.ti.com/
+ */
+
+#include "k3-j722s-evm.dts"
+#include "k3-j722s-evm-u-boot.dtsi"
+
+#include "k3-j722s-ddr-lp4-50-4000.dtsi"
+#include "k3-am62a-ddr.dtsi"
+#include "k3-j722s-r5.dtsi"
+
+/* WKUP UART0 is used for DM firmware logs */
+&wkup_uart0 {
+	status = "okay";
+};
+
+&main_bcdma {
+	ti,sci = <&dm_tifs>;
+};
+
+&main_pktdma {
+	ti,sci = <&dm_tifs>;
+};

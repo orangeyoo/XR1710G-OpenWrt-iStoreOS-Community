@@ -1,0 +1,91 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
+/*
+ * K3: AM64 SoC definitions, structures etc.
+ *
+ * (C) Copyright (C) 2020-2021 Texas Instruments Incorporated - https://www.ti.com/
+ */
+#ifndef __ASM_ARCH_AM64_HARDWARE_H
+#define __ASM_ARCH_AM64_HARDWARE_H
+
+#include <config.h>
+#ifndef __ASSEMBLY__
+#include <linux/bitops.h>
+#endif
+
+#define PADCFG_MMR1_BASE				0x000f0000
+#define MCU_PADCFG_MMR1_BASE				0x04080000
+#define WKUP_CTRL_MMR0_BASE				0x43000000
+#define MCU_CTRL_MMR0_BASE				0x04500000
+#define CTRL_MMR0_BASE					0x43000000
+
+#define CTRLMMR_WKUP_JTAG_DEVICE_ID		(WKUP_CTRL_MMR0_BASE + 0x18)
+#define JTAG_DEV_SPEED_MASK			GENMASK(10, 6)
+#define JTAG_DEV_SPEED_SHIFT			6
+
+#define CTRLMMR_MAIN_DEVSTAT				(CTRL_MMR0_BASE + 0x30)
+
+#define MAIN_DEVSTAT_PRIMARY_BOOTMODE_MASK		0x00000078
+#define MAIN_DEVSTAT_PRIMARY_BOOTMODE_SHIFT		3
+
+#define MAIN_DEVSTAT_PRIMARY_BOOTMODE_CFG_MASK		0x00000380
+#define MAIN_DEVSTAT_PRIMARY_BOOTMODE_CFG_SHIFT		7
+
+#define MAIN_DEVSTAT_BACKUP_BOOTMODE_MASK		0x00001c00
+#define MAIN_DEVSTAT_BACKUP_BOOTMODE_SHIFT		10
+
+#define MAIN_DEVSTAT_BACKUP_BOOTMODE_CFG_MASK		0x00002000
+#define MAIN_DEVSTAT_BACKUP_BOOTMODE_CFG_SHIFT		13
+
+/* After the cfg mask and shifts have been applied */
+#define MAIN_DEVSTAT_PRIMARY_MMC_PORT_SHIFT		2
+#define MAIN_DEVSTAT_PRIMARY_MMC_PORT_MASK		0x04
+
+#define MAIN_DEVSTAT_PRIMARY_USB_MODE_SHIFT		1
+#define MAIN_DEVSTAT_PRIMARY_USB_MODE_MASK		0x02
+
+#define MAIN_DEVSTAT_BACKUP_USB_MODE_MASK		0x01
+
+#define ROM_EXTENDED_BOOT_DATA_INFO			0x701beb00
+
+/* Use Last 2K as Scratch pad */
+#define TI_SRAM_SCRATCH_BOARD_EEPROM_START		0x7019f800
+
+/* Reset Reason Detection */
+#define CTRLMMR_MCU_RST_SRC			(MCU_CTRL_MMR0_BASE + 0x18178)
+
+/* Reset causes by bit mapping */
+#define RST_SRC_SAFETY_ERR			BIT(31)
+#define RST_SRC_MAIN_ESM_ERR			BIT(30)
+#define RST_SRC_SW_MAIN_POR_FROM_MAIN		BIT(25)
+#define RST_SRC_SW_MAIN_POR_FROM_MCU		BIT(24)
+#define RST_SRC_SW_MAIN_WARM_FROM_MAIN		BIT(21)
+#define RST_SRC_SW_MAIN_WARM_FROM_MCU		BIT(20)
+#define RST_SRC_SW_MCU_WARM_RST			BIT(16)
+#define RST_SRC_SMS_WARM_RST			BIT(13)
+#define RST_SRC_SMS_COLD_RST			BIT(12)
+#define RST_SRC_DEBUG_RST			BIT(8)
+#define RST_SRC_THERMAL_RST			BIT(4)
+#define RST_SRC_MAIN_RESET_PIN			BIT(2)
+#define RST_SRC_MCU_RESET_PIN			BIT(0)
+
+#if defined(CONFIG_SYS_K3_SPL_ATF) && !defined(__ASSEMBLY__)
+
+#define AM64X_DEV_RTI8			127
+#define AM64X_DEV_RTI9			128
+
+static const u32 put_device_ids[] = {
+	AM64X_DEV_RTI9,
+	AM64X_DEV_RTI8,
+};
+
+#endif
+
+#define AM64X_DEV_R5FSS0_CORE0		121
+#define AM64X_DEV_R5FSS0_CORE1		122
+
+static const u32 put_core_ids[] = {
+	AM64X_DEV_R5FSS0_CORE1,
+	AM64X_DEV_R5FSS0_CORE0, /* Handle CPU0 after CPU1 */
+};
+
+#endif /* __ASM_ARCH_DRA8_HARDWARE_H */

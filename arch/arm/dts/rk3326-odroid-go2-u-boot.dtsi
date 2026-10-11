@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2020 Theobroma Systems Design und Consulting GmbH
+ */
+
+#include "rk3326-u-boot.dtsi"
+
+&blue_led {
+	default-state = "on";
+	u-boot,default-brightness = <127>;
+};
+
+&i2c0_xfer {
+	bootph-pre-ram;
+};
+
+&i2s1_2ch_mclk {
+	bootph-pre-ram;
+};
+
+&pcfg_pull_none_smt {
+	bootph-pre-ram;
+};
+
+&pmic_int {
+	bootph-pre-ram;
+};
+
+&rk817 {
+	regulators {
+		bootph-pre-ram;
+
+		vcc_cam: LDO_REG9 {
+			regulator-name = "vcc_cam";
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+
+			regulator-state-mem {
+				regulator-off-in-suspend;
+				regulator-suspend-microvolt = <3000000>;
+			};
+		};
+	};
+};
+
+&saradc {
+	bootph-pre-ram;
+	vdd-microvolts = <1800000>;
+};
+
+&sfc {
+	flash@0 {
+		bootph-pre-ram;
+		bootph-some-ram;
+	};
+};
+
+&uart1 {
+	bootph-all;
+	clock-frequency = <24000000>;
+};
+
+&uart1_cts {
+	bootph-pre-sram;
+	bootph-pre-ram;
+};
+
+&uart1_xfer {
+	bootph-pre-sram;
+	bootph-pre-ram;
+};

@@ -1,0 +1,8 @@
+#include <configs/am335x_hs_evm.config>
+
+# CONFIG_SPL_MMC is not set
+CONFIG_SPL_TEXT_BASE=0x40301950
+# CONFIG_SPL_FS_FAT is not set
+# CONFIG_SPL_LIBDISK_SUPPORT is not set
+CONFIG_SPL_MAX_SIZE=0x9ab0
+# CONFIG_CMD_SETEXPR is not set

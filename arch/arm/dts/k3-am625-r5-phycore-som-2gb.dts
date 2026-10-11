@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * phyCORE-AM62x dts file for R5 SPL with 2GB RAM
+ * Copyright (C) 2022 - 2023 Phytec Messtechnik GmbH
+ * Author: Wadim Egorov <w.egorov@phytec.de>
+ */
+
+#include "k3-am625-phyboard-lyra-rdk.dts"
+#include "k3-am62-phycore-som-ddr4-2gb.dtsi"
+#include "k3-am62-ddr.dtsi"
+
+#include "k3-am625-phyboard-lyra-rdk-u-boot.dtsi"
+#include "k3-am625-r5.dtsi"
+
+/ {
+	memory@80000000 {
+		device_type = "memory";
+		/* 2G RAM */
+		reg = <0x00000000 0x80000000 0x00000000 0x80000000>;
+		bootph-pre-ram;
+	};
+};
+
+&main_pktdma {
+	ti,sci = <&dm_tifs>;
+};
+
+&main_bcdma {
+	ti,sci = <&dm_tifs>;
+};
+
+&mcu_pmx0 {
+	wkup_uart0_pins_default: wkup-uart0-pins-default {
+		pinctrl-single,pins = <
+			AM62X_MCU_IOPAD(0x02c, PIN_INPUT, 0) /* (C6) WKUP_UART0_CTSn */
+			AM62X_MCU_IOPAD(0x030, PIN_OUTPUT, 0) /* (A4) WKUP_UART0_RTSn */
+			AM62X_MCU_IOPAD(0x024, PIN_INPUT, 0) /* (B4) WKUP_UART0_RXD */
+			AM62X_MCU_IOPAD(0x028, PIN_OUTPUT, 0) /* (C5) WKUP_UART0_TXD */
+		>;
+		bootph-pre-ram;
+	};
+};
+
+/* WKUP UART0 is used for DM firmware logs */
+&wkup_uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&wkup_uart0_pins_default>;
+	status = "okay";
+	bootph-pre-ram;
+};

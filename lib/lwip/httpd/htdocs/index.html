@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>XR1710G 恢复控制台</title>
+<style>
+:root{
+  color-scheme:light;
+  --ink:#162334;--ink-2:#35465a;--muted:#56677a;--quiet:#637386;
+  --line:#d9e1e9;--line-strong:#718297;--canvas:#f4f7fa;--surface:#fff;--soft:#edf2f7;
+  --action:#0870cf;--action-strong:#075ca9;--action-soft:#e9f3fc;
+  --healthy:#087a5b;--healthy-soft:#e7f5f0;--warning:#a75f08;--warning-soft:#fff4df;
+  --danger:#c23740;--danger-soft:#fff0f1;--rail:#0d1825;--rail-raised:#162538;
+  --rail-text:#edf4fb;--rail-muted:#aab8c8;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{min-height:100%;margin:0}
+body{
+  min-width:320px;color:var(--ink);background:var(--canvas);
+  font:14px/1.55 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+}
+button,input,select{font:inherit;letter-spacing:0}
+button{touch-action:manipulation}
+button:focus-visible,input:focus-visible,select:focus-visible{
+  outline:3px solid rgba(8,112,207,.28);outline-offset:2px
+}
+.topbar{
+  position:relative;z-index:2;min-height:62px;display:flex;align-items:center;
+  justify-content:space-between;gap:24px;padding:10px 24px;border-bottom:1px solid var(--line);
+  background:var(--surface)
+}
+.brand{min-width:0;display:flex;align-items:center;gap:12px}
+.brand-logo{display:block;width:166px;height:auto;flex:0 0 auto}
+.brand-copy{min-width:0;padding-left:12px;border-left:1px solid var(--line)}
+.brand-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;font-weight:760}
+.brand-subtitle{display:block;color:var(--quiet);font-size:11px}
+.top-actions{display:flex;align-items:center;gap:20px}
+.endpoint{display:flex;align-items:baseline;gap:8px;color:var(--quiet);font-size:11px}
+.endpoint strong{color:var(--ink-2);font:12px ui-monospace,SFMono-Regular,Consolas,monospace}
+.language-switch{
+  display:inline-flex;align-items:center;min-height:36px;padding:3px;border:1px solid var(--line);
+  border-radius:9px;background:var(--soft)
+}
+.language-switch button{
+  min-width:48px;min-height:28px;padding:0 10px;border:0;border-radius:6px;color:var(--quiet);
+  background:transparent;cursor:pointer;font-size:12px;font-weight:700
+}
+.language-switch button[aria-pressed="true"]{color:var(--action-strong);background:var(--surface)}
+.language-switch button:disabled{cursor:default;opacity:.5}
+.shell{min-height:calc(100svh - 62px);display:grid;grid-template-columns:264px minmax(0,1fr)}
+.rail{
+  min-height:calc(100svh - 62px);display:flex;flex-direction:column;padding:28px 20px 22px;
+  color:var(--rail-text);background:var(--rail)
+}
+.rail-kicker{margin:0;color:#7fa8ce;font-size:11px;font-weight:760;letter-spacing:.1em;text-transform:uppercase}
+.rail-title{margin:6px 0 0;font-size:20px;line-height:1.25;font-weight:760}
+.rail-copy{margin:8px 0 0;color:var(--rail-muted);font-size:12px}
+.step-nav{display:grid;gap:8px;margin-top:28px}
+.step-button{
+  width:100%;min-height:68px;display:grid;grid-template-columns:minmax(0,1fr);
+  align-items:center;padding:10px 12px;border:1px solid transparent;border-radius:9px;
+  color:var(--rail-muted);background:transparent;cursor:pointer;text-align:left
+}
+.step-button:hover{color:var(--rail-text);background:var(--rail-raised)}
+.step-button.active{color:var(--rail-text);border-color:#39506a;background:var(--rail-raised)}
+.step-button:disabled{cursor:default;opacity:.48}
+.step-copy{min-width:0}
+.step-copy strong{display:block;color:inherit;font-size:13px;font-weight:730}
+.step-copy span{display:block;margin-top:2px;color:#8496a8;font-size:11px}
+.rail-boundary{
+  margin-top:auto;padding:16px;border:1px solid #2b3c50;border-radius:9px;background:var(--rail-raised)
+}
+.rail-boundary strong{display:block;font-size:12px}
+.rail-boundary p{margin:6px 0 0;color:var(--rail-muted);font-size:11px;line-height:1.55}
+.rail-meta{margin:16px 2px 0;color:#75899d;font-size:10px;overflow-wrap:anywhere}
+.rail-meta span{display:block}
+.rail-meta span+span{margin-top:3px}
+.main{min-width:0;padding:36px 40px 48px}
+.main-inner{width:min(980px,100%);margin:0 auto}
+.hero{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:20px}
+.hero-copy{min-width:0}
+.eyebrow{margin:0 0 7px;color:var(--action);font-size:11px;font-weight:780;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{margin:0;font-size:30px;line-height:1.18;font-weight:780;letter-spacing:-.018em}
+.hero p:last-child{max-width:690px;margin:10px 0 0;color:var(--muted)}
+.detected{
+  min-width:155px;flex:0 0 auto;padding:10px 12px;border:1px solid var(--line);
+  border-radius:6px;background:var(--surface)
+}
+.detected span{display:block;color:var(--quiet);font-size:10px;font-weight:740;text-transform:uppercase}
+.detected strong{display:block;margin-top:3px;color:var(--ink-2);font-size:12px;font-weight:720}
+.surface{overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.facts{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--line);background:var(--soft)}
+.fact{min-width:0;padding:17px 20px;border-left:1px solid var(--line)}
+.fact:first-child{border-left:0}
+.fact-label{display:block;color:var(--quiet);font-size:10px;font-weight:760;letter-spacing:.05em;text-transform:uppercase}
+.fact-value{display:block;margin-top:5px;color:var(--ink-2);font-size:12px;font-weight:660;overflow-wrap:anywhere}
+.workspace{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(240px,.85fr);gap:24px;padding:28px 30px 30px}
+.form-stack{min-width:0}
+.field{margin-top:20px}
+.field:first-child{margin-top:0}
+.field-label{display:block;margin-bottom:8px;color:var(--ink-2);font-size:12px;font-weight:730}
+.layout-select{
+  width:100%;min-height:44px;padding:0 38px 0 12px;border:1px solid var(--line-strong);
+  border-radius:6px;color:var(--ink);background:var(--surface)
+}
+.layout-select:disabled{cursor:default;opacity:.52;background:var(--soft)}
+.field-help{min-height:18px;margin:7px 0 0;color:var(--quiet);font-size:11px}
+.field-help.warning,.field-help.error{color:var(--danger)}
+.field-help.ok{color:var(--healthy)}
+#file-input{
+  position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);
+  white-space:nowrap;clip-path:inset(50%)
+}
+.file-picker{
+  min-height:48px;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:stretch;
+  overflow:hidden;border:1px solid var(--line-strong);border-radius:6px;background:var(--soft)
+}
+.choose-button{
+  min-height:46px;padding:0 16px;border:0;border-right:1px solid var(--line);
+  color:var(--action-strong);background:var(--surface);cursor:pointer;font-weight:730
+}
+.choose-button:hover{background:var(--action-soft)}
+.choose-button:disabled{cursor:default;opacity:.52}
+.file-name{
+  min-width:0;display:flex;align-items:center;padding:0 14px;overflow:hidden;color:var(--quiet);
+  text-overflow:ellipsis;white-space:nowrap
+}
+.file-name.selected{color:var(--ink-2);font-weight:650}
+.action-row{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:24px;
+  padding-top:20px;border-top:1px solid var(--line)
+}
+.action-note{max-width:340px;margin:0;color:var(--quiet);font-size:11px}
+.primary-button{
+  min-width:190px;min-height:46px;padding:0 18px;border:1px solid var(--action-strong);
+  border-radius:6px;color:#fff;background:var(--action);cursor:pointer;font-size:14px;font-weight:760
+}
+.primary-button:hover:not(:disabled){background:var(--action-strong)}
+.primary-button:disabled{cursor:default;opacity:.42}
+.impact{
+  align-self:start;padding:18px;border:1px solid #e2c889;border-radius:9px;background:var(--warning-soft)
+}
+.impact-label{margin:0;color:var(--warning);font-size:10px;font-weight:780;letter-spacing:.06em;text-transform:uppercase}
+.impact h2{margin:5px 0 0;color:#70430d;font-size:15px;font-weight:760}
+.impact p{margin:8px 0 0;color:#785a32;font-size:12px}
+.impact ul{margin:13px 0 0;padding-left:18px;color:#705633;font-size:11px;line-height:1.7}
+.progress-section{padding:22px 30px 26px;border-top:1px solid var(--line);background:#fbfcfd}
+.progress-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:7px}
+.progress-head strong{font-size:13px}
+.state{
+  min-width:72px;min-height:28px;display:inline-flex;align-items:center;justify-content:center;
+  padding:4px 9px;border-radius:5px;color:var(--quiet);background:var(--soft);font-size:10px;font-weight:760
+}
+.state[data-tone="working"]{color:var(--action-strong);background:var(--action-soft)}
+.state[data-tone="success"]{color:var(--healthy);background:var(--healthy-soft)}
+.state[data-tone="error"]{color:var(--danger);background:var(--danger-soft)}
+.status-message{min-height:19px;margin:0 0 8px;color:var(--muted);font-size:11px}
+.progress-row{
+  min-height:43px;display:grid;grid-template-columns:58px minmax(0,1fr) 42px;
+  align-items:center;gap:12px;border-top:1px solid var(--line)
+}
+.progress-label{color:var(--ink-2);font-size:11px;font-weight:720}
+.progress-track{height:6px;overflow:hidden;border-radius:3px;background:#e4eaf0}
+.progress-fill{width:0;height:100%;border-radius:3px;background:var(--action);transition:width .2s ease}
+.progress-row.complete .progress-fill{background:var(--healthy)}
+.progress-percent{text-align:right;color:var(--quiet);font:10px ui-monospace,SFMono-Regular,Consolas,monospace}
+.footer{padding:16px 2px 0;color:var(--quiet);text-align:center;font-size:10px}
+@media(max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .rail{min-height:0;padding:18px 20px}
+  .rail-head{display:none}
+  .step-nav{grid-template-columns:1fr 1fr;margin-top:0}
+  .step-button{min-height:58px}
+  .rail-boundary,.rail-meta{display:none}
+  .main{padding:28px 24px 40px}
+}
+@media(max-width:700px){
+  .topbar{align-items:center;gap:12px;padding:10px 14px}
+  .brand-logo{width:148px}
+  .brand-copy,.endpoint{display:none}
+  .top-actions{gap:8px}
+  .main{padding:24px 14px 34px}
+  .hero{display:block}
+  .detected{width:100%;margin-top:14px}
+  .facts{grid-template-columns:1fr}
+  .fact{border-left:0;border-top:1px solid var(--line)}
+  .fact:first-child{border-top:0}
+  .workspace{grid-template-columns:1fr;padding:22px 18px}
+  .impact{grid-row:1}
+  .progress-section{padding:20px 18px 22px}
+}
+@media(max-width:500px){
+  .brand-logo{width:136px}
+  .language-switch button{min-width:42px;padding:0 7px}
+  .rail{padding:12px}
+  .step-nav{gap:6px}
+  .step-button{min-height:54px;padding:8px}
+  .step-copy span{display:none}
+  .hero h1{font-size:25px}
+  .action-row{align-items:stretch;flex-direction:column}
+  .primary-button{width:100%;min-width:0}
+  .progress-row{grid-template-columns:48px minmax(0,1fr) 37px;gap:8px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{scroll-behavior:auto!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img class="brand-logo" src="/wiro-logo.png?ui=xr1710g-wiro-recovery-2.0" alt="WIRO">
+    <span class="brand-copy">
+      <strong class="brand-name">XR1710G</strong>
+      <span class="brand-subtitle" data-i18n="brand.subtitle">恢复控制台</span>
+    </span>
+  </div>
+  <div class="top-actions">
+    <div class="endpoint"><span data-i18n="top.endpoint">管理地址</span><strong>192.168.255.1</strong></div>
+    <div class="language-switch" role="group" data-i18n-aria-label="language.label" aria-label="界面语言">
+      <button type="button" data-language="zh" aria-pressed="true">中文</button>
+      <button type="button" data-language="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="rail">
+    <div class="rail-head">
+      <p class="rail-kicker">Recovery</p>
+      <h2 class="rail-title" data-i18n="rail.title">恢复与更新</h2>
+      <p class="rail-copy" data-i18n="rail.copy">默认进行系统固件双清；升级启动器时切换到 U-Boot 更新。</p>
+    </div>
+    <nav class="step-nav" data-i18n-aria-label="nav.label" aria-label="恢复模式切换">
+      <button class="step-button active" type="button" data-target="firmware" aria-current="page" disabled>
+        <span class="step-copy"><strong data-i18n="nav.firmware">系统固件双清</strong><span data-i18n="nav.firmwareHint">完整重建 UBI 与全部可变数据</span></span>
+      </button>
+      <button class="step-button" type="button" data-target="uboot" disabled>
+        <span class="step-copy"><strong data-i18n="nav.uboot">更新 U-Boot</strong><span data-i18n="nav.ubootHint">升级启动器并清除旧环境</span></span>
+      </button>
+    </nav>
+    <div class="rail-boundary">
+      <strong data-i18n="rail.boundaryTitle">安全边界</strong>
+      <p data-i18n="rail.boundaryCopy">不会改写只读 DSD、EEPROM/校准区或 BMT/BBT；系统双清会从 DSD 重建 Factory 卷。</p>
+    </div>
+    <div class="rail-meta">
+      <span id="side-version" data-i18n="version.loading">正在读取 U-Boot 版本…</span>
+      <span id="side-build">UI Build 2.0</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-inner">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow" id="page-eyebrow">RECOVERY / 恢复模式</p>
+          <h1 id="page-title">系统固件双清</h1>
+          <p id="page-copy">完整重建所选 UBI，清除旧系统和全部可变数据，然后写入全新的 OpenWrt/iStoreOS。</p>
+        </div>
+        <div class="detected">
+          <span data-i18n="detected.label">当前布局</span>
+          <strong id="detected-layout" data-i18n="detected.checking">正在检测…</strong>
+        </div>
+      </header>
+
+      <section class="surface">
+        <div class="facts">
+          <div class="fact"><span class="fact-label" data-i18n="fact.target">写入目标</span><span class="fact-value" id="target-value">ubi:fit</span></div>
+          <div class="fact"><span class="fact-label" data-i18n="fact.change">擦除范围</span><span class="fact-value" id="scope-value">完整擦除并重建所选 UBI 系统区</span></div>
+          <div class="fact"><span class="fact-label" data-i18n="fact.preserve">明确保留</span><span class="fact-value" id="preserve-value">U-Boot 程序槽与只读硬件数据；Factory 从 DSD 重建</span></div>
+        </div>
+
+        <div class="workspace">
+          <div class="form-stack">
+            <div class="field" id="layout-block">
+              <label class="field-label" for="layout-select" data-i18n="field.layout">镜像 UBI 布局</label>
+              <select class="layout-select" id="layout-select" disabled>
+                <option value="2.0" data-i18n="layout.2">UBI 2.0 - 439 MiB（推荐）</option>
+                <option value="1.5" data-i18n="layout.15">UBI 1.5 - 473.75 MiB</option>
+                <option value="1.0" data-i18n="layout.1">UBI 1.0 - 503 MiB（旧版）</option>
+              </select>
+              <p class="field-help" id="layout-help"></p>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="file-input" data-i18n="field.image">镜像文件</label>
+              <input id="file-input" type="file" accept=".bin,.img,.itb" disabled>
+              <div class="file-picker">
+                <button class="choose-button" id="choose-button" type="button" data-i18n="file.choose" disabled>选择文件</button>
+                <span class="file-name" id="file-name" data-i18n="file.none">未选择文件</span>
+              </div>
+              <p class="field-help" id="file-help">固件镜像不得小于 1 MiB</p>
+            </div>
+
+            <div class="action-row">
+              <p class="action-note" id="action-note">上传前会先校验目标与文件大小。写入期间请保持供电稳定。</p>
+              <button class="primary-button" id="upload-button" type="button" disabled>上传并双清恢复</button>
+            </div>
+          </div>
+
+          <aside class="impact">
+            <p class="impact-label" data-i18n="impact.label">操作影响</p>
+            <h2 id="impact-title">此操作不可撤销</h2>
+            <p id="impact-copy">所选 UBI 会完整重建；旧系统、overlay、后装插件、Docker 数据、用户配置和保存的 U-Boot 环境全部清除。</p>
+            <ul id="notice-list">
+              <li>完整接收系统镜像后才开始擦除。</li>
+              <li>旧系统、overlay、插件、Docker 数据和用户配置全部清除。</li>
+              <li>U-Boot 程序槽不变；Factory 会从只读 DSD 重新生成。</li>
+              <li>恢复期间切勿断电。</li>
+            </ul>
+          </aside>
+        </div>
+
+        <section class="progress-section" data-i18n-aria-label="progress.label" aria-label="恢复进度">
+          <div class="progress-head">
+            <strong data-i18n="progress.title">操作进度</strong>
+            <span class="state" id="state" data-tone="idle">空闲</span>
+          </div>
+          <p class="status-message" id="status-message" aria-live="polite">请选择镜像文件。</p>
+          <div class="progress-row" id="row-upload">
+            <span class="progress-label" data-i18n="progress.upload">上传</span>
+            <div class="progress-track"><div class="progress-fill" id="upload-fill"></div></div>
+            <span class="progress-percent" id="upload-percent">0%</span>
+          </div>
+          <div class="progress-row" id="row-erase">
+            <span class="progress-label" data-i18n="progress.erase">擦除</span>
+            <div class="progress-track"><div class="progress-fill" id="erase-fill"></div></div>
+            <span class="progress-percent" id="erase-percent">0%</span>
+          </div>
+          <div class="progress-row" id="row-write">
+            <span class="progress-label" data-i18n="progress.write">写入</span>
+            <div class="progress-track"><div class="progress-fill" id="write-fill"></div></div>
+            <span class="progress-percent" id="write-percent">0%</span>
+          </div>
+          <div class="progress-row" id="row-environment" hidden>
+            <span class="progress-label" data-i18n="progress.environment">清理环境</span>
+            <div class="progress-track"><div class="progress-fill" id="environment-fill"></div></div>
+            <span class="progress-percent" id="environment-percent">0%</span>
+          </div>
+        </section>
+      </section>
+      <footer class="footer" id="footer-version">XR1710G HTTP Recovery</footer>
+    </div>
+  </main>
+</div>
+
+<script>
+var UI_BUILD="xr1710g-wiro-recovery-2.0";
+var UI_BUILD_LABEL="2.0";
+var STORAGE_PREFIX="xr1710g-recovery.";
+var LANGUAGE_KEY=STORAGE_PREFIX+"language";
+var BUILD_KEY=STORAGE_PREFIX+"ui-build";
+var uiLanguage="zh";
+var activeTarget="firmware";
+var selectedLayout="2.0";
+var selectedFile=null;
+var busy=true;
+var statusReady=false;
+var uploadLocked=true;
+var pollTimer=null;
+var pollEpoch=0;
+var pollOutcome=0;
+var detectedLayout="";
+var reportedVersion="";
+var reportedUiBuild="";
+var currentState={label:"state.idle",tone:"idle",message:"status.select",vars:null};
+
+var I18N={
+  zh:{
+    "meta.title":"XR1710G 恢复控制台",
+    "brand.subtitle":"恢复控制台",
+    "top.endpoint":"管理地址",
+    "language.label":"界面语言",
+    "rail.title":"恢复与更新",
+    "rail.copy":"默认进行系统固件双清；升级启动器时切换到 U-Boot 更新。",
+    "rail.boundaryTitle":"安全边界",
+    "rail.boundaryCopy":"不会改写只读 DSD、EEPROM/校准区或 BMT/BBT；系统双清会从 DSD 重建 Factory 卷。",
+    "nav.label":"恢复模式切换",
+    "nav.firmware":"系统固件双清",
+    "nav.firmwareHint":"完整重建 UBI 与全部可变数据",
+    "nav.uboot":"更新 U-Boot",
+    "nav.ubootHint":"升级启动器并清除旧环境",
+    "version.loading":"正在读取 U-Boot 版本…",
+    "version.uiBuild":"UI Build {build}",
+    "page.eyebrow":"RECOVERY / 恢复模式",
+    "detected.label":"当前布局",
+    "detected.checking":"正在检测…",
+    "detected.value":"UBI {layout}",
+    "fact.target":"写入目标",
+    "fact.change":"擦除范围",
+    "fact.preserve":"明确保留",
+    "field.layout":"镜像 UBI 布局",
+    "field.image":"镜像文件",
+    "layout.2":"UBI 2.0 - 439 MiB（推荐）",
+    "layout.15":"UBI 1.5 - 473.75 MiB",
+    "layout.1":"UBI 1.0 - 503 MiB（旧版）",
+    "layout.2.help":"当前安全布局，为厂商 BMT/BBT 保留 66 MiB。",
+    "layout.15.help":"中间布局，为厂商 BMT/BBT 保留 31.25 MiB。",
+    "layout.1.help":"旧版布局。仅用于明确按 UBI 1.0 构建的镜像与 U-Boot。",
+    "file.choose":"选择文件",
+    "file.none":"未选择文件",
+    "file.ready":"文件已就绪。",
+    "file.firmwareMin":"固件镜像不得小于 1 MiB",
+    "file.firmwareMinError":"固件镜像必须至少为 1 MiB。",
+    "file.ubootMax":"U-Boot 槽位镜像不得超过 1 MiB",
+    "file.ubootMaxError":"U-Boot 槽位镜像不得超过 1 MiB。",
+    "file.invalid":"所选文件不符合当前目标要求。",
+    "action.note":"上传前会先校验目标与文件大小。写入期间请保持供电稳定。",
+    "impact.label":"操作影响",
+    "progress.label":"恢复进度",
+    "progress.title":"操作进度",
+    "progress.upload":"上传",
+    "progress.erase":"擦除",
+    "progress.write":"写入",
+    "progress.factory":"重建出厂区",
+    "state.factory":"重建出厂区",
+    "status.factory":"系统已写入，正在重建出厂区数据，切勿断电。",
+    "progress.environment":"清理环境",
+    "state.idle":"空闲",
+    "state.ready":"就绪",
+    "state.uploading":"上传中",
+    "state.processing":"处理中",
+    "state.checking":"确认状态",
+    "state.erasing":"擦除中",
+    "state.writing":"写入中",
+    "state.environment":"清理环境",
+    "state.complete":"完成",
+    "state.partial":"部分完成",
+    "state.failed":"失败",
+    "state.rejected":"已拒绝",
+    "state.network":"网络错误",
+    "state.locked":"上传已锁定",
+    "status.select":"请选择镜像文件。",
+    "status.ready":"可以上传。",
+    "status.uploading":"正在上传镜像文件。",
+    "status.processing":"上传完成，正在等待擦除和写入。",
+    "status.confirmationLost":"镜像已发送，但上传确认连接中断。请勿断电或重复上传，正在核对设备状态。",
+    "status.erasing":"正在擦除目标区域，切勿断电。",
+    "status.writing":"正在写入镜像，切勿断电。",
+    "status.environment":"正在清除 ubootenv 与 ubootenv2，切勿断电。",
+    "status.complete":"恢复完成，设备将在 {seconds} 秒后重启。",
+    "status.failed":"恢复失败，请检查串口日志。",
+    "status.partialEnvironment":"U-Boot 槽位已写入并通过回读，但 ubootenv / ubootenv2 清理失败。本页上传已锁定；请勿断电，保留串口日志后处理环境卷。",
+    "status.partialFactory":"系统镜像已写入，但 Factory 未能从擦除前缓存重建。本页上传已锁定；请勿重启或断电，先检查串口日志与硬件数据读取。",
+    "status.partialGeneric":"目标区域已经发生更改，但操作未完整完成。本页上传已锁定；请勿重试或断电，先检查串口日志。",
+    "status.unverified":"无法确认设备当前写入状态。为避免重复擦写，上传已锁定；请保持供电并检查网络或串口日志。",
+    "status.retryAllowed":"操作在擦写前失败，设备存储未更改。检查镜像与目标后可以重试。",
+    "status.rejected":"服务器拒绝了该镜像，请检查目标和文件。",
+    "status.network":"镜像发送完成前连接中断，请重新连接后再试。",
+    "status.readFailed":"无法读取所选文件。",
+    "profile.firmware.title":"系统固件双清",
+    "profile.firmware.copy":"完整重建所选 UBI，清除旧系统和全部可变数据，然后写入全新的 OpenWrt/iStoreOS。",
+    "profile.firmware.target":"ubi:fit",
+    "profile.firmware.scope":"完整擦除并重建所选 UBI 系统区",
+    "profile.firmware.preserve":"U-Boot 程序槽与只读硬件数据；Factory 从 DSD 重建",
+    "profile.firmware.action":"上传并双清恢复",
+    "profile.firmware.impactTitle":"此操作不可撤销",
+    "profile.firmware.impactCopy":"所选 UBI 会完整重建；旧系统、overlay、后装插件、Docker 数据、用户配置和保存的 U-Boot 环境全部清除。",
+    "profile.firmware.notice1":"完整接收系统镜像后才开始擦除。",
+    "profile.firmware.notice2":"旧系统、overlay、插件、Docker 数据和用户配置全部清除。",
+    "profile.firmware.notice3":"U-Boot 程序槽不变；Factory 会从只读 DSD 重新生成。",
+    "profile.firmware.notice4":"所选布局必须与镜像内设备树一致；恢复期间切勿断电。",
+    "profile.uboot.title":"更新 U-Boot",
+    "profile.uboot.copy":"上传 XR1710G flash-slot 镜像；完成格式检查后整槽重写 1 MiB Chainloader，写后回读通过再清除两份 U-Boot 环境。",
+    "profile.uboot.target":"SPI-NAND chainloader @ 0x600000",
+    "profile.uboot.scope":"1 MiB Chainloader 整槽 + ubootenv / ubootenv2",
+    "profile.uboot.preserve":"系统 FIT、rootfs_data/overlay、插件、Docker、用户配置、Factory 与只读硬件数据",
+    "profile.uboot.action":"上传并更新 U-Boot",
+    "profile.uboot.impactTitle":"更新启动器并清除旧环境",
+    "profile.uboot.impactCopy":"旧槽位内容和两份已保存的 U-Boot 变量会被清除；系统与用户数据保持不变，任一步骤失败都不能显示为完成。",
+    "profile.uboot.notice1":"仅使用 XR1710G flash-slot 镜像；格式检查通过后才整槽擦除。",
+    "profile.uboot.notice2":"ubootenv 与 ubootenv2 中保存的旧变量会被清除。",
+    "profile.uboot.notice3":"系统卷、overlay 和用户配置始终保留。",
+    "profile.uboot.notice4":"写入槽位或清理环境期间切勿断电。"
+  },
+  en:{
+    "meta.title":"XR1710G Recovery Console",
+    "brand.subtitle":"Recovery Console",
+    "top.endpoint":"Management",
+    "language.label":"Interface language",
+    "rail.title":"Recovery and update",
+    "rail.copy":"Clean-installing the system firmware is the default. Switch to Update U-Boot when upgrading the bootloader.",
+    "rail.boundaryTitle":"Safety boundary",
+    "rail.boundaryCopy":"Read-only DSD, EEPROM/calibration areas, and BMT/BBT are never modified. Full system cleaning rebuilds the Factory volume from DSD.",
+    "nav.label":"Recovery mode switcher",
+    "nav.firmware":"Clean-install System Firmware",
+    "nav.firmwareHint":"Rebuild UBI and clear all mutable data",
+    "nav.uboot":"Update U-Boot",
+    "nav.ubootHint":"Upgrade the bootloader and clear old environments",
+    "version.loading":"Reading U-Boot version…",
+    "version.uiBuild":"UI Build {build}",
+    "page.eyebrow":"RECOVERY MODE",
+    "detected.label":"Detected layout",
+    "detected.checking":"Checking…",
+    "detected.value":"UBI {layout}",
+    "fact.target":"Write target",
+    "fact.change":"Erase scope",
+    "fact.preserve":"Preserved",
+    "field.layout":"Image UBI layout",
+    "field.image":"Image file",
+    "layout.2":"UBI 2.0 - 439 MiB (recommended)",
+    "layout.15":"UBI 1.5 - 473.75 MiB",
+    "layout.1":"UBI 1.0 - 503 MiB (legacy)",
+    "layout.2.help":"Current safe layout with 66 MiB reserved for vendor BMT/BBT.",
+    "layout.15.help":"Intermediate layout with 31.25 MiB reserved for vendor BMT/BBT.",
+    "layout.1.help":"Legacy layout. Use only with an image and U-Boot built explicitly for UBI 1.0.",
+    "file.choose":"Choose file",
+    "file.none":"No file selected",
+    "file.ready":"File ready.",
+    "file.firmwareMin":"Firmware images must be at least 1 MiB",
+    "file.firmwareMinError":"Firmware images must be at least 1 MiB.",
+    "file.ubootMax":"U-Boot slot images must not exceed 1 MiB",
+    "file.ubootMaxError":"U-Boot slot images must not exceed 1 MiB.",
+    "file.invalid":"The selected file does not meet the current target requirements.",
+    "action.note":"The target and file size are checked before upload. Keep power stable while writing.",
+    "impact.label":"Operation impact",
+    "progress.label":"Recovery progress",
+    "progress.title":"Operation progress",
+    "progress.upload":"Upload",
+    "progress.erase":"Erase",
+    "progress.write":"Write",
+    "progress.factory":"Factory rebuild",
+    "state.factory":"Factory rebuild",
+    "status.factory":"System written. Rebuilding factory data. Do not power off.",
+    "progress.environment":"Clear env",
+    "state.idle":"Idle",
+    "state.ready":"Ready",
+    "state.uploading":"Uploading",
+    "state.processing":"Processing",
+    "state.checking":"Checking status",
+    "state.erasing":"Erasing",
+    "state.writing":"Writing",
+    "state.environment":"Clearing env",
+    "state.complete":"Complete",
+    "state.partial":"Partially complete",
+    "state.failed":"Failed",
+    "state.rejected":"Rejected",
+    "state.network":"Network error",
+    "state.locked":"Upload locked",
+    "status.select":"Select an image file.",
+    "status.ready":"Ready to upload.",
+    "status.uploading":"Uploading the image file.",
+    "status.processing":"Upload complete. Waiting for erase and write operations.",
+    "status.confirmationLost":"The image was sent, but upload confirmation was interrupted. Do not power off or upload again while device status is checked.",
+    "status.erasing":"Erasing the target region. Do not power off.",
+    "status.writing":"Writing the image. Do not power off.",
+    "status.environment":"Clearing ubootenv and ubootenv2. Do not power off.",
+    "status.complete":"Recovery complete. The device restarts in {seconds} seconds.",
+    "status.failed":"Recovery failed. Review the serial console log.",
+    "status.partialEnvironment":"The U-Boot slot was written and read back successfully, but ubootenv / ubootenv2 could not be cleared. Upload is locked; do not power off, and retain the serial log before repairing the environment volumes.",
+    "status.partialFactory":"The system image was written, but Factory could not be rebuilt from the pre-erase cache. Upload is locked; do not restart or power off, and inspect the serial log and hardware-data read path first.",
+    "status.partialGeneric":"The target was modified, but the operation did not finish completely. Upload is locked; do not retry or power off, and inspect the serial console log first.",
+    "status.unverified":"The device write state could not be verified. Upload is locked to prevent a duplicate erase/write; keep power connected and check the network or serial log.",
+    "status.retryAllowed":"The operation failed before erase/write and storage was not modified. Check the image and target, then retry.",
+    "status.rejected":"The server rejected this image. Check the target and file.",
+    "status.network":"The connection failed before the image was fully sent. Reconnect and try again.",
+    "status.readFailed":"Could not read the selected file.",
+    "profile.firmware.title":"Clean-install System Firmware",
+    "profile.firmware.copy":"Rebuild the selected UBI, clear the old system and all mutable data, then install a fresh OpenWrt/iStoreOS image.",
+    "profile.firmware.target":"ubi:fit",
+    "profile.firmware.scope":"Fully erase and rebuild the selected UBI system area",
+    "profile.firmware.preserve":"U-Boot program slot and read-only hardware data; Factory is rebuilt from DSD",
+    "profile.firmware.action":"Upload and fully recover",
+    "profile.firmware.impactTitle":"This operation cannot be undone",
+    "profile.firmware.impactCopy":"The selected UBI is fully rebuilt. The old system, overlay, installed packages, Docker data, user configuration, and saved U-Boot environments are all cleared.",
+    "profile.firmware.notice1":"Erasing starts only after the complete system image is received.",
+    "profile.firmware.notice2":"The old system, overlay, installed packages, Docker data, and user configuration are all cleared.",
+    "profile.firmware.notice3":"The U-Boot program slot is unchanged; Factory is regenerated from read-only DSD.",
+    "profile.firmware.notice4":"The selected layout must match the image device tree. Do not power off during recovery.",
+    "profile.uboot.title":"Update U-Boot",
+    "profile.uboot.copy":"Upload an XR1710G flash-slot image. After format checks, the full 1 MiB Chainloader slot is rewritten; both U-Boot environments are cleared only after read-back verification passes.",
+    "profile.uboot.target":"SPI-NAND chainloader @ 0x600000",
+    "profile.uboot.scope":"Full 1 MiB Chainloader slot + ubootenv / ubootenv2",
+    "profile.uboot.preserve":"System FIT, rootfs_data/overlay, installed packages, Docker data, user configuration, Factory, and read-only hardware data",
+    "profile.uboot.action":"Upload and update U-Boot",
+    "profile.uboot.impactTitle":"Update the bootloader and clear old environments",
+    "profile.uboot.impactCopy":"The old slot contents and both saved U-Boot environments are cleared. System and user data remain unchanged, and the operation must not be reported as complete if any step fails.",
+    "profile.uboot.notice1":"Use only an XR1710G flash-slot image. The full slot is erased only after format checks pass.",
+    "profile.uboot.notice2":"Saved variables in ubootenv and ubootenv2 are cleared.",
+    "profile.uboot.notice3":"System volumes, overlay, and user configuration are always preserved.",
+    "profile.uboot.notice4":"Do not power off while the slot is being written or the environments are being cleared."
+  }
+};
+
+var profiles={
+  firmware:{
+    title:"profile.firmware.title",copy:"profile.firmware.copy",target:"profile.firmware.target",
+    scope:"profile.firmware.scope",preserve:"profile.firmware.preserve",help:"file.firmwareMin",
+    action:"profile.firmware.action",impactTitle:"profile.firmware.impactTitle",
+    impactCopy:"profile.firmware.impactCopy",
+    notices:["profile.firmware.notice1","profile.firmware.notice2","profile.firmware.notice3","profile.firmware.notice4"]
+  },
+  uboot:{
+    title:"profile.uboot.title",copy:"profile.uboot.copy",target:"profile.uboot.target",
+    scope:"profile.uboot.scope",preserve:"profile.uboot.preserve",help:"file.ubootMax",
+    action:"profile.uboot.action",impactTitle:"profile.uboot.impactTitle",
+    impactCopy:"profile.uboot.impactCopy",
+    notices:["profile.uboot.notice1","profile.uboot.notice2","profile.uboot.notice3","profile.uboot.notice4"]
+  }
+};
+var layouts={
+  "2.0":{part:"ubi",size:"439 MiB",end:"0x1be00000",help:"layout.2.help"},
+  "1.5":{part:"ubi1.5",size:"473.75 MiB",end:"0x1e0c0000",help:"layout.15.help"},
+  "1.0":{part:"ubi1.0",size:"503 MiB",end:"0x1fe00000",help:"layout.1.help",warning:true}
+};
+
+var fileInput=document.getElementById("file-input");
+var chooseButton=document.getElementById("choose-button");
+var fileName=document.getElementById("file-name");
+var fileHelp=document.getElementById("file-help");
+var uploadButton=document.getElementById("upload-button");
+var layoutBlock=document.getElementById("layout-block");
+var layoutSelect=document.getElementById("layout-select");
+var layoutHelp=document.getElementById("layout-help");
+var state=document.getElementById("state");
+var statusMessage=document.getElementById("status-message");
+var languageButtons=document.querySelectorAll("[data-language]");
+
+function t(key,vars){
+  var catalog=I18N[uiLanguage]||I18N.zh;
+  var text=catalog[key]!==undefined?catalog[key]:(I18N.zh[key]!==undefined?I18N.zh[key]:key);
+  if(vars){
+    for(var name in vars)if(Object.prototype.hasOwnProperty.call(vars,name))
+      text=text.replace(new RegExp("\\{"+name+"\\}","g"),String(vars[name]));
+  }
+  return text;
+}
+function profile(){return profiles[activeTarget]}
+function resetOwnedUiState(){
+  try{
+    var previous=localStorage.getItem(BUILD_KEY);
+    if(previous!==UI_BUILD){
+      var remove=[];
+      for(var i=0;i<localStorage.length;i++){
+        var key=localStorage.key(i);
+        if(key&&key.indexOf(STORAGE_PREFIX)===0&&key!==LANGUAGE_KEY)remove.push(key);
+      }
+      for(var j=0;j<remove.length;j++)localStorage.removeItem(remove[j]);
+      localStorage.setItem(BUILD_KEY,UI_BUILD);
+    }
+  }catch(error){}
+}
+function loadLanguage(){
+  try{
+    var saved=localStorage.getItem(LANGUAGE_KEY);
+    if(saved==="zh"||saved==="en"){uiLanguage=saved;return}
+  }catch(error){}
+  uiLanguage=/^zh(?:-|$)/i.test(navigator.language||"")?"zh":"en";
+}
+function chooseLanguage(language){
+  uiLanguage=language==="en"?"en":"zh";
+  try{localStorage.setItem(LANGUAGE_KEY,uiLanguage)}catch(error){}
+  applyLanguage();
+}
+function translateStatic(){
+  var nodes=document.querySelectorAll("[data-i18n]");
+  for(var i=0;i<nodes.length;i++)nodes[i].textContent=t(nodes[i].getAttribute("data-i18n"));
+  var ariaNodes=document.querySelectorAll("[data-i18n-aria-label]");
+  for(var j=0;j<ariaNodes.length;j++)
+    ariaNodes[j].setAttribute("aria-label",t(ariaNodes[j].getAttribute("data-i18n-aria-label")));
+}
+function renderVersion(){
+  document.getElementById("side-version").textContent=reportedVersion||t("version.loading");
+  var build=reportedUiBuild||UI_BUILD_LABEL;
+  document.getElementById("side-build").textContent=t("version.uiBuild",{build:build});
+  document.getElementById("footer-version").textContent=
+    (reportedVersion||"XR1710G HTTP Recovery")+" · "+t("version.uiBuild",{build:build});
+}
+function renderDetected(){
+  document.getElementById("detected-layout").textContent=
+    detectedLayout?t("detected.value",{layout:detectedLayout}):t("detected.checking");
+}
+function renderNotices(){
+  var list=document.getElementById("notice-list");
+  list.textContent="";
+  var notices=profile().notices;
+  for(var i=0;i<notices.length;i++){
+    var item=document.createElement("li");
+    item.textContent=t(notices[i]);
+    list.appendChild(item);
+  }
+}
+function renderProfile(){
+  var p=profile();
+  document.getElementById("page-eyebrow").textContent=t("page.eyebrow");
+  document.getElementById("page-title").textContent=t(p.title);
+  document.getElementById("page-copy").textContent=t(p.copy);
+  document.getElementById("target-value").textContent=t(p.target);
+  document.getElementById("scope-value").textContent=t(p.scope);
+  document.getElementById("preserve-value").textContent=t(p.preserve);
+  document.getElementById("impact-title").textContent=t(p.impactTitle);
+  document.getElementById("impact-copy").textContent=t(p.impactCopy);
+  document.getElementById("action-note").textContent=t("action.note");
+  uploadButton.textContent=t(p.action);
+  renderNotices();
+  updateLayout();
+  validateFile(false);
+}
+function renderState(){
+  state.textContent=t(currentState.label,currentState.vars);
+  state.setAttribute("data-tone",currentState.tone||"idle");
+  statusMessage.textContent=t(currentState.message,currentState.vars);
+}
+function applyLanguage(){
+  document.documentElement.lang=uiLanguage==="en"?"en":"zh-CN";
+  document.title=t("meta.title");
+  translateStatic();
+  for(var i=0;i<languageButtons.length;i++){
+    var active=languageButtons[i].getAttribute("data-language")===uiLanguage;
+    languageButtons[i].setAttribute("aria-pressed",active?"true":"false");
+  }
+  renderProfile();
+  renderState();
+  renderDetected();
+  renderVersion();
+}
+function updateLayout(){
+  var layout=layouts[selectedLayout]||layouts["2.0"];
+  layoutBlock.hidden=activeTarget!=="firmware";
+  layoutSelect.value=selectedLayout;
+  layoutHelp.textContent=t(layout.help);
+  layoutHelp.className="field-help"+(layout.warning?" warning":"");
+  if(activeTarget==="firmware")
+    document.getElementById("target-value").textContent=layout.part+":fit ("+layout.size+", "+layout.end+")";
+  document.getElementById("row-environment").hidden=activeTarget!=="uboot";
+}
+function setTarget(target,force){
+  if((busy&&!force)||!profiles[target])return;
+  activeTarget=target;
+  var buttons=document.querySelectorAll(".step-button");
+  for(var i=0;i<buttons.length;i++){
+    var active=buttons[i].getAttribute("data-target")===target;
+    buttons[i].classList.toggle("active",active);
+    if(active)buttons[i].setAttribute("aria-current","page");
+    else buttons[i].removeAttribute("aria-current");
+  }
+  renderProfile();
+  resetProgress();
+  validateFile(true);
+}
+function formatBytes(bytes){
+  if(bytes<1024)return bytes+" B";
+  if(bytes<1024*1024)return(bytes/1024).toFixed(1)+" KiB";
+  return(bytes/(1024*1024)).toFixed(1)+" MiB";
+}
+function fileError(){
+  if(!selectedFile)return"";
+  if(activeTarget==="firmware"&&selectedFile.size<1024*1024)return"file.firmwareMinError";
+  if(activeTarget==="uboot"&&selectedFile.size>1024*1024)return"file.ubootMaxError";
+  return"";
+}
+function validateFile(updateStatus){
+  var error=fileError();
+  fileHelp.className="field-help";
+  if(!selectedFile){
+    fileName.textContent=t("file.none");
+    fileName.className="file-name";
+    fileHelp.textContent=t(profile().help);
+    if(updateStatus)setState("state.idle","idle","status.select");
+  }else{
+    fileName.textContent=selectedFile.name+"  ("+formatBytes(selectedFile.size)+")";
+    fileName.className="file-name selected";
+    if(error){
+      fileHelp.textContent=t(error);
+      fileHelp.classList.add("error");
+      if(updateStatus)setState("state.failed","error","file.invalid");
+    }else{
+      fileHelp.textContent=t("file.ready");
+      fileHelp.classList.add("ok");
+      if(updateStatus)setState("state.ready","success","status.ready");
+    }
+  }
+  uploadButton.disabled=busy||!statusReady||uploadLocked||!selectedFile||!!error;
+}
+function setBusy(value){
+  busy=value;
+  fileInput.disabled=value;
+  chooseButton.disabled=value;
+  layoutSelect.disabled=value;
+  var buttons=document.querySelectorAll(".step-button");
+  for(var i=0;i<buttons.length;i++)buttons[i].disabled=value;
+  validateFile(false);
+}
+function setState(label,tone,message,vars){
+  currentState={label:label,tone:tone||"idle",message:message,vars:vars||null};
+  renderState();
+}
+function setProgress(name,pct,rowState){
+  var value=Math.max(0,Math.min(100,Math.round(pct||0)));
+  var row=document.getElementById("row-"+name);
+  row.className="progress-row"+(rowState?" "+rowState:"");
+  document.getElementById(name+"-fill").style.width=value+"%";
+  document.getElementById(name+"-percent").textContent=value+"%";
+}
+function resetProgress(){
+  setProgress("upload",0,"");
+  setProgress("erase",0,"");
+  setProgress("write",0,"");
+  setProgress("environment",0,"");
+  if(selectedFile&&!fileError())setState("state.ready","success","status.ready");
+  else if(selectedFile)setState("state.failed","error","file.invalid");
+  else setState("state.idle","idle","status.select");
+}
+function updateFlashProgress(data){
+  var phase=data.phase||0;
+  if(phase===1){
+    setProgress("upload",100,"complete");
+    setProgress("erase",data.erase_total?data.erase_done*100/data.erase_total:0,"active");
+    setProgress("write",0,"");
+    setState("state.erasing","working","status.erasing");
+  }else if(phase===2){
+    setProgress("upload",100,"complete");
+    setProgress("erase",100,"complete");
+    setProgress("write",Math.min(95,data.write_total?data.write_done*100/data.write_total:0),"active");
+    setState("state.writing","working","status.writing");
+  }else if(phase===3){
+    setProgress("upload",100,"complete");
+    setProgress("erase",100,"complete");
+    setProgress("write",95,"active");
+    setState("state.factory","working","status.factory");
+  }else if(phase===4&&activeTarget==="uboot"){
+    setProgress("upload",100,"complete");
+    setProgress("erase",100,"complete");
+    setProgress("write",100,"complete");
+    setProgress("environment",50,"active");
+    setState("state.environment","working","status.environment");
+  }
+}
+function startCountdown(seconds){
+  function tick(left){
+    setState("state.complete","success","status.complete",{seconds:left});
+    if(left>0)setTimeout(function(){tick(left-1)},1000);
+  }
+  tick(seconds);
+}
+var statusFetchActive=false;
+function flagValue(value){return value===0||value===1}
+function integerValue(value){return typeof value==="number"&&isFinite(value)&&Math.floor(value)===value}
+function validStatus(data){
+  if(!data||typeof data!=="object")return false;
+  var flags=["in_progress","ok","error","partial","upload_locked","retry_allowed"];
+  for(var i=0;i<flags.length;i++)if(!flagValue(data[flags[i]]))return false;
+  if(data.target!=="firmware"&&data.target!=="uboot")return false;
+  if(!integerValue(data.phase)||data.phase<-1||data.phase>5)return false;
+  if(typeof data.error_stage!=="string"||!integerValue(data.error_code))return false;
+  if(!!data.in_progress!==(data.phase>0&&data.phase<5))return false;
+  if(!!data.ok!==(data.phase===5)||!!data.error!==(data.phase===-1))return false;
+  if(!!data.upload_locked===!!data.retry_allowed)return false;
+  if(data.partial&&(!data.error||!data.upload_locked))return false;
+  if(data.error&&!data.partial&&(data.upload_locked||!data.retry_allowed))return false;
+  if((data.in_progress||data.ok)&&!data.upload_locked)return false;
+  if(data.phase===3&&data.target!=="firmware")return false;
+  if(data.phase===4&&data.target!=="uboot")return false;
+  return true;
+}
+function stopStatusPolling(outcome){
+  pollOutcome=outcome;
+  if(pollTimer)clearInterval(pollTimer);
+  pollTimer=null;
+}
+function ensureStatusPolling(epoch){
+  if(epoch!==pollEpoch||pollOutcome!==0||pollTimer)return;
+  pollTimer=setInterval(function(){pollStatus(epoch)},750);
+}
+function lockUnverified(epoch){
+  statusReady=false;
+  uploadLocked=true;
+  setBusy(true);
+  setState("state.locked","error","status.unverified");
+  ensureStatusPolling(epoch);
+}
+function applyDeviceStatus(data,epoch){
+  statusReady=true;
+  uploadLocked=!!data.upload_locked;
+  if(activeTarget!==data.target)setTarget(data.target,true);
+
+  if(data.in_progress){
+    setBusy(true);
+    updateFlashProgress(data);
+    ensureStatusPolling(epoch);
+    return;
+  }
+  if(data.ok){
+    setBusy(true);
+    stopStatusPolling(1);
+    setProgress("upload",100,"complete");
+    setProgress("erase",100,"complete");
+    setProgress("write",100,"complete");
+    if(activeTarget==="uboot")setProgress("environment",100,"complete");
+    startCountdown(3);
+    return;
+  }
+  if(data.error){
+    stopStatusPolling(-1);
+    if(data.partial){
+      setBusy(true);
+      var partialMessage="status.partialGeneric";
+      if(data.error_stage==="environment")partialMessage="status.partialEnvironment";
+      else if(data.error_stage==="factory")partialMessage="status.partialFactory";
+      setState("state.partial","error",partialMessage);
+    }else if(data.retry_allowed&&!data.upload_locked){
+      uploadLocked=false;
+      setBusy(false);
+      setState("state.failed","error","status.retryAllowed");
+    }else{
+      lockUnverified(epoch);
+    }
+    return;
+  }
+  if(data.upload_locked){
+    setBusy(true);
+    setState("state.processing","working","status.processing");
+    ensureStatusPolling(epoch);
+    return;
+  }
+  if(!data.retry_allowed){
+    lockUnverified(epoch);
+    return;
+  }
+
+  stopStatusPolling(0);
+  uploadLocked=false;
+  setBusy(false);
+  resetProgress();
+}
+function fetchJsonNoStore(url,timeoutMs){
+  var request=fetch(url,{cache:"no-store"}).then(function(response){
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    return response.json();
+  });
+  var timeout=new Promise(function(resolve,reject){
+    setTimeout(function(){reject(new Error("timeout"))},timeoutMs);
+  });
+  return Promise.race([request,timeout]);
+}
+async function pollStatus(epoch){
+  if(epoch!==pollEpoch||pollOutcome!==0||statusFetchActive)return;
+  statusFetchActive=true;
+  try{
+    var data=await fetchJsonNoStore("/status",3000);
+    if(epoch!==pollEpoch||pollOutcome!==0)return;
+    if(!validStatus(data))throw new Error("invalid status");
+    applyDeviceStatus(data,epoch);
+  }catch(error){
+    if(epoch===pollEpoch&&pollOutcome===0)lockUnverified(epoch);
+  }finally{
+    statusFetchActive=false;
+  }
+}
+function startStatusPolling(epoch,label,message){
+  if(epoch!==pollEpoch||pollOutcome!==0)return;
+  setState(label,"working",message);
+  ensureStatusPolling(epoch);
+  setTimeout(function(){pollStatus(epoch)},100);
+}
+async function upload(){
+  if(busy||!statusReady||uploadLocked||!selectedFile||fileError())return;
+  setBusy(true);
+  uploadLocked=true;
+  resetProgress();
+  pollEpoch++;
+  pollOutcome=0;
+  if(pollTimer)clearInterval(pollTimer);
+  pollTimer=null;
+  setProgress("upload",0,"active");
+  setState("state.uploading","working","status.uploading");
+  var payload;
+  try{payload=await selectedFile.arrayBuffer()}
+  catch(error){
+    uploadLocked=false;
+    setBusy(false);
+    setState("state.failed","error","status.readFailed");
+    return;
+  }
+  var xhr=new XMLHttpRequest();
+  var uploadSent=false;
+  xhr.upload.addEventListener("progress",function(event){
+    if(!event.lengthComputable||event.total<=0)return;
+    if(event.loaded>=event.total)uploadSent=true;
+    setProgress("upload",event.loaded*100/event.total,event.loaded>=event.total?"complete":"active");
+  });
+  xhr.upload.addEventListener("load",function(){
+    uploadSent=true;
+    setProgress("upload",100,"complete");
+  });
+  xhr.addEventListener("load",function(){
+    if(xhr.status>=200&&xhr.status<300)setProgress("upload",100,"complete");
+    startStatusPolling(pollEpoch,xhr.status===409?"state.locked":"state.processing",
+      xhr.status===409?"status.unverified":"status.processing");
+  });
+  xhr.addEventListener("error",function(){
+    if(uploadSent)setProgress("upload",100,"complete");
+    startStatusPolling(pollEpoch,"state.checking",
+      uploadSent?"status.confirmationLost":"status.unverified");
+  });
+  var uploadUri="/upload/"+activeTarget;
+  if(activeTarget==="firmware")uploadUri+="?layout="+encodeURIComponent(selectedLayout);
+  if(window.wiroUiBuild)uploadUri+=(uploadUri.indexOf("?")>=0?"&":"?")+"ui_build="+encodeURIComponent(window.wiroUiBuild);
+  xhr.open("POST",uploadUri,true);
+  xhr.setRequestHeader("Content-Type","application/octet-stream");
+  xhr.send(payload);
+}
+
+var navButtons=document.querySelectorAll(".step-button");
+for(var n=0;n<navButtons.length;n++)
+  navButtons[n].addEventListener("click",function(){setTarget(this.getAttribute("data-target"),false)});
+for(var l=0;l<languageButtons.length;l++)
+  languageButtons[l].addEventListener("click",function(){chooseLanguage(this.getAttribute("data-language"))});
+chooseButton.addEventListener("click",function(){
+  if(!busy&&statusReady&&!uploadLocked)fileInput.click();
+});
+fileInput.addEventListener("change",function(){
+  if(busy||!statusReady||uploadLocked){this.value="";return}
+  selectedFile=this.files[0]||null;
+  validateFile(true);
+});
+layoutSelect.addEventListener("change",function(){
+  if(busy||!statusReady||uploadLocked)return;
+  selectedLayout=layouts[this.value]?this.value:"2.0";
+  updateLayout();
+  resetProgress();
+});
+uploadButton.addEventListener("click",upload);
+
+(async function(){
+  resetOwnedUiState();
+  loadLanguage();
+  applyLanguage();
+  setTarget("firmware",true);
+  pollEpoch=1;
+  pollOutcome=0;
+  lockUnverified(pollEpoch);
+  await pollStatus(pollEpoch);
+  try{
+    var data=await fetchJsonNoStore("/about",3000);
+    if(data&&data.u_boot)reportedVersion=data.u_boot;
+    if(data&&data.ui_build){reportedUiBuild=data.ui_build;window.wiroUiBuild=data.ui_build;}
+    if(data&&data.detected_layout)detectedLayout=data.detected_layout;
+    renderVersion();
+    renderDetected();
+  }catch(error){}
+})();
+</script>
+</body>
+</html>
+/wiro-logo.png  HTTP/1.0 200 OK
+Server: lwIP/2.2.0 (http://savannah.nongnu.org/projects/lwip)
+Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+Pragma: no-cache
+Expires: 0
+Content-Length: 9764
+Content-Type: image/png
+
+PNG
+
+   
+IHDR  x   J   XO   sRGB    gAMA  a   	pHYs    od  %IDATx^]	x\u{oVXYX)i&4dO&@&	4˛
+Ơ&iifYRB҄PJbliEm0lccvs;5ҝhF|{}=smʺ˔xۻ_a9K7M<CQhgrk9fx5ċ;ߨ$Gǥ
+*    pRG}C%'GYRYoRE淚}q&rߖAJՎyWo(vX0/xrS3k;er58fHt \}C Gh6+m?DJpHl$v914gJ+vVp4Կd95Q@@@@,\KpLI72wۭ:sːkf-XD9<Q٫xlZpw"'JjyʱT(haY3;ҙɊWha*eacLXgQXPXpryt!^)9#v$M	0ZHG{,oHܕR,͜nFUTz/_}+˱¥ZGV<'^7k
+Z8H@JB@@@
+ ?Ï2:b(ʘ{x7}C뚒gzͤ!pR{4	)1tv	ɛMujEI-}vOED}XGr5\VZ>&Nk7,'G߭$Gnա!6>|nNQH#sI iR#dD)g侑8n?. +g51r`'~C忀L.h u,gA;*: Cc=\Z(TL@@@`cu%
+w)>.d!˿}dHɡBW0ELp81WR68,pƌ6yprƆ=
+.{ov\KOS놜(\*'G'ESPz7jyX}d/~Y'svǹ`=_'?աA)K0Gd|/A=@IjoIu\/}'xl>G^MK7,LCJ:5[.#Kj<+?|
+]Tњ%jB/㥂+$Jd4Xb9*]@@@<ucX?~*Zuv
+!*RW+};Z
+C" mj:sp(}?t,NrtjtLВDb,Zΰc&:3#G7q+5Q@@@@
+Y@|S.
+#t$5Jr"Xn
+
+~,CpA)^'ǲI00:F-?'Gr
+b^9^UF|,zߖ/2q//^U\Lu߹wmR#b' %Elߖ:ZP3@ZVILk]˝o\]@I)9#B8\Q>"E3QQ=(WIluP$v$PQe_v35*CBYc#
+PH*A
+ADsZ^$
+q%&k7u?p=7z]!,dr>+ix30<mԍ]H7WuǕXkuԛ U,_*? d;"Y iH[ GSRl{CfOgZ2
+[|B?7R<RwuMy|nEVKذ
+9%0HY}"ŋIU`j9ot"۪{gc_9翲̔\K0aI 3A&   P
+-S"
++R4R%`roj-
+;Y0cerHUpCW[;otC3+vXp1cIN9t~[w|#0	OK𯍞uK)826\:otB-5toeYݺ͝rO/ޭZ:fW
+sHL91tc-|-ב*zSS:7g'%^Q.jWKh'	:k֊:i,,3g/RQi.@`@N[Ψ8}bp?t+L6-;`мtuxۺ*V奔7n},1<o6U}!Uz~xBGq&R5IKiͶ`^&Gc3g
+R"QSH7HU K}`a`/?4sMו踂^j},\p-1z'
+SsI֟uB6S@'_|`v9Mtq?Dۜ-OyO:0:nM,_;XjG K7R~YZ/xqͽE #T8/
+Y¨:%{ČWbV' fq|X>n=Ǆ}
+&x4Mu:ׄt#<=E\mSS蚟Y@p48:;
+/6??$v稩 drKf]DEJYһCfM̙rߖurbxyCL8`Bv<6bX#)H|F"鯱]UHB{UL.^d^OUO%i3a|irC{!Qq]z^$j 8^8Y|}UwZLSEF}c|~?lܧ[hCC8%U3F7#JLP+`> {6p$Tˌ@d>#'GXv%:DS Uu]o2CV
+~$._ǿQӂ+^	֨[W2@70N	V<]ǄYvm`Cg}.Z	(:+N_{R
+/ײQ{ME}[
+^BjuH=Wj5#g)ER㢟$E3?Yj|[J-\fG6_cv{$'Uuko^o	Πh2v(Teh `>^CX| ~3#q$#30ET'&19*9V|`އuiHĉ0H/3{hI`m~RKUO-A7HrŦ耡qXrbɕmR4wio8<ǖपP\eR$3=tV~~>woy
+b:#@pLpk[sRsV6t_h|mP/Xpm%;d(w50	(W	V*bs|'v8L%z#7Oͭ8\-"(Y-fCNdսӶ:G4s%HO5vCPclUN"Uo&OC(̓i>$^+;v}Q	 :]0b~AEL=#+TĆ"QSp!wumƥnbXtErZ4hfFD3Ik~V
+PC^/%F܁ܧ?U/_g;xPQS2΋Yv%K%pa6 03Ost%Ws3'g
+9`ګI׃!i>t+b<R$MC絡0x;M>l`?&v@8q~9U ty$R1&馁Cz#!xכ!w6-='逸.ktF\$D@"Fn5𸵈@V={wfCB:D|GHc!lc996j؀B%t}9}[M
+	49|dir4V~HN`(?F:FT1TYDOرKcYK>Qst><Iix|ns9JEMXKӟU-=nzbNI*2Cщa
+=s?ekt,>	*KPerbyh ~TK/h)_Ab	GtlϞ%5o8Y2_Xqmh+Us_$Msm#c<f<F|w<^
+}=F)&,Æ^p?H RQxږ@F$** }9އ;"nzmEw6*2s0݆$?`yu7h+8c}s*#`Q*1̝S#w',=h u=Zæ!G2?~hr:^W璪9
+xF+)ByP84ǄN.x>ܡ
+}T<-fwTdAS;;k8tz4hx5V0\`J>"9tVb:NؒS:-º@(坵&h5,b&;
+)^xE
+kcp]+
+	ÐO;x ^wik	rs֕PyXGqB/֒Oq	Y*j	k
+:7s`_@x˿,3:܃F#%<,5:
+RY6b;}<M>lg1x9tK;Jt!GShUH`CGQӺ3X>ڋV:Z)Sv.e̚ZVX+FkXj^m
+Fy}\U)CnDZvQW=䎀wz[lVˉb*%%8?k>LSp_N&NQ\k'G?i2K_N']"W0#⢩;{EMr	<76mୖv?6)2I:
+Ro-Eԛw*pvˋmJojKg	nD1>nrG2''
+XR|hݿy'=zaNߙ-P|VU&F"
+~cw.{S^O}]9٤Z,b$+|Lp4VxS"`bI@r-ƻS*o嚝	Xoa_T9IRwIXki^J%ctzr݀\5}7Y
+/W?C8n-ԵN`.׎N7~NcgYj	Ça9Ła^g=۽TeFd"h.mt`?m>kVw7MɡU!հ*ԅQ*{hq$=T-w{*$z;>āv"@ 8Vtot8saF`'BZ>j|8[Vp)%(L5gi+6Azg⏩Ȭާ/1[{{ v+ZȺt?Bꁷ2RՍ(*ݏR*@'0t&U}u%ǋXTM
+sрe^#a,ٙLp60Ew1`
+cȽ-AyuhL'{İ~:W@' Y
+էeo2p;.1s
+IB%L0Gi
+l:N_[Ȭ`vx/`Ĉk8L(pY-e|f,*7u|Rs'_X_vjрgf蟯R*4EQFyx~rhOS?/N4&˰U=rGf~<1۰zиڶ|y]!x
+V6|+mcO#fF s^:\4ᇭ;t	{/eun}gQ?"yFL5A7K'UUofsFT,}IqA
+Kqoeֽ`6&4[X%x
+F/}I}=T&/ĩ-owht7ff#"v1:t,D3b)M_U dam
+.
+NQOA}wߛ0\~|ЌRGkGl\EZ*9#EXW&GMD(wF0vU؊VsŊ_,"PpJU7u+
+q`o0BmMn wIhFN`]U\tt2`
+sČ	u8!Z2akˀ{EcW6`.=]-L6b5;p3EjeZЈ~!DynhMESlQՍ~U]dad(s$r̨a*R5m	 ^H m>h/s
+`=}\#ڤn"(}[Yq\iD(t# wn=>AsCz[!y	F*z<pXy$A3cf^̻ 4yjnAnK,%:BS!ye`G.Q֏VAYN(ւ,gr&
+4hOչE^̚|ޤ
+IvGìmczPJR_cK1MIPEuj.mPC&\mfI8h@=1t}A{`s1E\"t¾_xwss3c0gv/R˃JB8f[}TUAeVh]9Z+RpIW9Y.WN u_ߟq"zgɡ5څjA c˩C  w U?)[j8~oiZ.OS1C@
+BA2*|{Lg}hSCǸGc>Xg}3$tysdˁ=Ry4X긒4U,kGJ4b:x2 lѽ[%\Ja:.=@?r)7cj#|n6YԈ/EW
+4aL7f&Qf12`D
+ѵ޵Y]d`nK@luldKj*ɂU.y#YyrM̙lk*#~OS,ǍanPu;`Tz	^bOMA`s!x"}$wO[Gt4'n]~N3
+ǏsP[or3	[=c蚣g'B{t#P|r9 /0
+u8&Rwj-K4[M,RGC@N*#[f"5ud!{
+0%8Tפ0g F2cp;n1A"pfn#*2c(~}x!`\Erÿ̢t-w4r]؈~z)Y|C`7ю=:_}Cwt>Zֳ,wwew0cyy'/M粞op֩	^#WU&[m3"%s;!p/;;<>j+Owvp._pC02qߩ36Aa16ζ5Q=l	I7|Hj1C+zhnRwYOdD~}>h@Opj0nŁvKeKH!zqԿg+y`=իFN;!<η=3\VuT-#0S$4AA#ҥ_"& 
+Qb8--29.vr3%Nhoؤ8ʢh XݜBڸɯYnzճY81Q \	#_vw$
+<f!a]!9r'H`K#lKXDa野*=Cʉr4cIqs?]Q+kaDT5Tp<yxp<D@w,@8U#=(t^\9n4Y(?Ws
+ϕF_#M6zrءƶ3
+nUf?qcfZo0MH@3wٲfSp.7%T\t-ZĻYH2k$JcB}{D}sI{ፊ,, a|zaMWjA=OiQ.4(L`OŪCnaW$GaBIC`▽A55rÉn_h7~zI`/n{І>`=BkshUO'.uy^nqi<\ס|m=ϰі" GMU^#콛tM ~0)8<d5&a	pRUz=o{_@^\c(Mw\? wý=& ۃ]+^?gFMe;@w
+A	yABeAj-Z_|hi-F[-eB).#c1.R(Tv΁WK
++$퀲,F
+ǘ[F9˙lAǱ_3U'I_AgrrA9Eg^KS@`!ɣ_ދB^\5U`)kqa˰g9mf	R$vܳwiWKnD	l	, Ah<#Q["kycxaC=[KܝŠAWP<	p4vF[:BG56XXRM~jmW3-@tbqV:4-{\b9p^bv:,  rJg],,j[ynkGE
+NKuVes]p@OiM?$Xg=H5~MXlCSʱXO
+WPK    IENDB`

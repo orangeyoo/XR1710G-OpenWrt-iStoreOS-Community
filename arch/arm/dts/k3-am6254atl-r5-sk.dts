@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * AM6254atl SiP SK dts for R5 SPL
+ * Webpage: https://www.ti.com/tool/SK-AM62-SIP
+ *
+ * Copyright (C) 2025 Texas Instruments Incorporated - https://www.ti.com/
+ */
+
+#include "k3-am6254atl-sk.dts"
+#include "k3-am6254atl-sip-ddr-lp4-50-800.dtsi"
+#include "k3-am62-ddr.dtsi"
+
+#include "k3-am6254atl-sk-u-boot.dtsi"
+#include "k3-am625-r5.dtsi"
+
+&main_pktdma {
+	ti,sci = <&dm_tifs>;
+};

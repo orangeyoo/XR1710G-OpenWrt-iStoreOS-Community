@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (C) 2023 PHYTEC Messtechnik GmbH
+ * Christoph Stoidner <c.stoidner@phytec.de>
+ * Copyright (C) 2024 PHYTEC Messtechnik GmbH
+ *
+ * Product homepage:
+   https://www.phytec.de/produkte/system-on-modules/phycore-imx-91-93/
+ */
+
+#include "imx93-u-boot.dtsi"
+#include "imx91-93-phyboard-segin-common-u-boot.dtsi"
+
+/ {
+	/*
+	 * The phyCORE-i.MX93 u-boot uses the imx93-phyboard-segin.dts as
+	 * reference, but does only make use of its SoM (phyCORE) contained
+	 * periphery.
+	 */
+	model = "PHYTEC phyCORE-i.MX93";
+};

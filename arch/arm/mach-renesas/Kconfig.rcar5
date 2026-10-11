@@ -1,0 +1,40 @@
+if RCAR_GEN5
+
+config RCAR_64_RSIP
+	bool "Renesas ARM SoCs R-Car Gen5 (use Cortex-M33 RSIP)"
+	select LMB_ARCH_MEM_MAP
+	select SKIP_RELOCATE_CODE
+	select TMU_TIMER
+	help
+	  Build U-Boot for the Cortex-M33 RSIP core present on selected SoC.
+	  The default is n, meaning U-Boot is built for the Cortex-A core.
+
+menu "Select Target SoC"
+
+config R8A78000
+	bool "Renesas SoC R8A78000"
+	select GICV3
+	imply CLK_R8A78000
+	imply PINCTRL_PFC_R8A78000
+	imply RENESAS_R8A78000_POWER_DOMAIN
+
+endmenu
+
+choice
+	prompt "Renesas ARM64 SoCs board select"
+	optional
+
+config TARGET_IRONHIDE
+	bool "Ironhide board"
+	imply R8A78000
+	help
+	  Support for Renesas R-Car Gen5 Ironhide platform
+
+endchoice
+
+source "board/renesas/ironhide/Kconfig"
+
+config SKIP_RELOCATE_CODE_DATA_OFFSET
+	default 0xa0000000 if RCAR_64_RSIP
+
+endif
