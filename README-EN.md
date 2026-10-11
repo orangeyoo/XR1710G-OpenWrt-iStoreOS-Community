@@ -19,7 +19,7 @@
 
 Unofficial community firmware for the **Gemtek XR1710G**: tri-band Wi-Fi 7, a dedicated 6GHz mesh backhaul, the iStore app shop and Docker — ready to flash.
 
-**[Download v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · [What changed](#new-in-v20) · [Flashing guide](FLASHING-GUIDE.md) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
+**[Download v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · [What changed](#new-in-v20) · [Flashing guide](docs/tutorials/XR1710G-Flashing-Guide-EN.pdf) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
 
 ## At a glance
 
