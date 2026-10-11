@@ -1,0 +1,120 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Short RPC entrypoint; the detached worker retains stock sysupgrade semantics.
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+umask 077
+SELF=/usr/libexec/xr1710g-upgrade
+JOB=/tmp/xr1710g-upgrade
+CONTROL=/tmp/xr1710g-upgrade-control
+IMAGE=/tmp/firmware.bin
+UPGRADE=/sbin/sysupgrade
+
+state_write() {
+	printf '%s\n' "$1" > "$JOB/state.new" && mv "$JOB/state.new" "$JOB/state"
+}
+
+status() {
+	if [ ! -d "$JOB" ] || [ -L "$JOB" ]; then
+		printf '{"state":"idle"}\n'
+		return
+	fi
+	id=$(cat "$JOB/id" 2>/dev/null)
+	state=$(cat "$JOB/state" 2>/dev/null)
+	code=$(cat "$JOB/code" 2>/dev/null)
+	keep=$(cat "$JOB/keep" 2>/dev/null)
+	case "$id" in ''|*[!0-9a-f-]*) echo 'Invalid job identity' >&2; return 1;; esac
+	case "$state" in queued|running|failed|handoff) :;; *) state=unknown;; esac
+	case "$state" in queued|running)
+		pid=$(cat "$JOB/pid" 2>/dev/null)
+		started=$(cat "$JOB/started" 2>/dev/null)
+		case "$started" in ''|*[!0-9]*) started=0;; esac
+		# Do not infer safe failure from a vanished worker: procd may already
+		# own the flash operation. Unknown state must never permit a retry.
+		if [ "$(( $(date +%s) - started ))" -gt 10 ]; then
+			case "$pid" in ''|*[!0-9]*) state=unknown;; *) kill -0 "$pid" 2>/dev/null || state=unknown;; esac
+		fi
+		;;
+	esac
+	case "$code" in ''|*[!0-9]*) code=0;; esac
+	case "$keep" in 0|1) :;; *) keep=1;; esac
+	printf '{"id":"%s","state":"%s","code":%s,"keep":%s}\n' "$id" "$state" "$code" "$keep"
+}
+
+control_lock() {
+	mkdir "$CONTROL" 2>/dev/null || { echo 'Upgrade control busy; do not resubmit' >&2; exit 1; }
+	trap 'rmdir "$CONTROL"' EXIT
+}
+
+action=$1
+shift || exit 1
+case "$action" in
+status)
+	[ "$#" = 0 ] || exit 1
+	status
+	;;
+clear)
+	# Only an explicitly acknowledged failure can be cleared, never a live job.
+	[ "$#" = 1 ] || exit 1
+	control_lock
+	[ -d "$JOB" ] && [ ! -L "$JOB" ] || exit 1
+	[ "$(cat "$JOB/id")" = "$1" ] || exit 1
+	[ "$(cat "$JOB/state")" = failed ] || exit 1
+	pid=$(cat "$JOB/pid" 2>/dev/null)
+	case "$pid" in ''|*[!0-9]*) :;; *) kill -0 "$pid" 2>/dev/null && exit 1;; esac
+	rm -f "$JOB/id" "$JOB/state" "$JOB/state.new" "$JOB/code" "$JOB/pid" "$JOB/output.log" "$JOB/keep" "$JOB/started"
+	rmdir "$JOB"
+	printf '{"state":"idle"}\n'
+	;;
+start)
+	# No arbitrary command, image path, restore archive or environment accepted.
+	seen=' '
+	for arg in "$@"; do
+		case "$arg" in -n|--force|-u|-k) :;; *) echo 'Unsupported upgrade option' >&2; exit 1;; esac
+		case "$seen" in *" $arg "*) echo 'Duplicate upgrade option' >&2; exit 1;; esac
+		seen="$seen$arg "
+	done
+	[ -f "$IMAGE" ] && [ ! -L "$IMAGE" ] && [ -s "$IMAGE" ] || {
+		echo 'Uploaded firmware is missing or invalid' >&2; exit 1;
+	}
+	control_lock
+	if ! mkdir "$JOB" 2>/dev/null; then
+		echo 'An upgrade job already exists; inspect its status before retrying' >&2
+		exit 1
+	fi
+	cat /proc/sys/kernel/random/uuid > "$JOB/id"
+	date +%s > "$JOB/started"
+	case "$seen" in *' -n '*) printf '0\n';; *) printf '1\n';; esac > "$JOB/keep"
+	state_write queued
+	# BusyBox double-forks and redirects stdio before executing the worker.
+	# rpcd only waits for this short launcher, not validation/backup/flashing.
+	if ! start-stop-daemon -S -b -m -p "$JOB/pid" -x "$SELF" -- run "$(cat "$JOB/id")" "$@"; then
+		printf '1\n' > "$JOB/code"
+		state_write failed
+		echo 'Unable to launch upgrade worker' >&2
+		exit 1
+	fi
+	status
+	;;
+run)
+	[ "$#" -ge 1 ] || exit 1
+	[ -d "$JOB" ] && [ ! -L "$JOB" ] || exit 1
+	[ "$(cat "$JOB/id")" = "$1" ] && [ "$(cat "$JOB/state")" = queued ] || exit 1
+	shift
+	exec > "$JOB/output.log" 2>&1
+	state_write running
+	# Do not wrap this in timeout: after procd handoff, killing upgrade is unsafe.
+	# The stock program still performs all image/layout checks and configuration
+	# backup. Arguments are forwarded unchanged; no automatic retry occurs.
+	"$UPGRADE" "$@" "$IMAGE"
+	code=$?
+	printf '%s\n' "$code" > "$JOB/code"
+	if [ "$code" = 0 ]; then
+		state_write handoff
+	else
+		state_write failed
+		logger -t xr1710g-upgrade "Upgrade preparation exited with code $code; see $JOB/output.log"
+	fi
+	;;
+*) echo 'Expected start, status or clear' >&2; exit 1;;
+esac

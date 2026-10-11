@@ -1,0 +1,161 @@
+#!/bin/sh
+# Keep XR1710G's LAN address in current OpenWrt CIDR-list form.
+
+set -eu
+
+PROG="${0##*/}"
+MODE="${1:---repair}"
+
+xr1710g_board_name() {
+	if [ -r /tmp/sysinfo/board_name ]; then
+		cat /tmp/sysinfo/board_name
+	elif command -v board_name >/dev/null 2>&1; then
+		command board_name
+	fi
+}
+
+valid_ipv4() {
+	local old_ifs="$IFS" octet
+
+	IFS=.
+	# shellcheck disable=SC2086
+	set -- $1
+	IFS="$old_ifs"
+	[ "$#" -eq 4 ] || return 1
+
+	for octet in "$@"; do
+		case "$octet" in
+			''|*[!0-9]*) return 1 ;;
+		esac
+		[ "$octet" -le 255 ] || return 1
+	done
+}
+
+valid_cidr4() {
+	local value="$1" address prefix
+
+	case "$value" in
+		*/*) ;;
+		*) return 1 ;;
+	esac
+	address="${value%/*}"
+	prefix="${value##*/}"
+	valid_ipv4 "$address" || return 1
+	case "$prefix" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	[ "$prefix" -le 32 ]
+}
+
+netmask_to_prefix() {
+	local old_ifs="$IFS" octet bits prefix=0 ended=0
+
+	IFS=.
+	# shellcheck disable=SC2086
+	set -- $1
+	IFS="$old_ifs"
+	[ "$#" -eq 4 ] || return 1
+
+	for octet in "$@"; do
+		case "$octet" in
+			255) bits=8 ;;
+			254) bits=7 ;;
+			252) bits=6 ;;
+			248) bits=5 ;;
+			240) bits=4 ;;
+			224) bits=3 ;;
+			192) bits=2 ;;
+			128) bits=1 ;;
+			0) bits=0 ;;
+			*) return 1 ;;
+		esac
+		[ "$ended" -eq 0 ] || [ "$bits" -eq 0 ] || return 1
+		prefix=$((prefix + bits))
+		[ "$bits" -eq 8 ] || ended=1
+	done
+
+	printf '%s\n' "$prefix"
+}
+
+schedule_runtime_reload() {
+	(
+		lockdir=/tmp/xr1710g-lan-cidr-reload.lock
+		mkdir "$lockdir" 2>/dev/null || exit 0
+		trap 'rmdir "$lockdir" 2>/dev/null || true' EXIT HUP INT TERM
+		sleep 1
+		ubus call network reload >/dev/null 2>&1 ||
+			/etc/init.d/network reload >/dev/null 2>&1 || true
+		sleep 2
+		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+	) >/dev/null 2>&1 &
+}
+
+case "$MODE" in
+	--repair|--boot|--hotplug|--check) ;;
+	*)
+		echo "Usage: $PROG [--repair|--boot|--hotplug|--check]" >&2
+		exit 2
+		;;
+esac
+
+[ "$(xr1710g_board_name)" = 'econet,xr1710g-ubi' ] || exit 0
+[ "$(uci -q get network.lan.proto 2>/dev/null || true)" = 'static' ] || exit 0
+
+addresses="$(uci -q get network.lan.ipaddr 2>/dev/null || true)"
+[ -n "$addresses" ] || {
+	logger -t "$PROG" 'LAN static IPv4 address is empty; refusing to guess it'
+	exit 1
+}
+
+netmask="$(uci -q get network.lan.netmask 2>/dev/null || true)"
+prefix=24
+if [ -n "$netmask" ]; then
+	prefix="$(netmask_to_prefix "$netmask")" || {
+		logger -t "$PROG" 'LAN netmask is invalid; leaving the configuration unchanged'
+		exit 1
+	}
+fi
+
+changed=0
+normalized=
+for address in $addresses; do
+	case "$address" in
+		*/*)
+			valid_cidr4 "$address" || {
+				logger -t "$PROG" 'LAN contains an invalid IPv4 CIDR; leaving it unchanged'
+				exit 1
+			}
+			;;
+		*)
+			valid_ipv4 "$address" || {
+				logger -t "$PROG" 'LAN contains an invalid IPv4 address; leaving it unchanged'
+				exit 1
+			}
+			address="$address/$prefix"
+			changed=1
+			;;
+	esac
+	normalized="${normalized}${normalized:+ }${address}"
+done
+
+# A legacy netmask is redundant once every address carries its own prefix.
+[ -z "$netmask" ] || changed=1
+
+if [ "$MODE" = '--check' ]; then
+	[ "$changed" -eq 0 ]
+	exit
+fi
+
+[ "$changed" -eq 1 ] || exit 0
+
+uci -q delete network.lan.ipaddr
+for address in $normalized; do
+	uci -q add_list network.lan.ipaddr="$address"
+done
+uci -q delete network.lan.netmask 2>/dev/null || true
+uci -q commit network
+logger -t "$PROG" 'normalized LAN IPv4 configuration to CIDR-list form'
+
+[ "$MODE" != '--hotplug' ] || schedule_runtime_reload
+
+exit 0

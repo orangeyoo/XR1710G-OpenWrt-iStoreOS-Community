@@ -25,7 +25,7 @@ v1.9-era untracked 9999-12 restored; regen vs current tree for zero-fuzz replay)
 +				 const void *data, int len, void *reply,
 +				 u16 reply_len)
  {
--	u16 core = 0; /* single-core: AN7581 only core 0 */
+-	u16 core = 0; /* FIXME */
 -	u32 val, offset = core << 4;
 -	dma_addr_t dma_addr;
 +	struct airoha_npu_core *core = &npu->cores[0]; /* single-core: AN7581 only core 0 populated */

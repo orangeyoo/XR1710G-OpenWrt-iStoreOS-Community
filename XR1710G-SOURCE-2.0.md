@@ -1,11 +1,21 @@
 # XR1710G v2.0 firmware source tree / v2.0 固件完整源码
 
 This branch (`source-2.0`) contains the complete OpenWrt / iStoreOS build tree that
-produced community firmware v2.0 (`2.0 r0+4-b80dbec681`, image
-`istoreos-xr1710g-community-2.0-r0+4-b80dbec681-airoha-an7581-econet_xr1710g-ubi-*`).
+produces community firmware v2.0. The v2.0 release binaries were re-uploaded on
+2026-10-12 from this exact tree (image
+`istoreos-xr1710g-community-2.0-r0-59ae07f-airoha-an7581-econet_xr1710g-ubi-*`,
+sysupgrade sha256 `cecd9bc9…`). It replaces the initial `r0+4-b80dbec681`
+upload: same PPE/SOE patch series, plus a rebuilt first-boot layer
+(`package/xr1710g-system`), corrected third-party feed list, two repaired patch
+headers, and one-time runtime migrations (routed/NAT hardware-offload restore,
+login-theme guard, third-party ACL repair).
 
-本分支（`source-2.0`）是社区固件 v2.0（`2.0 r0+4-b80dbec681`）的完整 OpenWrt / iStoreOS
-构建源码树，与发布的 sysupgrade / recovery 镜像对应。
+本分支（`source-2.0`）是社区固件 v2.0 的完整 OpenWrt / iStoreOS 构建源码树。
+2026-10-12 起发布的 v2.0 二进制由本树原样构建（镜像
+`istoreos-xr1710g-community-2.0-r0-59ae07f-airoha-an7581-econet_xr1710g-ubi-*`，
+sysupgrade sha256 `cecd9bc9…`），替换首发 `r0+4-b80dbec681`：PPE/SOE 补丁序列
+不变，新增重建的首发层 `package/xr1710g-system`、修正的第三方 feed 列表、两处
+补丁头修复，以及三条一次性运行时迁移（硬件卸载恢复、登录主题守卫、第三方 ACL 修复）。
 
 ## What this tree is / 关于本树
 

@@ -1,0 +1,24 @@
+#!/bin/sh
+# Widen LuCI's apply-rollback confirmation window from the 90 s stock
+# minimum to 300 s. Switching the 5 GHz radio to a DFS-spanning width
+# (for example EHT160 on channel 36) requires a ~60 s CAC before the AP
+# returns; over a wireless management session the stock 90 s window
+# expired first and LuCI rolled the change back, which users saw as
+# their configuration silently reverting to the previous width. Any
+# owner value that already differs from the stock default is kept.
+board="$(cat /tmp/sysinfo/board_name 2>/dev/null)"
+[ -n "$board" ] || board="$(board_name 2>/dev/null)"
+[ "$board" = 'econet,xr1710g-ubi' ] || exit 0
+
+cur="$(uci -q get luci.apply.rollback 2>/dev/null || true)"
+case "$cur" in
+	''|'90') ;;
+	*) exit 0 ;;
+esac
+
+if ! uci -q get luci.apply >/dev/null 2>&1; then
+	uci -q set luci.apply=internal || exit 1
+fi
+uci -q set luci.apply.rollback='300' || exit 1
+uci -q commit luci || exit 1
+exit 0

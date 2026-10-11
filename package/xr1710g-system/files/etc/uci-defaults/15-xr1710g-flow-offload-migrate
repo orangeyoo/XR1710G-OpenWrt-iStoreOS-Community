@@ -1,0 +1,30 @@
+#!/bin/sh
+# One-time migration for keep-settings upgrades from the v1.x line.
+#
+# During the 2026-09-28 v1.x stability round, routed hardware flow offload was
+# deliberately turned off (flow_offloading=0) on devices that were fighting a
+# mesh management freeze.  Sysupgrade-with-keep-settings carried that manual
+# choice into 2.0, where the shipped design is the PPE/NPU fast path with
+# flow_offloading=1 + flow_offloading_hw=1 (fresh installs get this from
+# 14-airoha-hw-flow-offload).  With the old value kept, NAT/PPPoE traffic runs
+# through the CPU slow path: PPPoE throughput drops well below line rate and
+# the load sits on one core.
+#
+# This migration re-enables the shipped default exactly once.  It runs after
+# 14-airoha-hw-flow-offload and never touches any other firewall setting.  A
+# marker in system config keeps it from running again, so an owner who turns
+# offload off afterwards keeps their choice.
+
+[ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = 'econet,xr1710g-ubi' ] || exit 0
+
+[ "$(uci -q get system.@system[0].xr1710g_flow_offload_migrated 2>/dev/null || true)" = '1' ] && exit 0
+
+uci -q get firewall.@defaults[0] >/dev/null || exit 1
+uci -q set firewall.@defaults[0].flow_offloading='1' || exit 1
+uci -q set firewall.@defaults[0].flow_offloading_hw='1' || exit 1
+uci -q commit firewall || exit 1
+
+uci -q set system.@system[0].xr1710g_flow_offload_migrated='1'
+uci -q commit system
+logger -t xr1710g-firstboot 'restored shipped routed/NAT hardware flow offload (one-time v1.x migration)'
+exit 0

@@ -1,0 +1,42 @@
+#!/bin/sh
+# Repair a third-party rpcd ACL file that ships invalid JSON.
+#
+# luci-app-poweroffdevice's ACL file uses trailing commas, which is not valid
+# JSON.  rpcd silently drops unparsable ACL files, so the app loses its ubus
+# grants.  Install a corrected copy only while the installed file cannot be
+# parsed; an owner-edited valid file is preserved.
+
+acl=/usr/share/rpcd/acl.d/luci-app-poweroffdevice.json
+[ -f "$acl" ] || exit 0
+
+if jsonfilter -i "$acl" -e '@.luci-app-poweroffdevice' >/dev/null 2>&1; then
+	exit 0
+fi
+
+cat > "$acl" <<'EOF'
+{
+	"luci-app-poweroffdevice": {
+		"description": "Grant UCI access for luci-app-poweroffdevice",
+		"read": {
+			"ubus": {
+				"system": [ "info" ]
+			},
+			"file": {
+				"/sbin/poweroff": [ "exec" ]
+			}
+		},
+		"write": {
+			"file": {
+				"/sbin/poweroff": [ "exec" ]
+			},
+			"ubus": {
+				"file": [ "exec" ],
+				"system": [ "poweroff" ]
+			}
+		}
+	}
+}
+EOF
+
+logger -t xr1710g-firstboot 'replaced unparsable luci-app-poweroffdevice ACL with a valid copy'
+exit 0

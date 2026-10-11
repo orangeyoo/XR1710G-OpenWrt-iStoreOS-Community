@@ -152,6 +152,7 @@ define Device/econet_xr1710g-ubi
 		    luci-mod-admin-full \
 		    luci-proto-ppp luci-theme-bootstrap \
 		    rpcd-mod-rrdns uhttpd uhttpd-mod-ubus \
+		    xr1710g-status-core xr1710g-system \
 		    wpad-mesh-openssl
   UBINIZE_OPTS := -E 5
   BLOCKSIZE := 128k

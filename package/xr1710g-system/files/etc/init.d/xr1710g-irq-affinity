@@ -1,0 +1,11 @@
+#!/bin/sh /etc/rc.common
+# Reapply boot-volatile IRQ affinity during the normal init sequence.
+START=95
+
+start() {
+	/usr/libexec/xr1710g-irq-affinity
+}
+
+boot() {
+	start
+}

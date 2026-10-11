@@ -1,6 +1,6 @@
 --- a/drivers/net/ethernet/airoha/airoha_ppe.c
 +++ b/drivers/net/ethernet/airoha/airoha_ppe.c
-@@ -1884,8 +1884,15 @@ static int airoha_ppe_flow_offload_replace(struct airoha_eth *eth,
+@@ -1884,9 +1884,18 @@ static int airoha_ppe_flow_offload_replace(struct airoha_eth *eth,
  		}
  	}
  

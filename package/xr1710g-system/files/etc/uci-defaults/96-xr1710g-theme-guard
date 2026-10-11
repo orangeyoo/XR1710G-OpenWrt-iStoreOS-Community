@@ -1,0 +1,41 @@
+#!/bin/sh
+# Guard the LuCI theme choice across keep-settings upgrades.
+#
+# A sysupgrade that keeps configuration can carry luci.main.mediaurlbase from
+# an older line whose theme no longer ships a usable ucode sysauth template
+# (for example a Lua-only theme).  When the dispatcher cannot render the
+# configured theme's login page, the browser shows a blank page and the owner
+# cannot log in at all.  Fall back to bootstrap only when the configured theme
+# is actually unusable on the installed dispatcher; never rewrite a choice
+# that works.
+
+media="$(uci -q get luci.main.mediaurlbase 2>/dev/null || true)"
+
+case "$media" in
+	/luci-static/*) ;;
+	*)
+		media=''
+		;;
+esac
+
+if [ -z "$media" ]; then
+	uci -q set luci.main.mediaurlbase='/luci-static/bootstrap'
+	uci -q commit luci
+	exit 0
+fi
+
+name="${media#/luci-static/}"
+usable=''
+case "$name" in
+	''|*/*) ;;
+	*)
+		[ -f "/usr/share/ucode/luci/template/themes/$name/sysauth.ut" ] && usable=1
+		;;
+esac
+
+if [ "$usable" != 1 ]; then
+	uci -q set luci.main.mediaurlbase='/luci-static/bootstrap'
+	uci -q commit luci
+	logger -t xr1710g-firstboot "theme '$name' has no usable login template; fell back to bootstrap"
+fi
+exit 0

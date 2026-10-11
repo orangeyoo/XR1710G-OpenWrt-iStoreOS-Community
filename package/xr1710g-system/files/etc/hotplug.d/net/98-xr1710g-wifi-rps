@@ -1,0 +1,19 @@
+#!/bin/sh
+# Spread RX processing across all four cores for wireless and the DSA CPU
+# port. Mesh forwarding was measured ~20% faster with 4-stream traffic and
+# single-core softirq saturation disappeared. Runtime-only knob; safe to
+# re-apply on every interface (re)registration.
+
+[ "$ACTION" = add ] || [ "$ACTION" = change ] || exit 0
+
+case "$INTERFACE" in
+	phy*|ap-mld*|sta-mld*|mesh*|eth0) ;;
+	*) exit 0 ;;
+esac
+
+for queue in /sys/class/net/"$INTERFACE"/queues/rx-*; do
+	[ -f "$queue/rps_cpus" ] || continue
+	echo f > "$queue/rps_cpus" 2>/dev/null
+done
+
+exit 0

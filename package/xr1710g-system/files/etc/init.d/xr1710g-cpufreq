@@ -1,0 +1,30 @@
+#!/bin/sh /etc/rc.common
+# Persist and replay the XR1710G CPU governor selected from LuCI.
+
+START=19
+
+is_xr1710g() {
+	[ "$(cat /tmp/sysinfo/board_name 2>/dev/null)" = 'econet,xr1710g-ubi' ]
+}
+
+apply_governor() {
+	local governor policy applied=0
+	governor="$(uci -q get system.@system[0].xr1710g_governor 2>/dev/null)"
+	[ -n "$governor" ] || governor='performance'
+
+	for policy in /sys/devices/system/cpu/cpufreq/policy[0-9]*; do
+		[ -d "$policy" ] || continue
+		[ -w "$policy/scaling_governor" ] || continue
+		grep -qw "$governor" "$policy/scaling_available_governors" 2>/dev/null || continue
+		printf '%s\n' "$governor" > "$policy/scaling_governor" || continue
+		applied=1
+	done
+
+	[ "$applied" = 1 ] || logger -t xr1710g-cpufreq \
+		"governor '$governor' is unavailable; keeping the kernel selection" 2>/dev/null || true
+}
+
+start() {
+	is_xr1710g || return 0
+	apply_governor
+}

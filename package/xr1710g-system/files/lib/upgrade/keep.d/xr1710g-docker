@@ -1,0 +1,3 @@
+# dockerd is intentionally disabled in a clean image. If an owner later
+# enables it, preserve that explicit autostart choice across sysupgrade.
+/etc/rc.d/S99dockerd

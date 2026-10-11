@@ -1,0 +1,328 @@
+#!/bin/sh
+# Configure one XR1710G as a main router or a non-routing Mesh node.
+# The command only commits UCI changes.  It never reloads networking, Wi-Fi,
+# firewall, dnsmasq or odhcpd and it never reboots the device.
+
+set -eu
+
+PROG="${0##*/}"
+ROLE_IP=
+ROLE_PREFIX=
+ROLE_NETMASK=
+
+die() {
+	printf '%s: %s\n' "$PROG" "$*" >&2
+	exit 1
+}
+
+usage() {
+	cat <<'EOF'
+Usage:
+  xr1710g-role status
+  xr1710g-role main-dhcp LAN-IP/PREFIX
+  xr1710g-role main-pppoe LAN-IP/PREFIX [PPPOE-USERNAME]
+  xr1710g-role node NODE-IP/PREFIX MAIN-ROUTER-IP
+
+Examples:
+  xr1710g-role main-dhcp 192.168.10.1/24
+  xr1710g-role main-pppoe 192.168.10.1/24
+  xr1710g-role node 192.168.10.2/24 192.168.10.1
+
+main-pppoe preserves an already configured WAN username/password.  If a
+username is supplied, the password is requested from the terminal without
+echoing it.  PPPoE is only ever assigned to network.wan, never network.lan.
+
+Changes are backed up under /root/xr1710g-role-backups and committed, but no
+service is reloaded.  Keep a wired management path, review `status`, and
+reboot manually when ready.
+EOF
+}
+
+xr1710g_board_name() {
+	# Installed OpenWrt exposes the detected board through /tmp/sysinfo but
+	# does not necessarily install a standalone `board_name` command.  Keep
+	# this helper's name distinct: otherwise `command -v board_name` can see
+	# the shell function itself and `command board_name` then fails in ash.
+	if [ -r /tmp/sysinfo/board_name ]; then
+		cat /tmp/sysinfo/board_name
+	elif command -v board_name >/dev/null 2>&1; then
+		command board_name
+	fi
+}
+
+require_xr1710g() {
+	[ "$(xr1710g_board_name)" = 'econet,xr1710g-ubi' ] ||
+		die 'this tool only supports econet,xr1710g-ubi'
+	[ "$(id -u)" -eq 0 ] || die 'run this command as root'
+	command -v uci >/dev/null 2>&1 || die 'uci is unavailable'
+	command -v ipcalc.sh >/dev/null 2>&1 || die 'ipcalc.sh is unavailable'
+}
+
+valid_ipv4() {
+	printf '%s\n' "$1" | awk -F. '
+		NF != 4 { exit 1 }
+		{
+			for (i = 1; i <= 4; i++) {
+				if ($i !~ /^[0-9]+$/ || length($i) > 3 || $i + 0 > 255)
+					exit 1
+			}
+		}' >/dev/null 2>&1
+}
+
+parse_cidr() {
+	local cidr="$1" calc network broadcast
+
+	case "$cidr" in
+		*/*) ;;
+		*) die "CIDR prefix is required: $cidr" ;;
+	esac
+
+	ROLE_IP="${cidr%/*}"
+	ROLE_PREFIX="${cidr##*/}"
+	valid_ipv4 "$ROLE_IP" || die "invalid IPv4 address: $ROLE_IP"
+	case "$ROLE_PREFIX" in
+		''|*[!0-9]*) die "invalid IPv4 prefix: $ROLE_PREFIX" ;;
+	esac
+	[ "$ROLE_PREFIX" -ge 8 ] && [ "$ROLE_PREFIX" -le 30 ] ||
+		die 'LAN prefix must be between /8 and /30'
+
+	calc="$(ipcalc.sh "$ROLE_IP/$ROLE_PREFIX" 2>/dev/null)" ||
+		die "cannot calculate subnet for $cidr"
+	ROLE_NETMASK="$(printf '%s\n' "$calc" | sed -n 's/^NETMASK=//p' | head -n1)"
+	network="$(printf '%s\n' "$calc" | sed -n 's/^NETWORK=//p' | head -n1)"
+	broadcast="$(printf '%s\n' "$calc" | sed -n 's/^BROADCAST=//p' | head -n1)"
+	[ -n "$ROLE_NETMASK" ] || die "ipcalc.sh returned no netmask for $cidr"
+	[ "$ROLE_IP" != "$network" ] && [ "$ROLE_IP" != "$broadcast" ] ||
+		die 'the LAN address may not be the subnet or broadcast address'
+}
+
+same_subnet() {
+	local left="$1" right="$2" prefix="$3"
+	local left_network right_network
+	left_network="$(ipcalc.sh "$left/$prefix" 2>/dev/null |
+		sed -n 's/^NETWORK=//p' | head -n1)"
+	right_network="$(ipcalc.sh "$right/$prefix" 2>/dev/null |
+		sed -n 's/^NETWORK=//p' | head -n1)"
+	[ -n "$left_network" ] && [ "$left_network" = "$right_network" ]
+}
+
+show_value() {
+	local label="$1" option="$2" value
+	value="$(uci -q get "$option" 2>/dev/null || true)"
+	[ -n "$value" ] || value='<unset>'
+	printf '%-25s %s\n' "$label:" "$value"
+}
+
+delete_if_present() {
+	# `uci -q delete` still returns 1 when the option is absent.  These
+	# removals are intentionally idempotent and must not abort under set -e.
+	uci -q delete "$1" 2>/dev/null || true
+}
+
+status() {
+	printf 'XR1710G role configuration (credentials are never displayed)\n'
+	show_value 'LAN protocol' network.lan.proto
+	show_value 'LAN device' network.lan.device
+	show_value 'LAN IPv4 CIDR' network.lan.ipaddr
+	show_value 'LAN gateway' network.lan.gateway
+	show_value 'LAN DNS' network.lan.dns
+	show_value 'LAN IPv6 assignment' network.lan.ip6assign
+	show_value 'LAN IPv6 delegation' network.lan.delegate
+	show_value 'WAN protocol' network.wan.proto
+	show_value 'WAN device' network.wan.device
+	show_value 'WAN IPv6 mode' network.wan.ipv6
+	if [ -n "$(uci -q get network.wan.username 2>/dev/null || true)" ]; then
+		printf '%-25s %s\n' 'WAN PPPoE credentials:' '<configured>'
+	else
+		printf '%-25s %s\n' 'WAN PPPoE credentials:' '<unset>'
+	fi
+	if uci -q show network.wan6 >/dev/null 2>&1; then
+		printf '%-25s %s\n' 'Static wan6 section:' 'present (review it)'
+	else
+		printf '%-25s %s\n' 'Static wan6 section:' '<absent>'
+	fi
+	show_value 'DHCPv4 server ignored' dhcp.lan.ignore
+	show_value 'IPv6 RA mode' dhcp.lan.ra
+	show_value 'DHCPv6 mode' dhcp.lan.dhcpv6
+	show_value 'NDP mode' dhcp.lan.ndp
+	show_value 'ULA prefix' network.globals.ula_prefix
+}
+
+backup_config() {
+	local stamp dir
+	stamp="$(date -u '+%Y%m%d-%H%M%S')"
+	dir="/root/xr1710g-role-backups/${stamp}-$$"
+	umask 077
+	mkdir -p "$dir"
+	uci export network > "$dir/network.uci"
+	uci export dhcp > "$dir/dhcp.uci"
+	uci export system > "$dir/system.uci"
+	printf '%s\n' "$dir"
+}
+
+set_lan_ipv4() {
+	uci -q set network.lan.proto='static'
+	uci -q delete network.lan.ipaddr 2>/dev/null || true
+	uci -q add_list network.lan.ipaddr="$ROLE_IP/$ROLE_PREFIX"
+	# Current OpenWrt stores the prefix with each IPv4 address.  Remove the
+	# legacy sibling netmask so a later reboot cannot reconstruct a /32.
+	delete_if_present network.lan.netmask
+}
+
+set_main_lan() {
+	set_lan_ipv4
+	delete_if_present network.lan.gateway
+	delete_if_present network.lan.dns
+	delete_if_present network.lan.delegate
+	uci -q set network.lan.ip6assign='64'
+
+	uci -q set dhcp.lan.ignore='0'
+	uci -q set dhcp.lan.ra='server'
+	uci -q set dhcp.lan.dhcpv6='server'
+	uci -q set dhcp.lan.ndp='disabled'
+}
+
+prepare_wan() {
+	local wan_device
+	wan_device="$(uci -q get network.wan.device 2>/dev/null || true)"
+	[ -n "$wan_device" ] || uci -q set network.wan.device='wan'
+	wan_device="$(uci -q get network.wan.device 2>/dev/null || true)"
+	[ "$wan_device" != 'br-lan' ] ||
+		die 'network.wan points at br-lan; repair the WAN device before continuing'
+	uci -q set network.wan.auto='1'
+	uci -q set network.wan.ipv6='auto'
+	# PPPoE and DHCP both create their dynamic IPv6 child (wan_6).  A separate
+	# wan6 bound to the physical WAN is a common source of endless RS/SOLICIT
+	# messages, so explicit role changes remove that stale section.
+	delete_if_present network.wan6
+}
+
+commit_role() {
+	uci -q commit network
+	uci -q commit dhcp
+	uci -q commit system
+	printf '\nConfiguration committed. No network, Wi-Fi, firewall or DNS service was reloaded.\n'
+	printf 'Review with: %s status\n' "$PROG"
+	printf 'Keep the wired connection and reboot manually only when you are ready.\n'
+}
+
+configure_main_dhcp() {
+	local backup
+	parse_cidr "$1"
+	backup="$(backup_config)"
+	set_main_lan
+	prepare_wan
+	uci -q set network.wan.proto='dhcp'
+	delete_if_present network.wan.username
+	delete_if_present network.wan.password
+	commit_role
+	printf 'Role: main router, DHCP on the dedicated WAN interface\nBackup: %s\n' "$backup"
+}
+
+read_pppoe_password() {
+	local password
+	[ -r /dev/tty ] || die 'an interactive terminal is required to enter the PPPoE password'
+	printf 'PPPoE password (input hidden): ' > /dev/tty
+	stty -echo < /dev/tty 2>/dev/null || die 'cannot disable terminal echo'
+	trap 'stty echo < /dev/tty 2>/dev/null || true; printf "\n" > /dev/tty' EXIT HUP INT TERM
+	IFS= read -r password < /dev/tty || true
+	stty echo < /dev/tty 2>/dev/null || true
+	trap - EXIT HUP INT TERM
+	printf '\n' > /dev/tty
+	[ -n "$password" ] || die 'PPPoE password may not be empty'
+	PPPOE_PASSWORD="$password"
+}
+
+configure_main_pppoe() {
+	local cidr="$1" username="${2:-}" password backup
+	parse_cidr "$cidr"
+
+	if [ -n "$username" ]; then
+		PPPOE_PASSWORD=
+		read_pppoe_password
+		password="$PPPOE_PASSWORD"
+	else
+		username="$(uci -q get network.wan.username 2>/dev/null || true)"
+		password="$(uci -q get network.wan.password 2>/dev/null || true)"
+		[ -n "$username" ] && [ -n "$password" ] ||
+			die 'WAN PPPoE credentials are not configured; supply the username to enter them safely'
+	fi
+
+	backup="$(backup_config)"
+	set_main_lan
+	prepare_wan
+	uci -q set network.wan.proto='pppoe'
+	uci -q set network.wan.username="$username"
+	uci -q set network.wan.password="$password"
+	unset password PPPOE_PASSWORD
+	commit_role
+	printf 'Role: main router, PPPoE on the dedicated WAN interface\nBackup: %s\n' "$backup"
+}
+
+configure_node() {
+	local gateway="$2" backup
+	parse_cidr "$1"
+	valid_ipv4 "$gateway" || die "invalid main-router address: $gateway"
+	[ "$ROLE_IP" != "$gateway" ] || die 'node and main router may not use the same address'
+	same_subnet "$ROLE_IP" "$gateway" "$ROLE_PREFIX" ||
+		die 'node and main-router addresses must be in the same subnet'
+
+	backup="$(backup_config)"
+	set_lan_ipv4
+	uci -q set network.lan.gateway="$gateway"
+	delete_if_present network.lan.dns
+	uci -q add_list network.lan.dns="$gateway"
+	uci -q set network.lan.delegate='0'
+	delete_if_present network.lan.ip6assign
+	delete_if_present network.lan.ip6hint
+	delete_if_present network.lan.ip6ifaceid
+
+	uci -q set dhcp.lan.ignore='1'
+	uci -q set dhcp.lan.ra='disabled'
+	uci -q set dhcp.lan.dhcpv6='disabled'
+	uci -q set dhcp.lan.ndp='disabled'
+
+	uci -q set network.wan.proto='none'
+	uci -q set network.wan.auto='0'
+	delete_if_present network.wan.username
+	delete_if_present network.wan.password
+	delete_if_present network.wan.ipv6
+	delete_if_present network.wan6
+	# OpenWrt's generated ULA belongs to network.globals, not system.  A mesh
+	# node must not advertise or retain an independent prefix beside the main
+	# router's delegated/ULA addressing.
+	delete_if_present network.globals.ula_prefix
+	# Remove the legacy/wrong location as well if an older helper created it.
+	delete_if_present system.@system[0].ula_prefix
+
+	commit_role
+	printf 'Role: non-routing Mesh node; DHCPv4, RA and DHCPv6 serving are disabled\nBackup: %s\n' "$backup"
+}
+
+require_xr1710g
+
+case "${1:-}" in
+	status)
+		[ "$#" -eq 1 ] || die 'status takes no arguments'
+		status
+		;;
+	main-dhcp)
+		[ "$#" -eq 2 ] || { usage >&2; exit 1; }
+		configure_main_dhcp "$2"
+		;;
+	main-pppoe)
+		[ "$#" -eq 2 ] || [ "$#" -eq 3 ] || { usage >&2; exit 1; }
+		configure_main_pppoe "$2" "${3:-}"
+		;;
+	node)
+		[ "$#" -eq 3 ] || { usage >&2; exit 1; }
+		configure_node "$2" "$3"
+		;;
+	-h|--help|help|'')
+		usage
+		;;
+	*)
+		usage >&2
+		die "unknown command: $1"
+		;;
+esac

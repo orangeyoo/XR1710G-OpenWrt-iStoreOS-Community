@@ -1,0 +1,4 @@
+#!/bin/sh
+# Apply the first-boot IRQ affinity now; init re-applies it after each reboot.
+[ -x /usr/libexec/xr1710g-irq-affinity ] && /usr/libexec/xr1710g-irq-affinity
+exit 0

@@ -1,0 +1,40 @@
+#!/bin/sh /etc/rc.common
+
+START=14
+
+. /lib/functions.sh
+
+is_xr1710g() {
+	[ "$(board_name 2>/dev/null)" = 'econet,xr1710g-ubi' ]
+}
+
+restore_legacy_trigger() {
+	local backup current
+
+	is_xr1710g || return 0
+	command -v fw_printenv >/dev/null 2>&1 || return 0
+	command -v fw_setenv >/dev/null 2>&1 || return 0
+
+	backup="$(fw_printenv -n xr1710g_bootcmd_backup 2>/dev/null)" || return 0
+	current="$(fw_printenv -n bootcmd 2>/dev/null)" || return 0
+
+	if [ "$current" != "$backup" ]; then
+		fw_setenv bootcmd "$backup" || {
+			logger -t xr1710g-uboot-recovery "failed to restore bootcmd"
+			return 0
+		}
+	fi
+	fw_setenv xr1710g_recovery_stage1 >/dev/null 2>&1 || true
+	fw_setenv xr1710g_recovery_stage2 >/dev/null 2>&1 || true
+	fw_setenv xr1710g_recovery_once >/dev/null 2>&1 || true
+	fw_setenv xr1710g_bootcmd_backup >/dev/null 2>&1 || true
+	logger -t xr1710g-uboot-recovery "restored temporary recovery boot command"
+}
+
+boot() {
+	restore_legacy_trigger
+}
+
+start() {
+	restore_legacy_trigger
+}

@@ -1,0 +1,11 @@
+#!/bin/sh /etc/rc.common
+
+START=18
+
+start() {
+	/usr/sbin/xr1710g-lan-cidr-guard --boot
+}
+
+boot() {
+	start
+}

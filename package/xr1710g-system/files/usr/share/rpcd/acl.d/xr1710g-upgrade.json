@@ -1,0 +1,17 @@
+{
+  "luci-mod-system-flash": {
+    "read": {
+      "file": {
+        "/usr/libexec/xr1710g-upgrade status": ["exec"],
+        "/tmp/xr1710g-upgrade/output.log": ["read"]
+      }
+    },
+    "write": {
+      "file": {
+        "/usr/libexec/xr1710g-upgrade start": ["exec"],
+        "/usr/libexec/xr1710g-upgrade start *": ["exec"],
+        "/usr/libexec/xr1710g-upgrade clear *": ["exec"]
+      }
+    }
+  }
+}

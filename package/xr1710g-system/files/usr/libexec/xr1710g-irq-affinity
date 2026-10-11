@@ -1,0 +1,37 @@
+#!/bin/sh
+# IRQ affinity and online-CPU state are per-boot runtime state, so reapply them
+# on each boot. Match stable final action names because IRQ numbers can move.
+
+board="$(cat /tmp/sysinfo/board_name 2>/dev/null)" || exit 0
+case "$board" in
+	econet,xr1710g-ubi|gemtek,xr1710g-ubi) ;;
+	*) exit 0 ;;
+esac
+
+for cpu in 1 2 3; do
+	[ "$(cat "/sys/devices/system/cpu/cpu${cpu}/online" 2>/dev/null)" = "1" ] || exit 0
+done
+
+pairs="$(
+	awk '
+		$1 ~ /^[0-9]+:$/ {
+			irq = substr($1, 1, length($1) - 1)
+			if ($NF ~ /^airoha_eth\.[0-7]$/)
+				print irq, "2"
+			else if ($NF == "mt76-npu.0")
+				print irq, "4"
+			else if ($NF == "mt76-npu.1")
+				print irq, "8"
+		}
+	' /proc/interrupts 2>/dev/null
+)"
+
+printf '%s\n' "$pairs" | while read -r irq mask; do
+	affinity="/proc/irq/${irq}/smp_affinity"
+	[ -w "$affinity" ] || continue
+	current="$(cat "$affinity" 2>/dev/null)" || continue
+	[ "$current" = "$mask" ] && continue
+	printf '%s\n' "$mask" > "$affinity" 2>/dev/null || :
+done
+
+exit 0

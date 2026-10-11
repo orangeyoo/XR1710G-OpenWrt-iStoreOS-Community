@@ -1,0 +1,10 @@
+{
+  "luci-mod-status-logtools": {
+    "write": {
+      "file": {
+        "/bin/dmesg -C": ["exec"],
+        "/etc/init.d/log restart": ["exec"]
+      }
+    }
+  }
+}

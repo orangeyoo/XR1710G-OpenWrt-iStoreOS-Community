@@ -1,0 +1,23 @@
+#!/bin/sh
+# One-time migration for retained configurations: advertise 802.11r FT
+# over the distribution system as well. FT-over-DS lets Apple clients
+# roam without a full SAE/PSK re-authentication; with over-the-air only
+# (ft_over_ds='0', the earlier default) weak-signal roams on real
+# devices repeatedly failed to re-authenticate. Only interfaces where
+# 802.11r is already enabled are touched; keys, channels and every
+# other setting are preserved. No reload here: normal boot starts
+# wireless after uci-defaults.
+board="$(cat /tmp/sysinfo/board_name 2>/dev/null)"
+[ -n "$board" ] || board="$(board_name 2>/dev/null)"
+[ "$board" = 'econet,xr1710g-ubi' ] || exit 0
+
+changed=0
+for iface in $(uci -q show wireless | sed -n \
+	-e "s/^wireless\.\([^.=]*\)\.ieee80211r='1'$/\1/p" \
+	-e 's/^wireless\.\([^.=]*\)\.ieee80211r=1$/\1/p'); do
+	[ "$(uci -q get wireless."$iface".ft_over_ds)" = '0' ] || continue
+	uci -q set wireless."$iface".ft_over_ds='1' || exit 1
+	changed=1
+done
+[ "$changed" = 0 ] || uci -q commit wireless || exit 1
+exit 0
