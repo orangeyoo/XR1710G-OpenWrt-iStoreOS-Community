@@ -140,7 +140,7 @@ v1.x 版本使用旧的 Docker 构建脚手架构建；该脚手架已于 2026-1
 
 ## 上游与许可证
 
-本项目以 [YYH2913/openwrt](https://github.com/YYH2913/openwrt) 板级支持为基础，按 iStoreOS 公开组件方式集成，并使用/标注 YYH2913/http-uboot、naoki66/ImmortalWrt-for-Gemtek-XR1710G、OpenWrt、mt76、hostapd、iStore/iStoreX、QuickStart、OpenClash、PassWall2、Argon、Nikki、sirpdboy/EqosPlus 及 Airoha/MediaTek 上游内容。完整固定提交与许可证见 [ATTRIBUTION.md](ATTRIBUTION.md)；各组件继续适用其原许可证，上游不为本固件背书。
+本项目以 [YYH2913/openwrt](https://github.com/YYH2913/openwrt) 板级支持为基础，按 iStoreOS 公开组件方式集成，并使用/标注 YYH2913/http-uboot、OpenWrt、mt76、hostapd、iStore/iStoreX、QuickStart、OpenClash、PassWall2、Argon、Nikki、sirpdboy/EqosPlus 及 Airoha/MediaTek 上游内容。完整固定提交与许可证见 [ATTRIBUTION.md](ATTRIBUTION.md)；各组件继续适用其原许可证，上游不为本固件背书。
 
 ## 交流与支持
 
