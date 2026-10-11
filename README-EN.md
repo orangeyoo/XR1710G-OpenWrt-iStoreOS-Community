@@ -19,7 +19,7 @@
 
 Unofficial community firmware for the **Gemtek XR1710G**: tri-band Wi-Fi 7, a dedicated 6GHz mesh backhaul, the iStore app shop and Docker — ready to flash.
 
-**[Download v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · [What changed](#new-in-v20) · [Flashing guide](FLASHING-GUIDE.md) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
+**[Download v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · [What changed](#new-in-v20) · [Flashing guide](FLASHING-GUIDE.md) · [Illustrated tutorial (beginner)](docs/tutorials/XR1710G-Flashing-Guide-EN.pdf) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
 
 ## At a glance
 
@@ -42,6 +42,16 @@ Unofficial community firmware for the **Gemtek XR1710G**: tri-band Wi-Fi 7, a de
 4. **Finish** — change the admin password, set 2.4/5GHz Wi-Fi passwords; for a two-unit mesh see the one-page [mesh guide](MESH-GUIDE-ZH.md) (fill-in tables).
 
 The UI starts in Simplified Chinese. Switch to English under **System → System → Language and Style → English → Save & Apply**.
+
+## Illustrated flashing tutorial (beginner edition)
+
+Prefer pictures over text? This step-by-step tutorial covers everything from opening the case and wiring up
+TTL to flashing the Wiro iStoreOS firmware, with a screenshot for every step:
+
+- **English**: [XR1710G-Flashing-Guide-EN.pdf](docs/tutorials/XR1710G-Flashing-Guide-EN.pdf)
+- **中文版**: [XR1710G-Flashing-Guide-ZH.pdf](docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf)
+
+Both PDFs are also attached to the [v2.0 Release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0) page for direct download.
 
 ## New in v2.0
 

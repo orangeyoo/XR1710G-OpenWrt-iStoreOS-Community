@@ -19,7 +19,7 @@
 
 面向 **Gemtek XR1710G** 的非官方社区固件：Wi-Fi 7 三频 + 6GHz 专线 Mesh 回程 + iStore 商店 + Docker，开箱即用。
 
-**[下载最新 v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · [更新了什么](#v20-更新) · [刷机指南](FLASHING-GUIDE.md) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
+**[下载最新 v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · [更新了什么](#v20-更新) · [刷机指南](FLASHING-GUIDE.md) · [图文教程（新手版）](docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
 
 ## 30 秒速览
 
@@ -42,6 +42,15 @@
 4. **收尾**：改管理员密码 → 给 2.4/5GHz 设密码；要两台组网看 [Mesh 教程](MESH-GUIDE-ZH.md)（一页纸，照表格填空即可）。
 
 界面默认简体中文；切换英文：**系统 → 系统 → 语言和界面 → English → 保存应用**。
+
+## 图文刷机教程（新手版）
+
+不想翻文字版？这份图文教程从拆机接 TTL 讲到刷入 Wiro iStoreOS 固件，全程截图对照，跟着做就能完成：
+
+- **中文版**：[XR1710G-Flashing-Guide-ZH.pdf](docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf)
+- **English**: [XR1710G-Flashing-Guide-EN.pdf](docs/tutorials/XR1710G-Flashing-Guide-EN.pdf)
+
+两份 PDF 也作为附件挂在 [v2.0 Release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0) 页面，可直接下载打印。
 
 ## v2.0 更新
 
