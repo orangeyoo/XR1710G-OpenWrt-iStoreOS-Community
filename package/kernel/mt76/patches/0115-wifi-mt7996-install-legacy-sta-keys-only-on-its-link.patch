@@ -1,0 +1,28 @@
+--- a/mt7996/main.c
++++ b/mt7996/main.c
+@@ -741,6 +741,25 @@
+ 		links = BIT(key->link_id);
+ 	else if (sta && sta->valid_links)
+ 		links = sta->valid_links;
++	else if (sta) {
++		/*
++		 * A legacy (non-MLD) STA associated to an MLD AP operates on a
++		 * single AP link.  Reaching here means mac80211 left the key
++		 * link unspecified, but pushing the pairwise key across all MLD
++		 * links races with sibling-band sta_link teardown (wcid.sta
++		 * already cleared returns -EOPNOTSUPP) and, on first error, the
++		 * loop starves the operating link's key installation - the
++		 * client then cannot complete its handshake on the band it is
++		 * actually associated to.  Restrict the operation to the link
++		 * the STA really uses.
++		 */
++		struct mt7996_sta *msta = (struct mt7996_sta *)sta->drv_priv;
++
++		if (msta->deflink_id != IEEE80211_LINK_UNSPECIFIED)
++			links = BIT(msta->deflink_id);
++		else
++			links = BIT(0);
++	}
+ 	else if (vif->valid_links)
+ 		links = vif->valid_links;
+ 	else
