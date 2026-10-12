@@ -4,7 +4,7 @@
 
 /* Bump both values for every public Wiro U-Boot update. */
 #define XR1710G_WIRO_UI_BUILD \
-	"xr1710g-wiro-recovery-2.0"
+	"xr1710g-wiro-recovery-2.1"
 #define XR1710G_WIRO_ENV_MAGIC		"XR1710G-WIRO"
 #define XR1710G_WIRO_ENV_SCHEMA		"1"
 #define XR1710G_WIRO_ENV_GENERATION	"2026101101"
