@@ -7,7 +7,4 @@
 for s in passwall2_server passwall2 miniupnpd; do
   uci -q delete firewall.$s
 done
-# passwall manages its own nft table; its include is idempotent and
-# fw4-safe, so mark it compatible to keep wan-set refresh on reload.
-uci -q set firewall.passwall.fw4_compatible='1'
 uci commit firewall
