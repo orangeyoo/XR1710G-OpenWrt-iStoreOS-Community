@@ -1,0 +1,25 @@
+#!/bin/sh
+# The kenzok8 argon packages ship their rpcd backends (/usr/libexec/rpcd/luci.argon,
+# luci.argon_branding, luci.argon_wallpaper) with CRLF line endings.  The CR makes
+# the kernel look for an interpreter named "/bin/sh\r", so exec fails, rpcd never
+# registers the luci.argon* objects and the Argon settings page fails with
+# "luci.argon/avail ... Object not found".  Strip CR from every rpcd backend that
+# has any and restart rpcd when something was repaired.
+
+changed=0
+for f in /usr/libexec/rpcd/*; do
+	[ -f "$f" ] || continue
+	tmp="/tmp/.xr-rpcd-crlf.$$"
+	if tr -d '\r' < "$f" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+		if ! cmp -s "$f" "$tmp"; then
+			cat "$tmp" > "$f" && changed=1
+			logger -t xr1710g-firstboot "stripped CR line endings from $f"
+		fi
+	fi
+	rm -f "$tmp"
+done
+
+if [ "$changed" = 1 ]; then
+	/etc/init.d/rpcd restart >/dev/null 2>&1 || true
+fi
+exit 0
