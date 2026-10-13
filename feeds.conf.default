@@ -13,3 +13,4 @@ src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git
 src-git kenzok8 https://github.com/kenzok8/openwrt-packages.git
 src-git diskman https://github.com/lisaac/luci-app-diskman.git
 src-git poweroffdevice https://github.com/sirpdboy/luci-app-poweroffdevice.git
+src-git passwall_luci https://github.com/Openwrt-Passwall/openwrt-passwall.git
