@@ -1,6 +1,6 @@
 # XR1710G OpenWrt / iStoreOS Wi-Fi 7 社区固件
 
-**当前版本：[v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · 更新日期：2026-10-11 · 本次同时发布固件与完整源码。
+**当前版本：[v2.02](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)** · 更新日期：2026-10-13 · 本次同时发布固件与可选 U-Boot 更新。
 
 [![Release](https://img.shields.io/github/v/release/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E5%8F%91%E5%B8%83)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/total?style=flat-square&label=%E4%B8%8B%E8%BD%BD)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest)
@@ -19,7 +19,7 @@
 
 面向 **Gemtek XR1710G** 的非官方社区固件：Wi-Fi 7 三频 + 6GHz 专线 Mesh 回程 + iStore 商店 + Docker，开箱即用。
 
-**[下载最新 v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · [更新了什么](#v20-更新) · [刷机指南](docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
+**[下载最新 v2.02](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)** · [更新了什么](#v202-更新) · [刷机指南](docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
 
 ## 30 秒速览
 
@@ -27,7 +27,7 @@
 |---|---|
 | 适用于 | **仅 Gemtek XR1710G**（Airoha AN7581 + MediaTek MT7996） |
 | 是什么 | 非官方 OpenWrt / iStoreOS 社区固件，不是任何厂商官方发布 |
-| 亮点 | 三频 Wi-Fi 7、两台 6GHz 专线组网、iStore 商店、OpenClash/PassWall2、Docker |
+| 亮点 | 三频 Wi-Fi 7、两台 6GHz 专线组网、iStore 商店、OpenClash / PassWall、Docker |
 | 刷机后管理地址 | `http://192.168.50.1` |
 | 初始账号 | 用户名 `root`，初始密码为 `password` |
 | 首次 Wi-Fi | 2.4/5GHz 开放网络；登录后立即设置密码 |
@@ -36,7 +36,7 @@
 
 ## 四步上手
 
-1. **下载**：v2.0 Release 页提供系统固件、Recovery 镜像和校验文件，普通用户只刷系统固件。
+1. **下载**：v2.02 Release 页提供系统固件、Recovery 镜像和校验文件，普通用户只刷系统固件。
 2. **刷入**：已在运行兼容 OpenWrt/iStoreOS → 后台上传升级；新机/全刷 → 兼容 U-Boot 上传同一个文件。详见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
 3. **登录**：电脑网线连路由器，打开 `192.168.50.1`，`root / password`。
 4. **收尾**：改管理员密码 → 给 2.4/5GHz 设密码；要两台组网看 [Mesh 教程](MESH-GUIDE-ZH.md)（一页纸，照表格填空即可）。
@@ -50,17 +50,19 @@
 - **中文版**：[XR1710G-Flashing-Guide-ZH.pdf](docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf)
 - **English**: [XR1710G-Flashing-Guide-EN.pdf](docs/tutorials/XR1710G-Flashing-Guide-EN.pdf)
 
-两份 PDF 也作为附件挂在 [v2.0 Release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0) 页面，可直接下载打印。
+两份 PDF 也作为附件挂在 [v2.02 Release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02) 页面，可直接下载打印。
 
-## v2.0 更新
+## v2.02 更新
 
-- 修复并出厂启用 PPE 硬件转发/NAT 卸载通道；实验室双 10G 背靠背实测 8 流 5.74 Gbps、30 流峰值 6.98 Gbps，转发期间 CPU 占用接近空载（idle 97% 以上）。
-- PPPoE 会话可进入 PPE 硬件快速路径：修复 PPPoE 流因源/目的 MAC 校验被误拒的问题。
-- PPE L4 陈旧槽位防护；WAN 方向 LRO 收包中断覆盖、NPU 一致性邮箱 DMA 等有线驱动栈整合。
-- Full Cone NAT 在新转发通道下生效（firewall4 + nftables，出厂开启）。
-- mt76/MT7996 NPU 收发栈整合（0100–0114 系列）。无线出厂设置延续 v1.9：2.4G EHT20，5G/6G EHT160。
-- LuCI 简体中文与 airoha-npu / airoha-flowsense / airoha-fancontrol / xr1710g-recovery 应用、状态核心；静态资源版本化，修复升级后旧页面缓存。
-- 对应完整源码随本版公布：分支 `source-2.0`，标签 `v2.0`。
+- **passwall 取代 passwall2**：v1 应用，fw4/nftables 双适配；出厂未开启，在面板自行配置节点（勿与 OpenClash 同开）。
+- quickstart/iStore 首页出厂默认简体中文（修复 kenzok8 quickstart po 目录布局导致的英文回退）。
+- **UPnP 根治**：miniupnpd 改用 nftables 变体，规则经 nftables.d 片段自动挂入 fw4；旧 iptables 变体的 fw4 告警与不上链问题消除。
+- 首启自动修复 argon 设置页 rpcd 后端 CRLF（"luci.argon Object not found"）。
+- 内核 TCP 缓冲调优；PPE PPPoE 卸载 MAC 校验修正（`9999-32`）。
+- 可选 Wiro U-Boot 更新至 v2.1：修复 v2.0 恢复页底部乱码，页脚 `xr1710g-wiro-recovery-2.1`。
+- 对应完整源码随本版公布：分支 `source-2.0`，标签 `v2.02`。
+
+v2.0/2.01 的完整变更见对应 [Release 页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases)。PPE 硬件转发/PPPoE 快速路径/Full Cone NAT 等基础能力自 v2.0 起延续。
 
 10G 双向线速与长期稳定性仍是进行中目标，本版未作最终验收；家庭实际使用已验证外网有线/无线下载稳定。
 
@@ -72,17 +74,19 @@ Mesh 回程请关闭 MLO；MLO + WDS 桥接仍有兼容性问题。
 
 ## 下载与升级
 
-[v2.0 发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)提供三个附件：
+[v2.02 发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)提供以下附件：
 
 | 文件 | 用途 |
 |---|---|
-| `xr1710g-community-v2.0-sysupgrade.itb` | **系统固件**：后台升级或兼容 U-Boot 永久安装都用它 |
-| `xr1710g-community-v2.0-recovery.itb` | Recovery/全刷镜像：U-Boot Recovery 页或救砖用，普通升级不需要 |
+| `istoreos-xr1710g-community-2.02-r0-59ae07f-airoha-an7581-econet_xr1710g-ubi-squashfs-sysupgrade.itb` | **系统固件**：后台升级或兼容 U-Boot 永久安装都用它 |
+| `istoreos-xr1710g-community-2.02-r0-59ae07f-airoha-an7581-econet_xr1710g-ubi-initramfs-recovery.itb` | Recovery/全刷镜像：U-Boot Recovery 页或救砖用，普通升级不需要 |
+| `xr1710g-wiro-uboot-v2.1-flash-slot.bin` | 可选 Wiro U-Boot v2.1（恢复页乱码修复），仅用于"更新 U-Boot"，已有设备不强制重刷 |
+| `XR1710G-Flashing-Guide-ZH.pdf` / `-EN.pdf` | 图文刷机指南（中文/英文），不刷入 |
 | `SHA256SUMS.txt` | 校验文件，不刷入 |
 
-**U-Boot 本次没有更新，已有兼容 U-Boot（Wiro U-Boot v1.0.0）的设备无需重刷。** 使用方法、来源与许可证说明见[独立发布页](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)。刷机步骤见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
+**Wiro U-Boot v2.1 为可选更新**（修复 v2.0 恢复页底部乱码；flash-slot 布局不变，不刷不影响固件使用）：恢复页（断电 → 红灯亮起长按 reset → 192.168.255.1）选择该文件上传即可，无需 TTL。来源与许可证见 [wiro-uboot-v2.1 发布](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v2.1)与分支 `uboot-2.0`。刷机步骤见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
 
-v2.0 为大版本升级（有线转发栈重写），建议升级时**不保留配置**；保留配置升级未做完整回归。GitHub 自动生成的 Source code 压缩包即本版完整源码（分支 `source-2.0`），不是刷机文件；不要把系统 ITB 刷进 U-Boot 槽位。升级前备份重要数据；旧后台升级若超时不重启，不要反复提交，按指南排查。
+v2.02 已在实机验证保配置升级（v2.01/v2.0 → v2.02）；从 v1.x 直接升级仍建议**不保留配置**。GitHub 自动生成的 Source code 压缩包即本版完整源码（分支 `source-2.0`），不是刷机文件；不要把系统 ITB 刷进 U-Boot 槽位。升级前备份重要数据；旧后台升级若超时不重启，不要反复提交，按指南排查。
 
 ## 首次启动默认值
 
@@ -121,14 +125,14 @@ xr1710g-role node 192.168.50.2/24 192.168.50.1
 |---|---|
 | 系统 | Linux 6.18.53、UBI 2.0 布局、默认地址 192.168.50.1、performance 调频、单控制器风扇策略 |
 | 无线 | 三频 Wi-Fi 7（MT7996，mt76 be5ce791-r10，mac80211/cfg80211 backports 7.2-r4）、802.11s Mesh、802.11k/v/r、BBR 默认启用 |
-| 商店/插件 | iStore、iStoreX、QuickStart、Argon 主题、OpenClash、PassWall2（默认关闭，勿与 OpenClash 同开）、Nikki、EqosPlus |
+| 商店/插件 | iStore、iStoreX、QuickStart、Argon 主题、OpenClash、PassWall（默认关闭，勿与 OpenClash 同开）、Nikki、EqosPlus |
 | Docker | OpenWrt 上游 Moby/containerd/runc/compose + Dockerman；预装但默认关闭，三入口共用一套配置 |
 | 网络 | PPE 硬件流卸载/NAT 快速路径（修复并出厂启用）、Full Cone NAT（默认开启，不能绕过 CGNAT/双重 NAT）、10G 口保护修复 |
 | 诊断 | `xr1710g-role` 角色工具、`xr1710g-mesh-diag` 脱敏诊断、状态页缓存化（不走 devmem） |
 
 ## 源码发布
 
-**v2.0 起完整源码随版本公布**：分支 [`source-2.0`](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/source-2.0)（标签 `v2.0`）是 v2.0 镜像对应的完整 OpenWrt / iStoreOS 构建树——Linux 6.18.53 Airoha 平台 XR1710G BSP 补丁集（SOE/PPE 卸载栈、LRO、缓冲转发等 `9999-*` 系列）、mt76/MT7996 NPU 栈（`0100–0114`）、fullcone NAT、XR1710G 出厂默认与 LuCI 应用；构建种子 `xr1710g-2.0.seed.config`（`cp xr1710g-2.0.seed.config .config && make defconfig`）。U-Boot 源码不在其中，详见树内 `XR1710G-SOURCE-2.0.md`。
+**v2.0 起完整源码随版本公布**：分支 [`source-2.0`](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/source-2.0)（标签 `v2.02`）是 v2.02 镜像对应的完整 OpenWrt / iStoreOS 构建树——Linux 6.18.53 Airoha 平台 XR1710G BSP 补丁集（SOE/PPE 卸载栈、LRO、缓冲转发等 `9999-*` 系列）、mt76/MT7996 NPU 栈（`0100–0114`）、fullcone NAT、XR1710G 出厂默认与 LuCI 应用；构建种子 `xr1710g-2.0.seed.config`（`cp xr1710g-2.0.seed.config .config && make defconfig`）。U-Boot 源码不在其中，详见树内 `XR1710G-SOURCE-2.0.md`。
 
 v1.x 时代的构建脚手架（`configs/`、`feeds.d/`、`patches/` 等）已于 2026-10-11 自仓库移除以免误导；其内容可在 v1.6.1–v1.9 标签的 Source 归档中查阅。
 
@@ -140,7 +144,7 @@ v1.x 版本使用旧的 Docker 构建脚手架构建；该脚手架已于 2026-1
 
 ## 上游与许可证
 
-本项目以 [YYH2913/openwrt](https://github.com/YYH2913/openwrt) 板级支持为基础，按 iStoreOS 公开组件方式集成，并使用/标注 YYH2913/http-uboot、OpenWrt、mt76、hostapd、iStore/iStoreX、QuickStart、OpenClash、PassWall2、Argon、Nikki、sirpdboy/EqosPlus 及 Airoha/MediaTek 上游内容。完整固定提交与许可证见 [ATTRIBUTION.md](ATTRIBUTION.md)；各组件继续适用其原许可证，上游不为本固件背书。
+本项目以 [YYH2913/openwrt](https://github.com/YYH2913/openwrt) 板级支持为基础，按 iStoreOS 公开组件方式集成，并使用/标注 YYH2913/http-uboot、OpenWrt、mt76、hostapd、iStore/iStoreX、QuickStart、OpenClash、PassWall、Argon、Nikki、sirpdboy/EqosPlus 及 Airoha/MediaTek 上游内容。完整固定提交与许可证见 [ATTRIBUTION.md](ATTRIBUTION.md)；各组件继续适用其原许可证，上游不为本固件背书。
 
 ## 交流与支持
 

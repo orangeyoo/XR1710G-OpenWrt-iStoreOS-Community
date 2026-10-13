@@ -1,6 +1,6 @@
 # XR1710G OpenWrt / iStoreOS Wi-Fi 7 Community Firmware
 
-**Current release: [v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · Updated: 2026-10-11 · This release ships the firmware together with its full source code.
+**Current release: [v2.02](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)** · Updated: 2026-10-13 · This release ships the firmware together with an optional U-Boot update.
 
 [![Release](https://img.shields.io/github/v/release/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/total?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest)
@@ -19,7 +19,7 @@
 
 Unofficial community firmware for the **Gemtek XR1710G**: tri-band Wi-Fi 7, a dedicated 6GHz mesh backhaul, the iStore app shop and Docker — ready to flash.
 
-**[Download v2.0](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0)** · [What changed](#new-in-v20) · [Flashing guide](docs/tutorials/XR1710G-Flashing-Guide-EN.pdf) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
+**[Download v2.02](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)** · [What changed](#new-in-v202) · [Flashing guide](docs/tutorials/XR1710G-Flashing-Guide-EN.pdf) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
 
 ## At a glance
 
@@ -27,7 +27,7 @@ Unofficial community firmware for the **Gemtek XR1710G**: tri-band Wi-Fi 7, a de
 |---|---|
 | For | **Gemtek XR1710G only** (Airoha AN7581 + MediaTek MT7996) |
 | What it is | Unofficial OpenWrt / iStoreOS community firmware — not an official vendor release |
-| Highlights | Tri-band Wi-Fi 7, two-unit 6GHz dedicated backhaul, iStore, OpenClash/PassWall2, Docker |
+| Highlights | Tri-band Wi-Fi 7, two-unit 6GHz dedicated backhaul, iStore, OpenClash / PassWall, Docker |
 | After flashing | Manage at `http://192.168.50.1` |
 | Login | User `root`; the initial administrator password is `password` |
 | First Wi-Fi | 2.4/5GHz start open; set passwords right after login |
@@ -51,17 +51,19 @@ TTL to flashing the Wiro iStoreOS firmware, with a screenshot for every step:
 - **English**: [XR1710G-Flashing-Guide-EN.pdf](docs/tutorials/XR1710G-Flashing-Guide-EN.pdf)
 - **中文版**: [XR1710G-Flashing-Guide-ZH.pdf](docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf)
 
-Both PDFs are also attached to the [v2.0 Release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.0) page for direct download.
+Both PDFs are also attached to the [v2.02 Release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02) page for direct download.
 
-## New in v2.0
+## New in v2.02
 
-- Fixed and factory-enabled PPE hardware forwarding / NAT offload: measured on a back-to-back dual-10G lab bench at 5.74 Gbps with 8 streams and 6.98 Gbps peak with 30 streams, with near-idle CPU (97%+ idle) while forwarding.
-- PPPoE sessions now enter the PPE fast path: fixed the source/destination MAC check that wrongly rejected PPPoE flows.
-- PPE L4 stale-slot guard, plus wired driver stack integration (WAN-side LRO RX IRQ coverage, NPU coherent mailbox DMA).
-- Full Cone NAT effective on the new forwarding path (firewall4 + nftables, on out of the box).
-- mt76/MT7996 NPU RX/TX stack integration (0100–0114 series). Factory wireless settings carry over from v1.9: EHT20 on 2.4GHz and EHT160 on 5/6GHz.
-- Simplified-Chinese LuCI with the airoha-npu / airoha-flowsense / airoha-fancontrol / xr1710g-recovery apps and the status core; static assets are versioned, fixing stale web pages after upgrades.
-- The full source is published with this release: branch `source-2.0`, tag `v2.0`.
+- **passwall replaces passwall2**: the v1 app with fw4/nftables dual adaptation; disabled out of the box — configure your nodes in its panel (never enable both proxies together).
+- The quickstart/iStore landing pages now default to Simplified Chinese (fixes the English fallback caused by the kenzok8 quickstart po directory layout).
+- **UPnP fixed at the root**: miniupnpd switched to the nftables variant; its rules auto-hook into fw4 via nftables.d fragments — the old iptables-variant fw4 warnings and dead chaining are gone.
+- First-boot auto-repair for CRLF line endings in the argon settings rpcd backends ("luci.argon Object not found").
+- Kernel TCP buffer tuning; PPE PPPoE offload MAC-check fix (`9999-32`).
+- Optional Wiro U-Boot updated to v2.1: fixes the v2.0 recovery-page garbage; footer reads `xr1710g-wiro-recovery-2.1`.
+- The full source is published with this release: branch `source-2.0`, tag `v2.02`.
+
+Full v2.0/2.01 changelogs live on their [release pages](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases). PPE hardware forwarding, the PPPoE fast path and Full Cone NAT carry over from v2.0.
 
 10G bidirectional line rate and long-term stability remain in-progress goals and are not finally accepted in this release; stable wired/wireless internet downloads are verified in real home use.
 
@@ -75,13 +77,15 @@ Full per-version history since v1.4: [CHANGES-v1.md](CHANGES-v1.md).
 
 | File | Purpose |
 |---|---|
-| `xr1710g-community-v2.0-sysupgrade.itb` | **The system image** — web upgrades and compatible U-Boot permanent installs |
-| `xr1710g-community-v2.0-recovery.itb` | Recovery / full-flash image for the U-Boot recovery page or brick recovery; not needed for ordinary upgrades |
+| `istoreos-xr1710g-community-2.02-r0-59ae07f-airoha-an7581-econet_xr1710g-ubi-squashfs-sysupgrade.itb` | **The system image** — web upgrades and compatible U-Boot permanent installs |
+| `istoreos-xr1710g-community-2.02-r0-59ae07f-airoha-an7581-econet_xr1710g-ubi-initramfs-recovery.itb` | Recovery / full-flash image for the U-Boot recovery page or brick recovery; not needed for ordinary upgrades |
+| `xr1710g-wiro-uboot-v2.1-flash-slot.bin` | Optional Wiro U-Boot v2.1 (recovery-page garbage fix), for "Update U-Boot" only; existing devices do not need to reflash |
+| `XR1710G-Flashing-Guide-ZH.pdf` / `-EN.pdf` | Illustrated flashing guides (Chinese/English), not flashed |
 | `SHA256SUMS.txt` | Image checksums; not flashed |
 
-The bundled Wiro U-Boot v1.0.0 is unchanged from its [original release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0), which includes instructions, provenance and license details. Devices with compatible U-Boot do not need to reflash it.
+**Wiro U-Boot v2.1 is an optional update** (fixes the v2.0 recovery-page garbage; flash-slot layout unchanged, the firmware works without it): open the recovery page (power off → hold reset while powering on → 192.168.255.1) and upload the file — no TTL needed. Provenance and license: the [wiro-uboot-v2.1 release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v2.1) and branch `uboot-2.0`.
 
-v2.0 is a major upgrade (rewired wired-forwarding stack); upgrading **without keeping the configuration** is recommended, and keep-config upgrades have not been fully regression-tested. GitHub's auto-generated Source code archives now contain the actual v2.0 source (branch `source-2.0`) — they are not flashable; never flash a system ITB into the U-Boot slot. If an old upgrade page times out without rebooting, do not resubmit — follow the guide.
+Keep-config upgrades to v2.02 are verified on a real device (v2.01/v2.0 → v2.02); direct upgrades from v1.x are still recommended **without keeping the configuration**. GitHub's auto-generated Source code archives now contain the actual v2.0 source (branch `source-2.0`) — they are not flashable; never flash a system ITB into the U-Boot slot. If an old upgrade page times out without rebooting, do not resubmit — follow the guide.
 
 ## Factory defaults
 
@@ -120,7 +124,7 @@ The tool backs up and commits configuration only; it never reloads the network o
 |---|---|
 | System | Linux 6.18.53, UBI 2.0 layout, default address 192.168.50.1, performance governor, single-controller fan policy |
 | Wireless | Tri-band Wi-Fi 7 (MT7996 on mt76 be5ce791-r10 / backports 7.2-r4), 802.11s mesh, 802.11k/v/r, BBR enabled |
-| Shop/plugins | iStore, iStoreX, QuickStart, Argon theme, OpenClash, PassWall2 (off by default; never enable both proxies together), Nikki, EqosPlus |
+| Shop/plugins | iStore, iStoreX, QuickStart, Argon theme, OpenClash, PassWall (off by default; never enable both proxies together), Nikki, EqosPlus |
 | Docker | Upstream OpenWrt Moby/containerd/runc/compose + Dockerman; preinstalled but off; all entry points share one config |
 | Network | PPE hardware flow offload / NAT fast path (fixed and factory-enabled), Full Cone NAT (enabled by default; cannot bypass CGNAT or double NAT), 10G port protection fixes |
 | Diagnostics | `xr1710g-role`, privacy-safe `xr1710g-mesh-diag`, cached status pages (no devmem in LuCI hot paths) |
@@ -134,7 +138,7 @@ The tool backs up and commits configuration only; it never reloads the network o
 
 ## Source release
 
-**Starting with v2.0 the full source ships with each release**: branch [`source-2.0`](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/source-2.0) (tag `v2.0`) is the complete OpenWrt / iStoreOS build tree behind the v2.0 images — the Linux 6.18.53 Airoha platform with the XR1710G BSP patch set (SOE/PPE offload stack, LRO, buffered forwarding — the `9999-*` series), the mt76/MT7996 NPU stack (`0100–0114`), fullcone NAT, XR1710G factory defaults and LuCI apps; build seed `xr1710g-2.0.seed.config` (`cp xr1710g-2.0.seed.config .config && make defconfig`). U-Boot sources are not included. See `XR1710G-SOURCE-2.0.md` inside the tree.
+**Starting with v2.0 the full source ships with each release**: branch [`source-2.0`](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/source-2.0) (tag `v2.02`) is the complete OpenWrt / iStoreOS build tree behind the v2.02 images — the Linux 6.18.53 Airoha platform with the XR1710G BSP patch set (SOE/PPE offload stack, LRO, buffered forwarding — the `9999-*` series), the mt76/MT7996 NPU stack (`0100–0114`), fullcone NAT, XR1710G factory defaults and LuCI apps; build seed `xr1710g-2.0.seed.config` (`cp xr1710g-2.0.seed.config .config && make defconfig`). U-Boot sources are not included. See `XR1710G-SOURCE-2.0.md` inside the tree.
 
 The v1.x-era build scaffolding (`configs/`, `feeds.d/`, `patches/`, …) was removed from the repository on 2026-10-11 to avoid confusion; its content remains viewable in the v1.6.1–v1.9 tag source archives.
 
@@ -147,7 +151,7 @@ and `XR1710G-SOURCE-2.0.md` inside the tree).
 
 ## Upstream and licenses
 
-Built on board support from [YYH2913/openwrt](https://github.com/YYH2913/openwrt), integrated the way public iStoreOS components are, and uses/attributes YYH2913/http-uboot, naoki66/ImmortalWrt-for-Gemtek-XR1710G, OpenWrt, mt76, hostapd, iStore/iStoreX, QuickStart, OpenClash, PassWall2, Argon, Nikki, sirpdboy/EqosPlus and Airoha/MediaTek upstream content. Pinned commits and licenses: [ATTRIBUTION.md](ATTRIBUTION.md). Third-party components keep their original licenses; no upstream endorses this firmware.
+Built on board support from [YYH2913/openwrt](https://github.com/YYH2913/openwrt), integrated the way public iStoreOS components are, and uses/attributes YYH2913/http-uboot, naoki66/ImmortalWrt-for-Gemtek-XR1710G, OpenWrt, mt76, hostapd, iStore/iStoreX, QuickStart, OpenClash, PassWall, Argon, Nikki, sirpdboy/EqosPlus and Airoha/MediaTek upstream content. Pinned commits and licenses: [ATTRIBUTION.md](ATTRIBUTION.md). Third-party components keep their original licenses; no upstream endorses this firmware.
 
 ## Community and support
 
