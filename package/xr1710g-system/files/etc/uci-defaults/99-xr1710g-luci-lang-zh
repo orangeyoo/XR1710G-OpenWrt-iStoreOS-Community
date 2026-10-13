@@ -1,0 +1,4 @@
+#!/bin/sh
+# Factory-default the LuCI/quickstart UI language to Simplified Chinese.
+uci set luci.main.lang='zh_cn'
+uci commit luci

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Drop stale firewall include entries that fw4 cannot use:
+# - passwall2 was removed from this image; its includes point at
+#   /var/etc/passwall2*.include files that are never generated.
+# - miniupnpd switched to the nftables variant; its rules hook via the
+#   nftables.d fragments and the legacy script include is not fw4-compatible.
+for s in passwall2_server passwall2 miniupnpd; do
+  uci -q delete firewall.$s
+done
+# passwall manages its own nft table; its include is idempotent and
+# fw4-safe, so mark it compatible to keep wan-set refresh on reload.
+uci -q set firewall.passwall.fw4_compatible='1'
+uci commit firewall

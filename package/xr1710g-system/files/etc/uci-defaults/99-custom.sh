@@ -61,6 +61,8 @@ REPOSEOF
 if ! /usr/sbin/xr1710g-wireless-defaults; then
 	logger -t xr1710g-firstboot \
 		'wireless policy was not applied; retaining first-boot defaults for retry' 2>/dev/null || true
+	# commit what already staged so a failed wireless pass cannot wipe it
+	uci commit 2>/dev/null || true
 	exit 1
 fi
 
