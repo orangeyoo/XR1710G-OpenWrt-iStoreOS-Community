@@ -157,4 +157,4 @@ Built on board support from [YYH2913/openwrt](https://github.com/YYH2913/openwrt
 
 | Community QQ group **1061612207** | Voluntary support |
 |---|---|
-| <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/wiro-qq-group.jpg" width="240" alt="QQ group QR code"> | <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/support-qr.png" width="240" alt="Support QR code"> |
+| <img src="docs/images/wiro-qq-group.jpg" width="240" alt="QQ group QR code"> | <img src="docs/images/support-qr.png" width="240" alt="Support QR code"> |

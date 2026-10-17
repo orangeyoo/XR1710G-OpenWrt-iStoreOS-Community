@@ -150,4 +150,4 @@ v1.x 版本使用旧的 Docker 构建脚手架构建；该脚手架已于 2026-1
 
 | 交流群 **1061612207** | 赞赏自愿 |
 |---|---|
-| <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/wiro-qq-group.jpg" width="240" alt="QQ群二维码"> | <img src="https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/wiro-uboot-v1.0.0/support-qr.png" width="240" alt="赞赏码"> |
+| <img src="docs/images/wiro-qq-group.jpg" width="240" alt="QQ群二维码"> | <img src="docs/images/support-qr.png" width="240" alt="赞赏码"> |
