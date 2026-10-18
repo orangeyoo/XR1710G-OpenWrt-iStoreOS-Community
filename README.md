@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E5%8F%91%E5%B8%83)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/total?style=flat-square&label=%E4%B8%8B%E8%BD%BD)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest)
-[![Stars](https://img.shields.io/github/stars/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E6%98%9F%E6%A0%87)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/stargazers)
+[![Stars](https://img.shields.io/github/stars/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E6%98%9F%E6%A0%87)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community)
 [![Forks](https://img.shields.io/github/forks/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E5%A4%8D%E5%88%BB)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/forks)
 [![Issues](https://img.shields.io/github/issues/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E9%97%AE%E9%A2%98)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/issues)
 [![Last Commit](https://img.shields.io/github/last-commit/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community?style=flat-square&label=%E6%9C%80%E8%BF%91%E6%8F%90%E4%BA%A4)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/commits/source-2.0)
@@ -47,8 +47,8 @@
 
 不想翻文字版？这份图文教程从拆机接 TTL 讲到刷入 Wiro iStoreOS 固件，全程截图对照，跟着做就能完成：
 
-- **中文版**：[在线图文版](docs/tutorials/XR1710G-Flashing-Guide-ZH.md) · [PDF](https://raw.githubusercontent.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/source-2.0/docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf)
-- **English**: [Read online](docs/tutorials/XR1710G-Flashing-Guide-EN.md) · [PDF](https://raw.githubusercontent.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/source-2.0/docs/tutorials/XR1710G-Flashing-Guide-EN.pdf)
+- **中文版**：[在线图文版](docs/tutorials/XR1710G-Flashing-Guide-ZH.md) · [PDF](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/v2.02/XR1710G-Flashing-Guide-ZH.pdf)
+- **English**: [Read online](docs/tutorials/XR1710G-Flashing-Guide-EN.md) · [PDF](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/v2.02/XR1710G-Flashing-Guide-EN.pdf)
 
 两份 PDF 也作为附件挂在 [v2.02 Release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02) 页面，可直接下载打印。
 

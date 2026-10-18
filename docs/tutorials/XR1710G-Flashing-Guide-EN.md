@@ -2,7 +2,7 @@
 
 This page displays the original PDF as page images without relying on GitHub PDF preview. The tutorial is unchanged; version numbers in screenshots are historical. Use the current release for firmware files.
 
-[Home](../../README-EN.md) · [Download original PDF](https://raw.githubusercontent.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/source-2.0/docs/tutorials/XR1710G-Flashing-Guide-EN.pdf) · [Current release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest) · [中文](XR1710G-Flashing-Guide-ZH.md)
+[Home](../../README-EN.md) · [Download original PDF](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/v2.02/XR1710G-Flashing-Guide-EN.pdf) · [Current release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/latest) · [中文](XR1710G-Flashing-Guide-ZH.md)
 
 ## Page 1
 
