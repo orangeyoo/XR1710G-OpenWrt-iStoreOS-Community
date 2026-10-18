@@ -15,11 +15,11 @@
 [![SoC](https://img.shields.io/badge/SoC-Airoha%20AN7581-333333?style=flat-square)](https://www.airoha.com/)
 [![iStoreOS](https://img.shields.io/badge/iStoreOS-component%20integration-FF6600?style=flat-square)](https://github.com/YYH2913/openwrt)
 [![Docker](https://img.shields.io/badge/Docker-preinstalled%2C%20off%20by%20default-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
-[![QQ Group](https://img.shields.io/badge/QQ%20group-1061612207-orange?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)
+[![QQ Group](https://img.shields.io/badge/QQ%20group-1061612207-orange?style=flat-square)](#community-and-support)
 
 Unofficial community firmware for the **Gemtek XR1710G**: tri-band Wi-Fi 7, a dedicated 6GHz mesh backhaul, the iStore app shop and Docker — ready to flash.
 
-**[Download v2.02](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)** · [What changed](#new-in-v202) · [Flashing guide](docs/tutorials/XR1710G-Flashing-Guide-EN.pdf) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
+**[Download v2.02](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)** · [What changed](#new-in-v202) · [Flashing guide](docs/tutorials/XR1710G-Flashing-Guide-EN.md) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
 
 ## At a glance
 
@@ -48,8 +48,8 @@ The UI starts in Simplified Chinese. Switch to English under **System → System
 Prefer pictures over text? This step-by-step tutorial covers everything from opening the case and wiring up
 TTL to flashing the Wiro iStoreOS firmware, with a screenshot for every step:
 
-- **English**: [XR1710G-Flashing-Guide-EN.pdf](docs/tutorials/XR1710G-Flashing-Guide-EN.pdf)
-- **中文版**: [XR1710G-Flashing-Guide-ZH.pdf](docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf)
+- **English**: [Read online](docs/tutorials/XR1710G-Flashing-Guide-EN.md) · [PDF](https://raw.githubusercontent.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/source-2.0/docs/tutorials/XR1710G-Flashing-Guide-EN.pdf)
+- **中文版**: [在线图文版](docs/tutorials/XR1710G-Flashing-Guide-ZH.md) · [PDF](https://raw.githubusercontent.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/source-2.0/docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf)
 
 Both PDFs are also attached to the [v2.02 Release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02) page for direct download.
 
@@ -81,9 +81,9 @@ Full per-version history since v1.4: [CHANGES-v1.md](CHANGES-v1.md).
 | `istoreos-xr1710g-community-2.02-r0-59ae07f-airoha-an7581-econet_xr1710g-ubi-initramfs-recovery.itb` | Recovery / full-flash image for the U-Boot recovery page or brick recovery; not needed for ordinary upgrades |
 | `xr1710g-wiro-uboot-v2.1-flash-slot.bin` | Optional Wiro U-Boot v2.1 (recovery-page garbage fix), for "Update U-Boot" only; existing devices do not need to reflash |
 | `XR1710G-Flashing-Guide-ZH.pdf` / `-EN.pdf` | Illustrated flashing guides (Chinese/English), not flashed |
-| `SHA256SUMS.txt` | Image checksums; not flashed |
+| `SHA256SUMS` | Image checksums; not flashed |
 
-**Wiro U-Boot v2.1 is an optional update** (fixes the v2.0 recovery-page garbage; flash-slot layout unchanged, the firmware works without it): open the recovery page (power off → hold reset while powering on → 192.168.255.1) and upload the file — no TTL needed. Provenance and license: the [wiro-uboot-v2.1 release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v2.1) and branch `uboot-2.0`.
+**Wiro U-Boot v2.1 is an optional update** (fixes the v2.0 recovery-page garbage; flash-slot layout unchanged, the firmware works without it): open the recovery page (power off → hold reset while powering on → 192.168.255.1) and upload the file — no TTL needed. Provenance and license: the [v2.02 release (includes U-Boot v2.1)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02) and [U-Boot source branch](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/uboot-2.0).
 
 Keep-config upgrades to v2.02 are verified on a real device (v2.01/v2.0 → v2.02); direct upgrades from v1.x are still recommended **without keeping the configuration**. GitHub's auto-generated Source code archives now contain the actual v2.0 source (branch `source-2.0`) — they are not flashable; never flash a system ITB into the U-Boot slot. If an old upgrade page times out without rebooting, do not resubmit — follow the guide.
 
@@ -138,7 +138,7 @@ The tool backs up and commits configuration only; it never reloads the network o
 
 ## Source release
 
-**Starting with v2.0 the full source ships with each release**: branch [`source-2.0`](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/source-2.0) (tag `v2.02`) is the complete OpenWrt / iStoreOS build tree behind the v2.02 images — the Linux 6.18.53 Airoha platform with the XR1710G BSP patch set (SOE/PPE offload stack, LRO, buffered forwarding — the `9999-*` series), the mt76/MT7996 NPU stack (`0100–0114`), fullcone NAT, XR1710G factory defaults and LuCI apps; build seed `xr1710g-2.0.seed.config` (`cp xr1710g-2.0.seed.config .config && make defconfig`). U-Boot sources are not included. See `XR1710G-SOURCE-2.0.md` inside the tree.
+**Starting with v2.0 the full source ships with each release**: branch [`source-2.0`](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/source-2.0) (tag `v2.02`) is the complete OpenWrt / iStoreOS build tree behind the v2.02 images — the Linux 6.18.53 Airoha platform with the XR1710G BSP patch set (SOE/PPE offload stack, LRO, buffered forwarding — the `9999-*` series), the mt76/MT7996 NPU stack (`0100–0114`), fullcone NAT, XR1710G factory defaults and LuCI apps; build seed `xr1710g-2.0.seed.config` (`cp xr1710g-2.0.seed.config .config && make defconfig`). U-Boot sources are not included. See [XR1710G-SOURCE-2.0.md](XR1710G-SOURCE-2.0.md) inside the tree.
 
 The v1.x-era build scaffolding (`configs/`, `feeds.d/`, `patches/`, …) was removed from the repository on 2026-10-11 to avoid confusion; its content remains viewable in the v1.6.1–v1.9 tag source archives.
 
@@ -147,7 +147,7 @@ The v1.x-era build scaffolding (`configs/`, `feeds.d/`, `patches/`, …) was rem
 v1.x releases were built with the old Docker build scaffolding, which was removed
 from the repository during the 2026-10-11 cleanup; see the v1.6.1–v1.9 tag source
 archives. From v2.0 on, build directly from this tree (see “Source release” above
-and `XR1710G-SOURCE-2.0.md` inside the tree).
+and [XR1710G-SOURCE-2.0.md](XR1710G-SOURCE-2.0.md) inside the tree).
 
 ## Upstream and licenses
 

@@ -15,11 +15,11 @@
 [![SoC](https://img.shields.io/badge/SoC-Airoha%20AN7581-333333?style=flat-square)](https://www.airoha.com/)
 [![iStoreOS](https://img.shields.io/badge/iStoreOS-%E7%BB%84%E4%BB%B6%E9%9B%86%E6%88%90-FF6600?style=flat-square)](https://github.com/YYH2913/openwrt)
 [![Docker](https://img.shields.io/badge/Docker-%E9%A2%84%E8%A3%85%E9%BB%98%E8%AE%A4%E5%85%B3-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
-[![QQ Group](https://img.shields.io/badge/%E4%BA%A4%E6%B5%81%E7%BE%A4-1061612207-orange?style=flat-square)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v1.0.0)
+[![QQ Group](https://img.shields.io/badge/%E4%BA%A4%E6%B5%81%E7%BE%A4-1061612207-orange?style=flat-square)](#交流与支持)
 
 面向 **Gemtek XR1710G** 的非官方社区固件：Wi-Fi 7 三频 + 6GHz 专线 Mesh 回程 + iStore 商店 + Docker，开箱即用。
 
-**[下载最新 v2.02](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)** · [更新了什么](#v202-更新) · [刷机指南](docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
+**[下载最新 v2.02](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)** · [更新了什么](#v202-更新) · [刷机指南](docs/tutorials/XR1710G-Flashing-Guide-ZH.md) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
 
 ## 30 秒速览
 
@@ -47,8 +47,8 @@
 
 不想翻文字版？这份图文教程从拆机接 TTL 讲到刷入 Wiro iStoreOS 固件，全程截图对照，跟着做就能完成：
 
-- **中文版**：[XR1710G-Flashing-Guide-ZH.pdf](docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf)
-- **English**: [XR1710G-Flashing-Guide-EN.pdf](docs/tutorials/XR1710G-Flashing-Guide-EN.pdf)
+- **中文版**：[在线图文版](docs/tutorials/XR1710G-Flashing-Guide-ZH.md) · [PDF](https://raw.githubusercontent.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/source-2.0/docs/tutorials/XR1710G-Flashing-Guide-ZH.pdf)
+- **English**: [Read online](docs/tutorials/XR1710G-Flashing-Guide-EN.md) · [PDF](https://raw.githubusercontent.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/source-2.0/docs/tutorials/XR1710G-Flashing-Guide-EN.pdf)
 
 两份 PDF 也作为附件挂在 [v2.02 Release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02) 页面，可直接下载打印。
 
@@ -82,9 +82,9 @@ Mesh 回程请关闭 MLO；MLO + WDS 桥接仍有兼容性问题。
 | `istoreos-xr1710g-community-2.02-r0-59ae07f-airoha-an7581-econet_xr1710g-ubi-initramfs-recovery.itb` | Recovery/全刷镜像：U-Boot Recovery 页或救砖用，普通升级不需要 |
 | `xr1710g-wiro-uboot-v2.1-flash-slot.bin` | 可选 Wiro U-Boot v2.1（恢复页乱码修复），仅用于"更新 U-Boot"，已有设备不强制重刷 |
 | `XR1710G-Flashing-Guide-ZH.pdf` / `-EN.pdf` | 图文刷机指南（中文/英文），不刷入 |
-| `SHA256SUMS.txt` | 校验文件，不刷入 |
+| `SHA256SUMS` | 校验文件，不刷入 |
 
-**Wiro U-Boot v2.1 为可选更新**（修复 v2.0 恢复页底部乱码；flash-slot 布局不变，不刷不影响固件使用）：恢复页（断电 → 红灯亮起长按 reset → 192.168.255.1）选择该文件上传即可，无需 TTL。来源与许可证见 [wiro-uboot-v2.1 发布](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/wiro-uboot-v2.1)与分支 `uboot-2.0`。刷机步骤见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
+**Wiro U-Boot v2.1 为可选更新**（修复 v2.0 恢复页底部乱码；flash-slot 布局不变，不刷不影响固件使用）：恢复页（断电 → 红灯亮起长按 reset → 192.168.255.1）选择该文件上传即可，无需 TTL。来源与许可证见 [v2.02 发布页（含 U-Boot v2.1 附件）](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)与[U-Boot 源码分支](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/uboot-2.0)。刷机步骤见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。
 
 v2.02 已在实机验证保配置升级（v2.01/v2.0 → v2.02）；从 v1.x 直接升级仍建议**不保留配置**。GitHub 自动生成的 Source code 压缩包即本版完整源码（分支 `source-2.0`），不是刷机文件；不要把系统 ITB 刷进 U-Boot 槽位。升级前备份重要数据；旧后台升级若超时不重启，不要反复提交，按指南排查。
 
@@ -132,7 +132,7 @@ xr1710g-role node 192.168.50.2/24 192.168.50.1
 
 ## 源码发布
 
-**v2.0 起完整源码随版本公布**：分支 [`source-2.0`](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/source-2.0)（标签 `v2.02`）是 v2.02 镜像对应的完整 OpenWrt / iStoreOS 构建树——Linux 6.18.53 Airoha 平台 XR1710G BSP 补丁集（SOE/PPE 卸载栈、LRO、缓冲转发等 `9999-*` 系列）、mt76/MT7996 NPU 栈（`0100–0114`）、fullcone NAT、XR1710G 出厂默认与 LuCI 应用；构建种子 `xr1710g-2.0.seed.config`（`cp xr1710g-2.0.seed.config .config && make defconfig`）。U-Boot 源码不在其中，详见树内 `XR1710G-SOURCE-2.0.md`。
+**v2.0 起完整源码随版本公布**：分支 [`source-2.0`](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/source-2.0)（标签 `v2.02`）是 v2.02 镜像对应的完整 OpenWrt / iStoreOS 构建树——Linux 6.18.53 Airoha 平台 XR1710G BSP 补丁集（SOE/PPE 卸载栈、LRO、缓冲转发等 `9999-*` 系列）、mt76/MT7996 NPU 栈（`0100–0114`）、fullcone NAT、XR1710G 出厂默认与 LuCI 应用；构建种子 `xr1710g-2.0.seed.config`（`cp xr1710g-2.0.seed.config .config && make defconfig`）。U-Boot 源码不在其中，详见树内 [XR1710G-SOURCE-2.0.md](XR1710G-SOURCE-2.0.md)。
 
 v1.x 时代的构建脚手架（`configs/`、`feeds.d/`、`patches/` 等）已于 2026-10-11 自仓库移除以免误导；其内容可在 v1.6.1–v1.9 标签的 Source 归档中查阅。
 
@@ -140,7 +140,7 @@ v1.x 时代的构建脚手架（`configs/`、`feeds.d/`、`patches/` 等）已�
 
 v1.x 版本使用旧的 Docker 构建脚手架构建；该脚手架已于 2026-10-11 随仓库整理移除，
 如需查阅见 v1.6.1–v1.9 标签的 Source 归档。v2.0 起直接从本源码树构建（见上文
-“源码发布”与树内 `XR1710G-SOURCE-2.0.md`）。
+“源码发布”与树内 [XR1710G-SOURCE-2.0.md](XR1710G-SOURCE-2.0.md)）。
 
 ## 上游与许可证
 
