@@ -19,7 +19,7 @@
 
 面向 **Gemtek XR1710G** 的非官方社区固件：Wi-Fi 7 三频 + 6GHz 专线 Mesh 回程 + iStore 商店 + Docker，开箱即用。
 
-**[下载最新 v2.02](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)** · [更新了什么](#v202-更新) · [刷机指南](docs/tutorials/XR1710G-Flashing-Guide-ZH.md) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
+**[下载最新 v2.02](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)** · [更新了什么](#v202-更新) · [刷机指南](docs/tutorials/XR1710G-Flashing-Guide-ZH.md) · [AP 组网教程](docs/tutorials/XR1710G-AP-Networking-Guide-ZH.md) · [Mesh 组网教程](MESH-GUIDE-ZH.md) · [English](README-EN.md)
 
 ## 30 秒速览
 
@@ -52,6 +52,12 @@
 
 两份 PDF 也作为附件挂在 [v2.02 Release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02) 页面，可直接下载打印。
 
+## AP 组网教程
+
+这份中文教程保持原样，覆盖双 AP 与 6GHz Mesh 的组网设置。可以阅读 [在线图文版](docs/tutorials/XR1710G-AP-Networking-Guide-ZH.md)，或下载 [原版 PDF](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/v2.02/XR1710G-AP-Networking-Guide-ZH.pdf)。
+
+> 注意：示例密码必须修改；示例地址需按实际网络调整；固件相关功能请以实际固件为准。本次仅发布文档，不代表新增实机验证。
+
 ## v2.02 更新
 
 - **passwall 取代 passwall2**：v1 应用，fw4/nftables 双适配；出厂未开启，在面板自行配置节点（勿与 OpenClash 同开）。
@@ -82,6 +88,7 @@ Mesh 回程请关闭 MLO；MLO + WDS 桥接仍有兼容性问题。
 | `istoreos-xr1710g-community-2.02-r0-59ae07f-airoha-an7581-econet_xr1710g-ubi-initramfs-recovery.itb` | Recovery/全刷镜像：U-Boot Recovery 页或救砖用，普通升级不需要 |
 | `xr1710g-wiro-uboot-v2.1-flash-slot.bin` | 可选 Wiro U-Boot v2.1（恢复页乱码修复），仅用于"更新 U-Boot"，已有设备不强制重刷 |
 | `XR1710G-Flashing-Guide-ZH.pdf` / `-EN.pdf` | 图文刷机指南（中文/英文），不刷入 |
+| `XR1710G-AP-Networking-Guide-ZH.pdf` | AP 组网教程（中文），仅文档，不刷入 |
 | `SHA256SUMS` | 校验文件，不刷入 |
 
 **Wiro U-Boot v2.1 为可选更新**（修复 v2.0 恢复页底部乱码；flash-slot 布局不变，不刷不影响固件使用）：恢复页（断电 → 红灯亮起长按 reset → 192.168.255.1）选择该文件上传即可，无需 TTL。来源与许可证见 [v2.02 发布页（含 U-Boot v2.1 附件）](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)与[U-Boot 源码分支](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/uboot-2.0)。刷机步骤见 [FLASHING-GUIDE.md](FLASHING-GUIDE.md)。

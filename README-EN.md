@@ -19,7 +19,7 @@
 
 Unofficial community firmware for the **Gemtek XR1710G**: tri-band Wi-Fi 7, a dedicated 6GHz mesh backhaul, the iStore app shop and Docker — ready to flash.
 
-**[Download v2.02](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)** · [What changed](#new-in-v202) · [Flashing guide](docs/tutorials/XR1710G-Flashing-Guide-EN.md) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
+**[Download v2.02](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02)** · [What changed](#new-in-v202) · [Flashing guide](docs/tutorials/XR1710G-Flashing-Guide-EN.md) · [AP guide (Chinese)](docs/tutorials/XR1710G-AP-Networking-Guide-ZH.md) · [Mesh guide](MESH-GUIDE-ZH.md) · [中文](README.md)
 
 ## At a glance
 
@@ -53,6 +53,12 @@ TTL to flashing the Wiro iStoreOS firmware, with a screenshot for every step:
 
 Both PDFs are also attached to the [v2.02 Release](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02) page for direct download.
 
+## AP networking guide (Chinese)
+
+The Chinese tutorial remains unchanged and covers dual AP plus 6GHz mesh setup. Read the [online version](docs/tutorials/XR1710G-AP-Networking-Guide-ZH.md) or download the [original PDF](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/download/v2.02/XR1710G-AP-Networking-Guide-ZH.pdf).
+
+> Note: Change example passwords; adapt example addresses to the actual network; check firmware-specific features against the installed firmware. Uploading this tutorial is not fresh hardware validation.
+
 ## New in v2.02
 
 - **passwall replaces passwall2**: the v1 app with fw4/nftables dual adaptation; disabled out of the box — configure your nodes in its panel (never enable both proxies together).
@@ -81,6 +87,7 @@ Full per-version history since v1.4: [CHANGES-v1.md](CHANGES-v1.md).
 | `istoreos-xr1710g-community-2.02-r0-59ae07f-airoha-an7581-econet_xr1710g-ubi-initramfs-recovery.itb` | Recovery / full-flash image for the U-Boot recovery page or brick recovery; not needed for ordinary upgrades |
 | `xr1710g-wiro-uboot-v2.1-flash-slot.bin` | Optional Wiro U-Boot v2.1 (recovery-page garbage fix), for "Update U-Boot" only; existing devices do not need to reflash |
 | `XR1710G-Flashing-Guide-ZH.pdf` / `-EN.pdf` | Illustrated flashing guides (Chinese/English), not flashed |
+| `XR1710G-AP-Networking-Guide-ZH.pdf` | AP networking guide (Chinese); documentation only, not flashed |
 | `SHA256SUMS` | Image checksums; not flashed |
 
 **Wiro U-Boot v2.1 is an optional update** (fixes the v2.0 recovery-page garbage; flash-slot layout unchanged, the firmware works without it): open the recovery page (power off → hold reset while powering on → 192.168.255.1) and upload the file — no TTL needed. Provenance and license: the [v2.02 release (includes U-Boot v2.1)](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/releases/tag/v2.02) and [U-Boot source branch](https://github.com/orangeyoo/XR1710G-OpenWrt-iStoreOS-Community/tree/uboot-2.0).
